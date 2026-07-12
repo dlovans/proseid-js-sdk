@@ -9,6 +9,9 @@ export class ProseIDError extends Error {
 }
 
 const messages = {
+	publishable_key_required: 'This form is missing its ProseID publishable key.',
+	invalid_publishable_key: 'This form is using an invalid or revoked ProseID key.',
+	form_not_allowed: 'This form is not available for this ProseID key.',
 	embed_origin_not_allowed: 'This website is not allowed to use this form.',
 	form_not_found: 'This form is no longer available.',
 	form_unpublished: 'This form is no longer available.',

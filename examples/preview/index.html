@@ -38,7 +38,7 @@
 				const valid = Boolean(body.responses.supplier_name && body.responses.jurisdiction && body.responses.review_date && body.responses.approved);
 				return new Response(JSON.stringify({ ok: true, valid, status: valid ? 'READY' : 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }), { status: 200 });
 			};
-			ProseID.mount('#proseid-form', { form: 'acme/supplier-assurance', fetch: mockFetch });
+			ProseID.mount('#proseid-form', { apiKey: `proseid_pk_${'a'.repeat(40)}`, form: 'acme/supplier-assurance', fetch: mockFetch });
 		</script>
 	</body>
 </html>

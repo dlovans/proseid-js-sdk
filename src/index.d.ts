@@ -6,6 +6,8 @@ export interface SigningAdapter {
 
 export interface MountOptions {
 	form: `${string}/${string}`;
+	/** Browser-safe `proseid_pk_…` key identifying the organization that owns the form. */
+	apiKey: string;
 	apiBase?: string;
 	theme?: Theme;
 	nonce?: string;

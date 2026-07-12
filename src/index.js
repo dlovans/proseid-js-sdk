@@ -12,7 +12,7 @@ export function mountAll(defaults = {}) {
 	return [...document.querySelectorAll('[data-proseid-form]')].map((element) => mount(element, {
 		...defaults,
 		form: element.getAttribute('data-proseid-form'),
+		apiKey: element.getAttribute('data-proseid-key') || defaults.apiKey,
 		apiBase: element.getAttribute('data-proseid-api') || defaults.apiBase
 	}));
 }
-

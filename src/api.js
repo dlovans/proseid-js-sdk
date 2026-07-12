@@ -8,10 +8,14 @@ export function parseFormCoordinate(value) {
 }
 
 export class EmbedApi {
-	constructor({ apiBase = 'https://proseid.com', form, fetchImpl = globalThis.fetch }) {
+	constructor({ apiBase = 'https://proseid.com', apiKey, form, fetchImpl = globalThis.fetch }) {
 		if (typeof fetchImpl !== 'function') throw new ProseIDError('fetch_unavailable', 'This browser cannot load the form.');
+		if (!/^proseid_pk_[a-f0-9]{32,64}$/.test(String(apiKey || ''))) {
+			throw new ProseIDError('invalid_api_key', 'A ProseID publishable key is required.');
+		}
 		const { publisher, slug } = parseFormCoordinate(form);
 		this.fetch = fetchImpl;
+		this.apiKey = apiKey;
 		this.endpoint = `${String(apiBase).replace(/\/$/, '')}/api/embed/v1/forms/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
 	}
 
@@ -20,8 +24,9 @@ export class EmbedApi {
 			method: body ? 'POST' : 'GET',
 			mode: 'cors',
 			credentials: 'omit',
-			headers: {
+				headers: {
 				accept: 'application/json',
+				'x-proseid-key': this.apiKey,
 				'x-proseid-sdk-version': VERSION,
 				...(body ? { 'content-type': 'application/json' } : {})
 			},

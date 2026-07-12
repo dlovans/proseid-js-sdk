@@ -12,18 +12,25 @@ const manifest = {
 };
 
 const response = (body, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
+const API_KEY = `proseid_pk_${'a'.repeat(40)}`;
 
 beforeEach(() => {
 	document.body.innerHTML = '<div id="form"></div>';
 });
 
 describe('ProseID SDK', () => {
+	it('requires a browser-safe publishable key', () => {
+		expect(() => mount('#form', { form: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
+		expect(() => mount('#form', { apiKey: `proseid_sk_${'a'.repeat(48)}`, form: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
+	});
+
 	it('renders the co-branded manifest and begins with submit gated', async () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(manifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
-		const instance = mount('#form', { form: 'acme/intake', fetch });
+		const instance = mount('#form', { apiKey: API_KEY, form: 'acme/intake', fetch });
 		await instance.ready;
+		expect(fetch.mock.calls[0][1].headers['x-proseid-key']).toBe(API_KEY);
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('h1').textContent).toBe('Client intake');
 		expect(root.textContent).toContain('Acme Legal');
@@ -39,7 +46,7 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: manifest.schema.definitions, issues: [] }))
 			.mockImplementationOnce(() => response({ ok: true, status: 'completed', sessionId: 'audit_123', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }));
 		const complete = vi.fn();
-		const instance = mount('#form', { form: 'acme/intake', fetch, validateDelay: 1, onComplete: complete });
+		const instance = mount('#form', { apiKey: API_KEY, form: 'acme/intake', fetch, validateDelay: 1, onComplete: complete });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		const input = root.querySelector('input[name="full_name"]');
@@ -54,4 +61,3 @@ describe('ProseID SDK', () => {
 		vi.useRealTimers();
 	});
 });
-

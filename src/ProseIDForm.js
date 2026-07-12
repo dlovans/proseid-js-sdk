@@ -32,9 +32,10 @@ export class ProseIDForm {
 		this.target = typeof target === 'string' ? document.querySelector(target) : target;
 		if (!(this.target instanceof Element)) throw new ProseIDError('invalid_target', 'Choose an element to contain the ProseID form.');
 		if (!options?.form) throw new ProseIDError('invalid_form', 'The form coordinate is required.');
+		if (!options?.apiKey) throw new ProseIDError('invalid_api_key', 'A ProseID publishable key is required.');
 		this.options = options;
 		this.copy = messagesFor(options.locale, options.messages);
-		this.api = new EmbedApi({ apiBase: options.apiBase, form: options.form, fetchImpl: options.fetch });
+		this.api = new EmbedApi({ apiBase: options.apiBase, apiKey: options.apiKey, form: options.form, fetchImpl: options.fetch });
 		this.signing = new SigningCoordinator(options.signingAdapter);
 		this.shadow = this.target.shadowRoot || this.target.attachShadow({ mode: 'open' });
 		this.values = {};

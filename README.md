@@ -16,11 +16,17 @@ Final submission is not a client-side “success” flag. ProseID authoritativel
 
 First, open the form in the ProseID workspace and add the website under **Embedded form websites**. Origins are exact: use `https://www.example.com`, not a path. HTTPS is required except for localhost development.
 
+Create a **Publishable / SDK** key in **Workspace → API keys**. Publishable keys begin with
+`proseid_pk_` and are safe to include in browser code. They identify the organization whose form,
+schema, balance, audit records, and co-branding apply. Never put a secret `proseid_sk_` key in a
+website—the embed API rejects secret keys.
+
 ```html
 <div id="compliance-form"></div>
 <script src="https://cdn.example.com/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
+	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
     form: 'publisher-handle/form-slug',
     onComplete(result) {
       console.log('ProseID audit record', result.sessionId);
@@ -35,6 +41,7 @@ For an ES module build:
 import { mount } from '@proseid/js-sdk';
 
 const form = mount('#compliance-form', {
+	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
   form: 'publisher-handle/form-slug',
 	locale: 'en', // `sv` is also bundled; UI messages can be overridden
   theme: { accent: '#ff4d1f', radius: '12px' }
@@ -74,7 +81,8 @@ npm test
 npm run build
 ```
 
-Serve `examples/basic` over HTTP and add its exact localhost origin to the selected ProseID form. Change `YOUR_PUBLISHER/YOUR_FORM` in the example before loading it.
+Serve `examples/basic` over HTTP and add its exact localhost origin to the selected ProseID form.
+Change `YOUR_PROSEID_PUBLISHABLE_KEY` and `YOUR_PUBLISHER/YOUR_FORM` in the example before loading it.
 
 ## Signing boundary
 
