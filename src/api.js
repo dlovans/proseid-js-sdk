@@ -14,7 +14,9 @@ export class EmbedApi {
 			throw new ProseIDError('invalid_api_key', 'A ProseID publishable key is required.');
 		}
 		const { publisher, slug } = parseFormCoordinate(form);
-		this.fetch = fetchImpl;
+		// Native browser fetch requires its Window/Worker global as the receiver in some runtimes.
+		// Binding here keeps the default transport safe while still supporting injected test transports.
+		this.fetch = fetchImpl.bind(globalThis);
 		this.apiKey = apiKey;
 		this.endpoint = `${String(apiBase).replace(/\/$/, '')}/api/embed/v1/forms/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
 	}

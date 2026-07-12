@@ -246,11 +246,16 @@ export class ProseIDForm {
 	}
 
 	change(name, definition, control, immediate = false) {
-		this.values[name] = ['boolean', 'attestation'].includes(definition.type)
+		const value = ['boolean', 'attestation'].includes(definition.type)
 			? control.checked
 			: ['number', 'currency'].includes(definition.type) && control.value !== ''
 				? Number(control.value)
 				: control.value;
+		// Browsers fire `change` again when a filled control loses focus. Do not invalidate a value
+		// that the server has already approved: doing so can disable Submit between pointer-down and
+		// click when the user moves directly from the last field to the button.
+		if (Object.is(this.values[name], value)) return;
+		this.values[name] = value;
 		this.valid = false;
 		this.submitButton.disabled = true;
 		this.setStatus('checking', this.copy.checking);

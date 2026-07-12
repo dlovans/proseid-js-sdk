@@ -55,6 +55,10 @@ describe('ProseID SDK', () => {
 		await vi.advanceTimersByTimeAsync(1);
 		await Promise.resolve();
 		expect(root.querySelector('button[type="submit"]').disabled).toBe(false);
+		// A real click moves focus away from the input and fires `change` before the button click.
+		// The duplicate event must not invalidate the already-validated value or swallow Submit.
+		input.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(root.querySelector('button[type="submit"]').disabled).toBe(false);
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(complete).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'audit_123' })));
 		expect(root.textContent).toContain('Audit record audit_123');
