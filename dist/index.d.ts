@@ -1,4 +1,4 @@
-export type Theme = Partial<Record<'accent' | 'background' | 'canvas' | 'surface' | 'text' | 'ink' | 'copy' | 'muted' | 'border' | 'rule' | 'success' | 'radius' | 'font', string>>;
+export type ThemeName = 'light' | 'charcoal' | 'midnight' | 'forest';
 export type AppearancePreset = 'soft' | 'capsule' | 'rigid' | 'underline';
 export interface Appearance {
 	preset?: AppearancePreset;
@@ -24,7 +24,8 @@ export interface MountOptions {
 	/** Browser-safe `proseid_pk_…` key identifying the organization that owns the form. */
 	apiKey: string;
 	apiBase?: string;
-	theme?: Theme;
+	/** Curated, contrast-tested palette. Arbitrary color values are intentionally unsupported. */
+	theme?: ThemeName;
 	appearance?: AppearancePreset | Appearance;
 	branding?: Branding;
 	nonce?: string;
@@ -71,6 +72,7 @@ export declare class ProseIDForm {
 	destroy(): void;
 }
 export declare const VERSION: string;
+export declare const THEME_NAMES: readonly ThemeName[];
 export declare function mount(target: string | Element, options: MountOptions): ProseIDForm;
 export declare function mountTest(target: string | Element, options: Omit<MountOptions, 'form'> & { form?: never }): ProseIDForm;
 export declare function mountAll(defaults?: Partial<MountOptions>): ProseIDForm[];

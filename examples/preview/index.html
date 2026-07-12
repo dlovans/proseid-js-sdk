@@ -17,10 +17,10 @@
 		<main>
 			<p class="preview-label">SDK development preview · no data leaves this page</p>
 			<div class="gallery">
-				<div class="variant"><span>Soft · full attribution</span><div id="soft"></div></div>
-				<div class="variant"><span>Capsule · compact attribution</span><div id="capsule"></div></div>
-				<div class="variant"><span>Rigid · custom logo</span><div id="rigid"></div></div>
-				<div class="variant"><span>Underline · hidden attribution</span><div id="underline"></div></div>
+				<div class="variant"><span>Light · soft · full attribution</span><div id="soft"></div></div>
+				<div class="variant"><span>Charcoal · capsule · compact attribution</span><div id="capsule"></div></div>
+				<div class="variant"><span>Midnight · rigid · custom logo</span><div id="rigid"></div></div>
+				<div class="variant"><span>Forest · underline · hidden attribution</span><div id="underline"></div></div>
 			</div>
 		</main>
 		<script src="../../dist/proseid.min.js"></script>
@@ -50,10 +50,10 @@
 				return new Response(JSON.stringify({ ok: true, valid, status: valid ? 'READY' : 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }), { status: 200 });
 			};
 			const base = { apiKey: `proseid_pk_${'a'.repeat(40)}`, form: 'acme/supplier-assurance', fetch: mockFetch };
-			ProseID.mount('#soft', { ...base, appearance: 'soft' });
-			ProseID.mount('#capsule', { ...base, appearance: 'capsule', branding: { proseid: 'compact' } });
-			ProseID.mount('#rigid', { ...base, appearance: { shape: 'rigid', density: 'compact' }, branding: { logoUrl: 'http://127.0.0.1:8091/examples/preview/icon-placeholder.svg', logoAlt: 'Northstar symbol' } });
-			ProseID.mount('#underline', { ...base, appearance: 'underline', branding: { proseid: 'hidden' }, theme: { background: '#ffffff', surface: '#ffffff' } });
+			ProseID.mount('#soft', { ...base, appearance: 'soft', theme: 'light' });
+			ProseID.mount('#capsule', { ...base, appearance: 'capsule', theme: 'charcoal', branding: { proseid: 'compact' } });
+			ProseID.mount('#rigid', { ...base, appearance: { shape: 'rigid', density: 'compact' }, theme: 'midnight', branding: { logoUrl: 'http://127.0.0.1:8091/examples/preview/icon-placeholder.svg', logoAlt: 'Northstar symbol' } });
+			ProseID.mount('#underline', { ...base, appearance: 'underline', theme: 'forest', branding: { proseid: 'hidden' } });
 		</script>
 	</body>
 </html>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount, mountTest, VERSION } from '../src/index.js';
+import { mount, mountTest, THEME_NAMES, VERSION } from '../src/index.js';
 
 const manifest = {
 	ok: true,
@@ -52,19 +52,38 @@ describe('ProseID SDK', () => {
 			form: 'acme/intake',
 			fetch,
 			appearance: { preset: 'underline', density: 'compact' },
-			theme: { background: '#f1f2f3', text: '#101112', border: '#cccccc' },
+			theme: 'midnight',
 			branding: { logoUrl: 'https://customer.example/logo.svg', logoAlt: 'Customer logo', proseid: 'hidden' }
 		});
 		await instance.ready;
 		const target = document.querySelector('#form');
 		const root = target.shadowRoot;
 		expect(target.dataset).toMatchObject({ proseidShape: 'rigid', proseidFields: 'underline', proseidShell: 'flat', proseidDensity: 'compact' });
-		expect(target.style.getPropertyValue('--proseid-canvas')).toBe('#f1f2f3');
+		expect(target.dataset.proseidTheme).toBe('midnight');
+		expect(target.style.getPropertyValue('--proseid-canvas')).toBe('#111827');
 		expect(root.querySelector('.brand img').src).toBe('https://customer.example/logo.svg');
 		expect(root.querySelector('.brand img').alt).toBe('Customer logo');
 		expect(root.querySelector('.proseid-brand')).toBeNull();
 		expect(root.textContent).not.toContain('Checked by ProseID');
 		expect(fetch.mock.calls[0][1].headers['x-proseid-attribution']).toBe('hidden');
+	});
+
+	it('accepts only curated theme names and falls back safely', async () => {
+		expect(THEME_NAMES).toEqual(['light', 'charcoal', 'midnight', 'forest']);
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(manifest))
+			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
+		const instance = mount('#form', {
+			apiKey: API_KEY,
+			form: 'acme/intake',
+			fetch,
+			theme: { accent: '#000000; background:url(https://evil.example)' }
+		});
+		await instance.ready;
+		const target = document.querySelector('#form');
+		expect(target.dataset.proseidTheme).toBe('light');
+		expect(target.style.getPropertyValue('--proseid-accent')).toBe('#ff4d1f');
+		expect(target.getAttribute('style')).not.toContain('evil.example');
 	});
 
 	it('mounts the built-in remote test form without a form coordinate', async () => {

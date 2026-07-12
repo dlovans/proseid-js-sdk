@@ -1,8 +1,9 @@
 import { ProseIDForm } from './ProseIDForm.js';
 import { ProseIDError } from './errors.js';
 import { VERSION } from './version.js';
+import { THEME_NAMES } from './themes.js';
 
-export { ProseIDError, ProseIDForm, VERSION };
+export { ProseIDError, ProseIDForm, THEME_NAMES, VERSION };
 
 export function mount(target, options) {
 	return new ProseIDForm(target, options);

@@ -4,6 +4,7 @@ import { SigningCoordinator } from './signing.js';
 import { styles } from './styles.js';
 import { messagesFor } from './i18n.js';
 import { normalizeAppearance, normalizeAttribution, safeLogoUrl } from './presentation.js';
+import { normalizeTheme, THEMES } from './themes.js';
 
 const text = (tag, className, value = '') => {
 	const node = document.createElement(tag);
@@ -63,11 +64,11 @@ export class ProseIDForm {
 	}
 
 	applyTheme(theme = {}) {
-		const aliases = { background: 'canvas', text: 'ink', border: 'rule' };
-		const allowed = new Set(['accent', 'canvas', 'surface', 'ink', 'copy', 'muted', 'rule', 'success', 'radius', 'font']);
-		for (const [key, value] of Object.entries(theme || {})) {
-			const token = aliases[key] || key;
-			if (allowed.has(token) && typeof value === 'string') this.target.style.setProperty(`--proseid-${token}`, value);
+		const name = normalizeTheme(theme);
+		this.target.dataset.proseidTheme = name;
+		for (const [key, value] of Object.entries(THEMES[name])) {
+			const token = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+			this.target.style.setProperty(`--proseid-${token}`, value);
 		}
 	}
 

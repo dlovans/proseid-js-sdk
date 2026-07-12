@@ -26,7 +26,7 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.3.0";
+var VERSION = "0.4.0";
 
 // src/presentation.js
 var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
@@ -149,10 +149,13 @@ var styles = `
 	--proseid-surface: #ffffff;
 	--proseid-ink: #171918;
 	--proseid-copy: #515653;
-	--proseid-muted: #777d79;
+	--proseid-muted: #6c726e;
 	--proseid-rule: #dfe2df;
 	--proseid-success: #167653;
 	--proseid-success-tint: #e8f5ef;
+	--proseid-submit-ink: #171918;
+	--proseid-skeleton-glow: #ffffff;
+	--proseid-color-scheme: light;
 	--proseid-radius: 16px;
 	--proseid-control-radius: 11px;
 	--proseid-button-radius: 11px;
@@ -165,6 +168,7 @@ var styles = `
 	color: var(--proseid-ink);
 	font-family: var(--proseid-font);
 	font-synthesis: none;
+	color-scheme: var(--proseid-color-scheme);
 }
 :host([data-proseid-shape="capsule"]) { --proseid-radius: 22px; --proseid-control-radius: 999px; --proseid-button-radius: 999px; }
 :host([data-proseid-shape="rigid"]) { --proseid-radius: 2px; --proseid-control-radius: 0px; --proseid-button-radius: 0px; }
@@ -215,12 +219,12 @@ textarea.control { min-height: 96px; resize: vertical; }
 .actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--proseid-rule); }
 .privacy { display: flex; align-items: flex-start; gap: 7px; color: var(--proseid-muted); font-size: 10px; line-height: 1.5; }
 .privacy svg { width: 13px; height: 13px; flex: 0 0 13px; margin-top: 1px; }
-.submit { min-width: 128px; min-height: 42px; border: 0; border-radius: var(--proseid-button-radius); background: var(--proseid-accent); padding: 10px 17px; color: #fff; font-size: 12px; font-weight: 720; cursor: pointer; transition: transform .15s ease, filter .15s ease; }
+.submit { min-width: 128px; min-height: 42px; border: 0; border-radius: var(--proseid-button-radius); background: var(--proseid-accent); padding: 10px 17px; color: var(--proseid-submit-ink); font-size: 12px; font-weight: 720; cursor: pointer; transition: transform .15s ease, filter .15s ease; }
 .submit:hover:not(:disabled) { filter: brightness(.94); transform: translateY(-1px); }
 .submit:focus-visible { outline: 2px solid var(--proseid-ink); outline-offset: 3px; }
 .submit:disabled { cursor: not-allowed; filter: grayscale(.25); opacity: .48; }
 .skeleton { padding: 28px; }
-.skeleton-line { height: 12px; margin: 10px 0; border-radius: 8px; background: linear-gradient(90deg, var(--proseid-canvas), #fff, var(--proseid-canvas)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+.skeleton-line { height: 12px; margin: 10px 0; border-radius: 8px; background: linear-gradient(90deg, var(--proseid-canvas), var(--proseid-skeleton-glow), var(--proseid-canvas)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 .skeleton-line:nth-child(2) { width: 62%; height: 30px; margin-top: 28px; }
 .skeleton-line:nth-child(3) { width: 82%; }
 .complete { padding: 42px 30px; text-align: center; }
@@ -314,6 +318,74 @@ function messagesFor(locale = "en", overrides = {}) {
   return { ...dictionaries[language] ?? dictionaries.en, ...overrides };
 }
 
+// src/themes.js
+var THEMES = Object.freeze({
+  light: Object.freeze({
+    accent: "#ff4d1f",
+    accentInk: "#b82d0d",
+    canvas: "#f5f6f5",
+    surface: "#ffffff",
+    ink: "#171918",
+    copy: "#515653",
+    muted: "#6c726e",
+    rule: "#dfe2df",
+    success: "#167653",
+    successTint: "#e8f5ef",
+    submitInk: "#171918",
+    skeletonGlow: "#ffffff",
+    colorScheme: "light"
+  }),
+  charcoal: Object.freeze({
+    accent: "#ff6a3d",
+    accentInk: "#ff9a7a",
+    canvas: "#171b1c",
+    surface: "#202526",
+    ink: "#f4f6f5",
+    copy: "#c4cbc7",
+    muted: "#a2aba6",
+    rule: "#3b4340",
+    success: "#71d6aa",
+    successTint: "#173a2e",
+    submitInk: "#24120d",
+    skeletonGlow: "#2c3331",
+    colorScheme: "dark"
+  }),
+  midnight: Object.freeze({
+    accent: "#ff6841",
+    accentInk: "#ff9a7e",
+    canvas: "#111827",
+    surface: "#182235",
+    ink: "#f4f6fa",
+    copy: "#cbd3e1",
+    muted: "#a6b0c1",
+    rule: "#344057",
+    success: "#78d9b5",
+    successTint: "#143b32",
+    submitInk: "#24120d",
+    skeletonGlow: "#24314a",
+    colorScheme: "dark"
+  }),
+  forest: Object.freeze({
+    accent: "#ff6841",
+    accentInk: "#ff9a7e",
+    canvas: "#151c1a",
+    surface: "#1e2825",
+    ink: "#f5f7f2",
+    copy: "#cbd2cb",
+    muted: "#a9b2ac",
+    rule: "#3b4943",
+    success: "#7fd7aa",
+    successTint: "#173a2c",
+    submitInk: "#24120d",
+    skeletonGlow: "#2b3834",
+    colorScheme: "dark"
+  })
+});
+var THEME_NAMES = Object.freeze(Object.keys(THEMES));
+function normalizeTheme(value) {
+  return typeof value === "string" && Object.hasOwn(THEMES, value) ? value : "light";
+}
+
 // src/ProseIDForm.js
 var text = (tag, className, value = "") => {
   const node = document.createElement(tag);
@@ -373,11 +445,11 @@ var ProseIDForm = class {
     this.ready = this.load();
   }
   applyTheme(theme = {}) {
-    const aliases = { background: "canvas", text: "ink", border: "rule" };
-    const allowed = /* @__PURE__ */ new Set(["accent", "canvas", "surface", "ink", "copy", "muted", "rule", "success", "radius", "font"]);
-    for (const [key, value] of Object.entries(theme || {})) {
-      const token = aliases[key] || key;
-      if (allowed.has(token) && typeof value === "string") this.target.style.setProperty(`--proseid-${token}`, value);
+    const name = normalizeTheme(theme);
+    this.target.dataset.proseidTheme = name;
+    for (const [key, value] of Object.entries(THEMES[name])) {
+      const token = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      this.target.style.setProperty(`--proseid-${token}`, value);
     }
   }
   applyAppearance(appearance) {
@@ -725,6 +797,7 @@ function mountAll(defaults = {}) {
 export {
   ProseIDError,
   ProseIDForm,
+  THEME_NAMES,
   VERSION,
   mount,
   mountAll,

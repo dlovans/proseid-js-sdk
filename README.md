@@ -23,7 +23,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/gh/dlovans/proseid-js-sdk@v0.3.0/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/dlovans/proseid-js-sdk@v0.4.0/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -38,7 +38,7 @@ website—the embed API rejects secret keys.
 For an ES module build:
 
 ```bash
-npm install github:dlovans/proseid-js-sdk#v0.3.0
+npm install github:dlovans/proseid-js-sdk#v0.4.0
 ```
 
 ```js
@@ -49,7 +49,7 @@ const form = mount('#compliance-form', {
   form: 'publisher-handle/form-slug',
 	locale: 'en', // `sv` is also bundled; UI messages can be overridden
   appearance: { shape: 'capsule', fields: 'outlined', shell: 'card' },
-  theme: { accent: '#ff4d1f', background: '#f5f6f5', surface: '#ffffff' },
+  theme: 'charcoal',
   branding: { logoUrl: 'https://example.com/logo.svg', logoAlt: 'Example', proseid: 'compact' }
 });
 
@@ -58,9 +58,9 @@ await form.ready;
 
 ## Appearance and branding
 
-Customization is intentionally bounded so validation states, keyboard focus, mobile layout, and
-field semantics remain intact. Use one preset (`soft`, `capsule`, `rigid`, or `underline`) or compose
-the same controls:
+Customization is intentionally bounded so validation states, keyboard focus, mobile layout, field
+semantics, and ProseID attribution retain a dependable visual floor. Use one geometry preset
+(`soft`, `capsule`, `rigid`, or `underline`) or compose the same controls:
 
 ```js
 mount('#compliance-form', {
@@ -72,14 +72,7 @@ mount('#compliance-form', {
     shell: 'flat',        // card | flat
     density: 'compact'    // comfortable | compact
   },
-  theme: {
-    background: '#fafafa',
-    surface: '#ffffff',
-    accent: '#e34225',
-    text: '#161616',
-    border: '#d9d9d6',
-    font: 'Your UI font, sans-serif'
-  },
+  theme: 'midnight', // light | charcoal | midnight | forest
   branding: {
     logoUrl: 'https://example.com/brand.svg',
     logoAlt: 'Example',
@@ -89,7 +82,13 @@ mount('#compliance-form', {
 ```
 
 `logoUrl` accepts HTTPS images (plus HTTP on localhost) and falls back to the organization logo in
-ProseID. Raw HTML, raw SVG markup, and arbitrary CSS are not accepted.
+ProseID. Raw HTML, raw SVG markup, arbitrary CSS, and custom color values are not accepted.
+
+Themes are curated and WCAG AA contrast-tested across body copy, muted/status copy, errors, success
+states, and button labels. `light` is the default. `charcoal` is neutral and architectural;
+`midnight` uses a restrained ink-blue field; `forest` uses a deep institutional green. All four keep
+vermillion as the ProseID signal. Unknown values—including objects containing color strings—fall
+back to `light` without being applied. `THEME_NAMES` exposes the supported names for configuration UIs.
 
 `full` and `compact` attribution have the standard completion price. `hidden` is the supported
 white-label mode: the SDK tells the authenticated embed endpoint, the server returns the effective
