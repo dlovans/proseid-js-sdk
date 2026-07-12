@@ -3,22 +3,38 @@
 	"version": "0.2.0",
 	"description": "Embeddable, server-validated ProseID compliance forms.",
 	"type": "module",
-	"private": true,
-	"license": "UNLICENSED",
-	"main": "./dist/proseid.min.js",
+	"license": "Apache-2.0",
+	"main": "./dist/proseid.js",
 	"module": "./dist/proseid.js",
+	"browser": "./dist/proseid.min.js",
+	"unpkg": "./dist/proseid.min.js",
+	"jsdelivr": "./dist/proseid.min.js",
 	"types": "./dist/index.d.ts",
+	"sideEffects": false,
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/proseid.js",
-			"default": "./dist/proseid.min.js"
+			"default": "./dist/proseid.js"
 		}
 	},
-	"files": ["dist", "README.md"],
+	"files": ["dist", "README.md", "LICENSE", "NOTICE"],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dlovans/proseid-js-sdk.git"
+	},
+	"homepage": "https://proseid.com/docs#sdk",
+	"bugs": {
+		"url": "https://github.com/dlovans/proseid-js-sdk/issues"
+	},
+	"keywords": ["proseid", "compliance", "forms", "validation", "audit"],
+	"publishConfig": {
+		"access": "public"
+	},
 	"scripts": {
 		"build": "node scripts/build.mjs",
 		"check": "node --check src/index.js && node --check src/ProseIDForm.js && node --check src/api.js",
+		"prepublishOnly": "npm run check && npm test && npm run build",
 		"test": "vitest run",
 		"test:watch": "vitest"
 	},

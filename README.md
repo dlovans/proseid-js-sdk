@@ -23,7 +23,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.example.com/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/dlovans/proseid-js-sdk@v0.2.0/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -36,6 +36,10 @@ website—the embed API rejects secret keys.
 ```
 
 For an ES module build:
+
+```bash
+npm install github:dlovans/proseid-js-sdk#v0.2.0
+```
 
 ```js
 import { mount } from '@proseid/js-sdk';
@@ -88,4 +92,6 @@ Change `YOUR_PROSEID_PUBLISHABLE_KEY` and `YOUR_PUBLISHER/YOUR_FORM` in the exam
 
 The current API returns `nextAction: null`. A future signed form can return a provider action without changing the renderer’s validation or audit flow. Pass an adapter with `sign(nextAction, context)` when UIP is live; the SDK will delegate the provider interaction rather than embedding provider-specific logic into the form renderer.
 
-The package remains `UNLICENSED` until ProseID chooses the public distribution licence and CDN release process.
+## Licence
+
+Apache-2.0. You may use, modify, and redistribute the SDK, including in commercial products, subject to the licence's notice requirements. The licence does not grant rights to ProseID names or trademarks. Using the SDK does not grant access to the ProseID service without a valid publishable key and an allowed website origin.
