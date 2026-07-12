@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>ProseID SDK visual preview</title>
+		<style>
+			body { margin: 0; background: #eef0ef; color: #171918; font-family: system-ui, sans-serif; }
+			main { width: min(720px, calc(100% - 32px)); margin: 54px auto 80px; }
+			.preview-label { margin: 0 0 18px; color: #747a76; font: 600 11px ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
+		</style>
+	</head>
+	<body>
+		<main>
+			<p class="preview-label">SDK development preview · no data leaves this page</p>
+			<div id="proseid-form"></div>
+		</main>
+		<script src="../../dist/proseid.min.js"></script>
+		<script>
+			const manifest = {
+				ok: true,
+				apiVersion: '2026-07-12',
+				form: { ref: 'preview', title: 'Supplier assurance record', description: 'Document the supplier, review scope, and accountable declaration before the engagement proceeds.', schemaId: 'acme/supplier-assurance', schemaVersion: '1.0.0' },
+				publisher: { slug: 'acme', name: 'Northstar Compliance', logo: null, verified: true },
+				branding: { proseid: { name: 'ProseID', logo: 'http://127.0.0.1:8091/icon-placeholder.svg', url: 'https://proseid.com' } },
+				schema: { definitions: {
+					supplier_name: { type: 'string', label: 'Supplier name', required: true, placeholder: 'Registered organisation name' },
+					jurisdiction: { type: 'select', label: 'Primary jurisdiction', required: true, options: ['Sweden', 'United Kingdom', 'European Union'] },
+					review_date: { type: 'date', label: 'Review date', required: true },
+					approved: { type: 'attestation', statement: 'I confirm this information is complete and ready for review.', required: true }
+				} },
+				capabilities: { validation: 'remote', auditRecord: true, signing: { requested: false, available: false, mode: 'none' } }
+			};
+			const mockFetch = async (_url, options = {}) => {
+				if (!options.body) return new Response(JSON.stringify(manifest), { status: 200 });
+				const body = JSON.parse(options.body);
+				if (body.action === 'complete') return new Response(JSON.stringify({ ok: true, status: 'completed', sessionId: 'preview_audit_record', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }), { status: 200 });
+				const valid = Boolean(body.responses.supplier_name && body.responses.jurisdiction && body.responses.review_date && body.responses.approved);
+				return new Response(JSON.stringify({ ok: true, valid, status: valid ? 'READY' : 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }), { status: 200 });
+			};
+			ProseID.mount('#proseid-form', { form: 'acme/supplier-assurance', fetch: mockFetch });
+		</script>
+	</body>
+</html>

@@ -1,0 +1,30 @@
+{
+	"name": "@proseid/js-sdk",
+	"version": "0.1.0",
+	"description": "Embeddable, server-validated ProseID compliance forms.",
+	"type": "module",
+	"private": true,
+	"license": "UNLICENSED",
+	"main": "./dist/proseid.min.js",
+	"module": "./dist/proseid.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/proseid.js",
+			"default": "./dist/proseid.min.js"
+		}
+	},
+	"files": ["dist", "README.md"],
+	"scripts": {
+		"build": "node scripts/build.mjs",
+		"check": "node --check src/index.js && node --check src/ProseIDForm.js && node --check src/api.js",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"devDependencies": {
+		"esbuild": "^0.25.6",
+		"happy-dom": "^20.10.6",
+		"vitest": "^3.2.4"
+	}
+}

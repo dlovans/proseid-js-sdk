@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>ProseID embed example</title>
+		<style>
+			body { margin: 0; background: #eef0ef; color: #171918; font-family: system-ui, sans-serif; }
+			main { width: min(680px, calc(100% - 32px)); margin: 64px auto; }
+			h1 { margin-bottom: 30px; font: 500 38px/1.05 Georgia, serif; }
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>A compliance form, without leaving your product.</h1>
+			<div id="proseid-form"></div>
+		</main>
+		<script src="../../dist/proseid.min.js"></script>
+		<script>
+			ProseID.mount('#proseid-form', {
+				form: 'YOUR_PUBLISHER/YOUR_FORM',
+				apiBase: 'http://localhost:5173',
+				onComplete(result) { console.log('Audit record:', result.sessionId); }
+			});
+		</script>
+	</body>
+</html>
+
