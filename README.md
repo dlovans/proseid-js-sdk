@@ -23,7 +23,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/gh/dlovans/proseid-js-sdk@v0.2.0/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/dlovans/proseid-js-sdk@v0.3.0/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -38,7 +38,7 @@ website—the embed API rejects secret keys.
 For an ES module build:
 
 ```bash
-npm install github:dlovans/proseid-js-sdk#v0.2.0
+npm install github:dlovans/proseid-js-sdk#v0.3.0
 ```
 
 ```js
@@ -48,10 +48,76 @@ const form = mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
   form: 'publisher-handle/form-slug',
 	locale: 'en', // `sv` is also bundled; UI messages can be overridden
-  theme: { accent: '#ff4d1f', radius: '12px' }
+  appearance: { shape: 'capsule', fields: 'outlined', shell: 'card' },
+  theme: { accent: '#ff4d1f', background: '#f5f6f5', surface: '#ffffff' },
+  branding: { logoUrl: 'https://example.com/logo.svg', logoAlt: 'Example', proseid: 'compact' }
 });
 
 await form.ready;
+```
+
+## Appearance and branding
+
+Customization is intentionally bounded so validation states, keyboard focus, mobile layout, and
+field semantics remain intact. Use one preset (`soft`, `capsule`, `rigid`, or `underline`) or compose
+the same controls:
+
+```js
+mount('#compliance-form', {
+  apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
+  form: 'publisher-handle/form-slug',
+  appearance: {
+    shape: 'rigid',       // soft | capsule | rigid
+    fields: 'underline',  // outlined | underline
+    shell: 'flat',        // card | flat
+    density: 'compact'    // comfortable | compact
+  },
+  theme: {
+    background: '#fafafa',
+    surface: '#ffffff',
+    accent: '#e34225',
+    text: '#161616',
+    border: '#d9d9d6',
+    font: 'Your UI font, sans-serif'
+  },
+  branding: {
+    logoUrl: 'https://example.com/brand.svg',
+    logoAlt: 'Example',
+    proseid: 'full' // full | compact | hidden
+  }
+});
+```
+
+`logoUrl` accepts HTTPS images (plus HTTP on localhost) and falls back to the organization logo in
+ProseID. Raw HTML, raw SVG markup, and arbitrary CSS are not accepted.
+
+`full` and `compact` attribution have the standard completion price. `hidden` is the supported
+white-label mode: the SDK tells the authenticated embed endpoint, the server returns the effective
+mode and price in `manifest.presentation`, and a completed production session is billed 25% extra
+(currently 250 microns instead of 200). The session records the embed source, publishable key,
+origin, SDK version, attribution mode, and pricing components. Test completions are always free.
+
+The customer controls their browser and can technically modify any open-source browser bundle or
+cover any DOM element. ProseID therefore meters the supported `hidden` mode server-side; it does not
+claim that browser attribution is cryptographically enforceable. Building a separate UI against the
+server API remains a distinct, supported integration path.
+
+## Built-in integration test
+
+Use `mountTest` before publishing a schema. It loads ProseID's server-hosted field gallery with text,
+number, yes/no, select, date, currency, confirmation, and conditional fields. Validation reaches the
+real ProseID engine, but completion is simulated: nothing is stored, delivered, or billed.
+
+```js
+import { mountTest } from '@proseid/js-sdk';
+
+const test = mountTest('#compliance-form', {
+  apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
+  appearance: 'underline',
+  branding: { proseid: 'compact' }
+});
+
+await test.ready;
 ```
 
 ## Events
@@ -87,6 +153,8 @@ npm run build
 
 Serve `examples/basic` over HTTP and add its exact localhost origin to the selected ProseID form.
 Change `YOUR_PROSEID_PUBLISHABLE_KEY` and `YOUR_PUBLISHER/YOUR_FORM` in the example before loading it.
+`examples/test` needs only a publishable key because the built-in form does not require a published
+schema or a form origin allow-list.
 
 ## Signing boundary
 

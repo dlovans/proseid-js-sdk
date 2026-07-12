@@ -1,5 +1,6 @@
 import { ProseIDError, errorMessage } from './errors.js';
 import { VERSION } from './version.js';
+import { normalizeAttribution } from './presentation.js';
 
 export function parseFormCoordinate(value) {
 	const parts = String(value ?? '').split('/').filter(Boolean);
@@ -8,17 +9,26 @@ export function parseFormCoordinate(value) {
 }
 
 export class EmbedApi {
-	constructor({ apiBase = 'https://proseid.com', apiKey, form, fetchImpl = globalThis.fetch }) {
+	constructor({ apiBase = 'https://proseid.com', apiKey, form, testMode = false, attribution = 'full', fetchImpl = globalThis.fetch }) {
 		if (typeof fetchImpl !== 'function') throw new ProseIDError('fetch_unavailable', 'This browser cannot load the form.');
 		if (!/^proseid_pk_[a-f0-9]{32,64}$/.test(String(apiKey || ''))) {
 			throw new ProseIDError('invalid_api_key', 'A ProseID publishable key is required.');
 		}
-		const { publisher, slug } = parseFormCoordinate(form);
 		// Native browser fetch requires its Window/Worker global as the receiver in some runtimes.
 		// Binding here keeps the default transport safe while still supporting injected test transports.
 		this.fetch = fetchImpl.bind(globalThis);
 		this.apiKey = apiKey;
-		this.endpoint = `${String(apiBase).replace(/\/$/, '')}/api/embed/v1/forms/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
+		this.attribution = normalizeAttribution(attribution);
+		if (testMode) {
+			this.endpoint = `${String(apiBase).replace(/\/$/, '')}/api/embed/v1/test`;
+		} else {
+			const { publisher, slug } = parseFormCoordinate(form);
+			this.endpoint = `${String(apiBase).replace(/\/$/, '')}/api/embed/v1/forms/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
+		}
+	}
+
+	setAttribution(value) {
+		this.attribution = normalizeAttribution(value);
 	}
 
 	async request(body, signal) {
@@ -30,6 +40,7 @@ export class EmbedApi {
 				accept: 'application/json',
 				'x-proseid-key': this.apiKey,
 				'x-proseid-sdk-version': VERSION,
+				'x-proseid-attribution': this.attribution,
 				...(body ? { 'content-type': 'application/json' } : {})
 			},
 			...(body ? { body: JSON.stringify(body) } : {}),

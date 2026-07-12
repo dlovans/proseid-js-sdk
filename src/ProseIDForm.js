@@ -3,6 +3,7 @@ import { ProseIDError, errorMessage } from './errors.js';
 import { SigningCoordinator } from './signing.js';
 import { styles } from './styles.js';
 import { messagesFor } from './i18n.js';
+import { normalizeAppearance, normalizeAttribution, safeLogoUrl } from './presentation.js';
 
 const text = (tag, className, value = '') => {
 	const node = document.createElement(tag);
@@ -31,11 +32,19 @@ export class ProseIDForm {
 	constructor(target, options) {
 		this.target = typeof target === 'string' ? document.querySelector(target) : target;
 		if (!(this.target instanceof Element)) throw new ProseIDError('invalid_target', 'Choose an element to contain the ProseID form.');
-		if (!options?.form) throw new ProseIDError('invalid_form', 'The form coordinate is required.');
+		if (!options?.form && !options?.testMode) throw new ProseIDError('invalid_form', 'The form coordinate is required.');
 		if (!options?.apiKey) throw new ProseIDError('invalid_api_key', 'A ProseID publishable key is required.');
 		this.options = options;
 		this.copy = messagesFor(options.locale, options.messages);
-		this.api = new EmbedApi({ apiBase: options.apiBase, apiKey: options.apiKey, form: options.form, fetchImpl: options.fetch });
+		this.attribution = normalizeAttribution(options.branding?.proseid);
+		this.api = new EmbedApi({
+			apiBase: options.apiBase,
+			apiKey: options.apiKey,
+			form: options.form,
+			testMode: options.testMode === true,
+			attribution: this.attribution,
+			fetchImpl: options.fetch
+		});
 		this.signing = new SigningCoordinator(options.signingAdapter);
 		this.shadow = this.target.shadowRoot || this.target.attachShadow({ mode: 'open' });
 		this.values = {};
@@ -47,16 +56,27 @@ export class ProseIDForm {
 		this.validationTimer = null;
 		this.validationAbort = null;
 		this.sessionId = randomSessionId();
+		this.applyAppearance(options.appearance);
 		this.applyTheme(options.theme);
 		this.renderLoading();
 		this.ready = this.load();
 	}
 
 	applyTheme(theme = {}) {
+		const aliases = { background: 'canvas', text: 'ink', border: 'rule' };
 		const allowed = new Set(['accent', 'canvas', 'surface', 'ink', 'copy', 'muted', 'rule', 'success', 'radius', 'font']);
 		for (const [key, value] of Object.entries(theme || {})) {
-			if (allowed.has(key) && typeof value === 'string') this.target.style.setProperty(`--proseid-${key}`, value);
+			const token = aliases[key] || key;
+			if (allowed.has(token) && typeof value === 'string') this.target.style.setProperty(`--proseid-${token}`, value);
 		}
+	}
+
+	applyAppearance(appearance) {
+		const value = normalizeAppearance(appearance);
+		this.target.dataset.proseidShape = value.shape;
+		this.target.dataset.proseidFields = value.fields;
+		this.target.dataset.proseidShell = value.shell;
+		this.target.dataset.proseidDensity = value.density;
 	}
 
 	installStyles() {
@@ -86,6 +106,8 @@ export class ProseIDForm {
 		try {
 			this.manifest = await this.api.manifest();
 			if (this.destroyed) return this;
+			this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
+			this.api.setAttribution(this.attribution);
 			if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
 				throw new ProseIDError('signing_not_available', 'Signing is not available in embedded forms yet.');
 			}
@@ -109,10 +131,12 @@ export class ProseIDForm {
 
 	brand(publisher) {
 		const wrap = text('div', 'brand');
-		if (publisher.logo) {
+		const customLogo = safeLogoUrl(this.options.branding?.logoUrl);
+		const logo = customLogo || safeLogoUrl(publisher.logo);
+		if (logo) {
 			const img = document.createElement('img');
-			img.src = publisher.logo;
-			img.alt = `${publisher.name} logo`;
+			img.src = logo;
+			img.alt = this.options.branding?.logoAlt || `${publisher.name} logo`;
 			wrap.append(img);
 		} else {
 			wrap.append(text('span', 'brand-fallback', publisher.name.slice(0, 2).toUpperCase()));
@@ -125,8 +149,9 @@ export class ProseIDForm {
 	}
 
 	proseidBrand() {
+		if (this.attribution === 'hidden') return null;
 		const brand = this.manifest.branding.proseid;
-		const link = text('a', 'proseid-brand');
+		const link = text('a', `proseid-brand${this.attribution === 'compact' ? ' compact' : ''}`);
 		link.href = brand.url;
 		link.target = '_blank';
 		link.rel = 'noopener noreferrer';
@@ -134,7 +159,8 @@ export class ProseIDForm {
 		const img = document.createElement('img');
 		img.src = brand.logo;
 		img.alt = 'ProseID';
-		link.append(text('span', '', this.copy.verifiedBy), img);
+		if (this.attribution === 'full') link.append(text('span', '', this.copy.verifiedBy));
+		link.append(img);
 		return link;
 	}
 
@@ -145,7 +171,10 @@ export class ProseIDForm {
 		shell.setAttribute('aria-label', this.manifest.form.title);
 		const head = text('header', 'head');
 		const brands = text('div', 'brands');
-		brands.append(this.brand(this.manifest.publisher), this.proseidBrand());
+		brands.append(this.brand(this.manifest.publisher));
+		const proseidBrand = this.proseidBrand();
+		if (proseidBrand) brands.append(proseidBrand);
+		else brands.classList.add('publisher-only');
 		head.append(brands, text('h1', '', this.manifest.form.title));
 		if (this.manifest.form.description) head.append(text('p', 'description', this.manifest.form.description));
 		this.statusNode = text('div', 'status');
@@ -169,7 +198,7 @@ export class ProseIDForm {
 		const actions = text('div', 'actions');
 		const privacy = text('div', 'privacy');
 		privacy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-		privacy.append(text('span', '', this.copy.privacy));
+		privacy.append(text('span', '', this.attribution === 'hidden' ? this.copy.privacyWhiteLabel : this.copy.privacy));
 		this.submitButton = text('button', 'submit', this.options.submitLabel || this.copy.submit);
 		this.submitButton.type = 'submit';
 		this.submitButton.disabled = true;
@@ -368,9 +397,9 @@ export class ProseIDForm {
 	renderComplete(result) {
 		const shell = this.shadow.querySelector('.shell');
 		const complete = text('div', 'complete');
-		complete.append(text('div', 'seal', '✓'), text('h2', '', this.copy.completeTitle));
-		complete.append(text('p', '', this.copy.delivered(this.manifest.publisher.name)));
-		complete.append(text('div', 'receipt', this.copy.auditRecord(result.sessionId)));
+		complete.append(text('div', 'seal', '✓'), text('h2', '', result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
+		complete.append(text('p', '', result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)));
+		complete.append(text('div', 'receipt', result.test ? this.copy.testRecord(result.sessionId) : this.copy.auditRecord(result.sessionId)));
 		shell.replaceChildren(text('div', 'ledger'), complete);
 	}
 

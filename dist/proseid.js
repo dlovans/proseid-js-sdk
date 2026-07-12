@@ -26,7 +26,44 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.2.0";
+var VERSION = "0.3.0";
+
+// src/presentation.js
+var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
+var SHAPES = /* @__PURE__ */ new Set(["soft", "capsule", "rigid"]);
+var FIELD_STYLES = /* @__PURE__ */ new Set(["outlined", "underline"]);
+var SHELL_STYLES = /* @__PURE__ */ new Set(["card", "flat"]);
+var DENSITIES = /* @__PURE__ */ new Set(["comfortable", "compact"]);
+var PRESETS = {
+  soft: { shape: "soft", fields: "outlined", shell: "card", density: "comfortable" },
+  capsule: { shape: "capsule", fields: "outlined", shell: "card", density: "comfortable" },
+  rigid: { shape: "rigid", fields: "outlined", shell: "card", density: "comfortable" },
+  underline: { shape: "rigid", fields: "underline", shell: "flat", density: "comfortable" }
+};
+function normalizeAttribution(value) {
+  return ATTRIBUTION_MODES.has(value) ? value : "full";
+}
+function normalizeAppearance(value = "soft") {
+  if (typeof value === "string") return { ...PRESETS[value] || PRESETS.soft };
+  const base = { ...PRESETS[value?.preset] || PRESETS.soft };
+  return {
+    shape: SHAPES.has(value?.shape) ? value.shape : base.shape,
+    fields: FIELD_STYLES.has(value?.fields) ? value.fields : base.fields,
+    shell: SHELL_STYLES.has(value?.shell) ? value.shell : base.shell,
+    density: DENSITIES.has(value?.density) ? value.density : base.density
+  };
+}
+function safeLogoUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(String(value), globalThis.location?.href || "https://proseid.com");
+    if (url.protocol === "https:") return url.href;
+    if (url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) return url.href;
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 // src/api.js
 function parseFormCoordinate(value) {
@@ -35,15 +72,23 @@ function parseFormCoordinate(value) {
   return { publisher: parts[0], slug: parts[1] };
 }
 var EmbedApi = class {
-  constructor({ apiBase = "https://proseid.com", apiKey, form, fetchImpl = globalThis.fetch }) {
+  constructor({ apiBase = "https://proseid.com", apiKey, form, testMode = false, attribution = "full", fetchImpl = globalThis.fetch }) {
     if (typeof fetchImpl !== "function") throw new ProseIDError("fetch_unavailable", "This browser cannot load the form.");
     if (!/^proseid_pk_[a-f0-9]{32,64}$/.test(String(apiKey || ""))) {
       throw new ProseIDError("invalid_api_key", "A ProseID publishable key is required.");
     }
-    const { publisher, slug } = parseFormCoordinate(form);
     this.fetch = fetchImpl.bind(globalThis);
     this.apiKey = apiKey;
-    this.endpoint = `${String(apiBase).replace(/\/$/, "")}/api/embed/v1/forms/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
+    this.attribution = normalizeAttribution(attribution);
+    if (testMode) {
+      this.endpoint = `${String(apiBase).replace(/\/$/, "")}/api/embed/v1/test`;
+    } else {
+      const { publisher, slug } = parseFormCoordinate(form);
+      this.endpoint = `${String(apiBase).replace(/\/$/, "")}/api/embed/v1/forms/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
+    }
+  }
+  setAttribution(value) {
+    this.attribution = normalizeAttribution(value);
   }
   async request(body, signal) {
     const response = await this.fetch(this.endpoint, {
@@ -54,6 +99,7 @@ var EmbedApi = class {
         accept: "application/json",
         "x-proseid-key": this.apiKey,
         "x-proseid-sdk-version": VERSION,
+        "x-proseid-attribution": this.attribution,
         ...body ? { "content-type": "application/json" } : {}
       },
       ...body ? { body: JSON.stringify(body) } : {},
@@ -108,18 +154,28 @@ var styles = `
 	--proseid-success: #167653;
 	--proseid-success-tint: #e8f5ef;
 	--proseid-radius: 16px;
+	--proseid-control-radius: 11px;
+	--proseid-button-radius: 11px;
+	--proseid-head-pad-y: 24px;
+	--proseid-head-pad-x: 26px;
+	--proseid-body-pad: 26px;
+	--proseid-field-gap: 18px;
 	--proseid-font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	display: block;
 	color: var(--proseid-ink);
 	font-family: var(--proseid-font);
 	font-synthesis: none;
 }
+:host([data-proseid-shape="capsule"]) { --proseid-radius: 22px; --proseid-control-radius: 999px; --proseid-button-radius: 999px; }
+:host([data-proseid-shape="rigid"]) { --proseid-radius: 2px; --proseid-control-radius: 0px; --proseid-button-radius: 0px; }
+:host([data-proseid-density="compact"]) { --proseid-head-pad-y: 18px; --proseid-head-pad-x: 20px; --proseid-body-pad: 20px; --proseid-field-gap: 13px; }
 * { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; }
 .shell { overflow: hidden; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); box-shadow: 0 18px 55px rgba(22, 25, 23, .08); }
 .ledger { height: 4px; background: linear-gradient(90deg, var(--proseid-accent) 0 18%, var(--proseid-rule) 18% 100%); }
-.head { padding: 24px 26px 22px; border-bottom: 1px solid var(--proseid-rule); }
+.head { padding: var(--proseid-head-pad-y) var(--proseid-head-pad-x) calc(var(--proseid-head-pad-y) - 2px); border-bottom: 1px solid var(--proseid-rule); }
 .brands { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 25px; }
+.brands.publisher-only { justify-content: flex-start; }
 .brand { display: flex; min-width: 0; align-items: center; gap: 10px; }
 .brand img, .brand-fallback { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 10px; object-fit: contain; }
 .brand-fallback { display: grid; place-items: center; background: var(--proseid-canvas); color: var(--proseid-ink); font: 650 13px/1 Georgia, serif; }
@@ -129,6 +185,7 @@ button, input, select, textarea { font: inherit; }
 .verified { color: var(--proseid-success); }
 .proseid-brand { display: flex; flex: 0 0 auto; align-items: center; gap: 7px; color: var(--proseid-copy); font-size: 11px; text-decoration: none; }
 .proseid-brand img { width: 24px; height: 24px; border-radius: 6px; }
+.proseid-brand.compact span { display: none; }
 h1 { max-width: 22ch; margin: 0; font: 500 clamp(25px, 5vw, 35px)/1.04 Georgia, "Times New Roman", serif; letter-spacing: -.025em; }
 .description { max-width: 62ch; margin: 12px 0 0; color: var(--proseid-copy); font-size: 14px; line-height: 1.65; }
 .status { display: flex; align-items: center; gap: 9px; margin-top: 20px; color: var(--proseid-muted); font-size: 11px; }
@@ -138,19 +195,19 @@ h1 { max-width: 22ch; margin: 0; font: 500 clamp(25px, 5vw, 35px)/1.04 Georgia, 
 .status[data-state="ready"] .status-dot { background: var(--proseid-success); }
 .status[data-state="error"] { color: var(--proseid-accent-ink); }
 .status[data-state="error"] .status-dot { background: var(--proseid-accent); }
-.body { padding: 25px 26px 26px; background: color-mix(in srgb, var(--proseid-canvas) 42%, var(--proseid-surface)); }
-.fields { display: grid; gap: 18px; }
+.body { padding: calc(var(--proseid-body-pad) - 1px) var(--proseid-body-pad) var(--proseid-body-pad); background: color-mix(in srgb, var(--proseid-canvas) 42%, var(--proseid-surface)); }
+.fields { display: grid; gap: var(--proseid-field-gap); }
 .field { display: grid; gap: 7px; }
 .field[hidden] { display: none; }
 .label { color: var(--proseid-ink); font-size: 12px; font-weight: 650; }
 .required { color: var(--proseid-accent-ink); }
 .hint { color: var(--proseid-muted); font-size: 11px; line-height: 1.45; }
-.control { width: 100%; min-height: 44px; border: 1px solid var(--proseid-rule); border-radius: 11px; outline: none; background: var(--proseid-surface); padding: 10px 12px; color: var(--proseid-ink); font-size: 14px; transition: border-color .16s ease, box-shadow .16s ease; }
+.control { width: 100%; min-height: 44px; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-control-radius); outline: none; background: var(--proseid-surface); padding: 10px 12px; color: var(--proseid-ink); font-size: 14px; transition: border-color .16s ease, box-shadow .16s ease; }
 .control:focus { border-color: var(--proseid-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--proseid-accent) 13%, transparent); }
 .control[aria-invalid="true"] { border-color: var(--proseid-accent); }
 select.control { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--proseid-muted) 50%), linear-gradient(135deg, var(--proseid-muted) 50%, transparent 50%); background-position: calc(100% - 16px) 18px, calc(100% - 11px) 18px; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
 textarea.control { min-height: 96px; resize: vertical; }
-.check { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 14px; border: 1px solid var(--proseid-rule); border-radius: 12px; background: var(--proseid-surface); cursor: pointer; }
+.check { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 14px; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-control-radius); background: var(--proseid-surface); cursor: pointer; }
 .check input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--proseid-accent); }
 .check-copy { color: var(--proseid-copy); font-size: 13px; line-height: 1.5; }
 .error { min-height: 0; color: var(--proseid-accent-ink); font-size: 11px; line-height: 1.45; }
@@ -158,7 +215,7 @@ textarea.control { min-height: 96px; resize: vertical; }
 .actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--proseid-rule); }
 .privacy { display: flex; align-items: flex-start; gap: 7px; color: var(--proseid-muted); font-size: 10px; line-height: 1.5; }
 .privacy svg { width: 13px; height: 13px; flex: 0 0 13px; margin-top: 1px; }
-.submit { min-width: 128px; min-height: 42px; border: 0; border-radius: 11px; background: var(--proseid-accent); padding: 10px 17px; color: #fff; font-size: 12px; font-weight: 720; cursor: pointer; transition: transform .15s ease, filter .15s ease; }
+.submit { min-width: 128px; min-height: 42px; border: 0; border-radius: var(--proseid-button-radius); background: var(--proseid-accent); padding: 10px 17px; color: #fff; font-size: 12px; font-weight: 720; cursor: pointer; transition: transform .15s ease, filter .15s ease; }
 .submit:hover:not(:disabled) { filter: brightness(.94); transform: translateY(-1px); }
 .submit:focus-visible { outline: 2px solid var(--proseid-ink); outline-offset: 3px; }
 .submit:disabled { cursor: not-allowed; filter: grayscale(.25); opacity: .48; }
@@ -171,6 +228,15 @@ textarea.control { min-height: 96px; resize: vertical; }
 .complete h2 { margin: 0; font: 500 30px/1.1 Georgia, serif; }
 .complete p { max-width: 46ch; margin: 12px auto 0; color: var(--proseid-copy); font-size: 13px; line-height: 1.6; }
 .receipt { width: fit-content; max-width: 100%; margin: 22px auto 0; border: 1px solid var(--proseid-rule); border-radius: 10px; background: var(--proseid-canvas); padding: 9px 12px; color: var(--proseid-muted); font: 10px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+:host([data-proseid-shell="flat"]) .shell { border-color: transparent; box-shadow: none; }
+:host([data-proseid-shell="flat"]) .ledger { height: 2px; }
+:host([data-proseid-fields="underline"]) .control { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }
+:host([data-proseid-fields="underline"]) .control:focus { border-color: var(--proseid-accent); box-shadow: 0 2px 0 -1px var(--proseid-accent); }
+:host([data-proseid-fields="underline"]) .check { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }
+:host([data-proseid-density="compact"]) .brands { margin-bottom: 18px; }
+:host([data-proseid-density="compact"]) .control { min-height: 38px; padding-top: 7px; padding-bottom: 7px; }
+:host([data-proseid-density="compact"]) .check { padding-top: 10px; padding-bottom: 10px; }
+:host([data-proseid-density="compact"]) .actions { margin-top: 18px; padding-top: 16px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
 @media (max-width: 560px) {
@@ -197,9 +263,13 @@ var dictionaries = {
     submit: "Submit",
     submitting: "Submitting\u2026",
     privacy: "Checked by ProseID. Sent only when you submit.",
+    privacyWhiteLabel: "Checked securely. Sent only when you submit.",
     completeTitle: "Submission complete.",
     delivered: (publisher) => `Your responses were verified and delivered to ${publisher}.`,
     auditRecord: (id) => `Audit record ${id}`,
+    testCompleteTitle: "Test complete.",
+    testDelivered: "The integration works. No session was saved or billed.",
+    testRecord: (id) => `Test reference ${id}`,
     formUnavailable: "Form unavailable",
     required: (label) => `${label} is required.`,
     confirm: "Please confirm to continue.",
@@ -222,9 +292,13 @@ var dictionaries = {
     submit: "Skicka",
     submitting: "Skickar\u2026",
     privacy: "Kontrolleras av ProseID. Skickas f\xF6rst n\xE4r du v\xE4ljer Skicka.",
+    privacyWhiteLabel: "Kontrolleras s\xE4kert. Skickas f\xF6rst n\xE4r du v\xE4ljer Skicka.",
     completeTitle: "Inskickat.",
     delivered: (publisher) => `Dina svar verifierades och levererades till ${publisher}.`,
     auditRecord: (id) => `Revisionspost ${id}`,
+    testCompleteTitle: "Testet \xE4r klart.",
+    testDelivered: "Integrationen fungerar. Ingen session sparades eller debiterades.",
+    testRecord: (id) => `Testreferens ${id}`,
     formUnavailable: "Formul\xE4ret \xE4r inte tillg\xE4ngligt",
     required: (label) => `${label} \xE4r obligatoriskt.`,
     confirm: "Bekr\xE4fta f\xF6r att forts\xE4tta.",
@@ -269,11 +343,19 @@ var ProseIDForm = class {
   constructor(target, options) {
     this.target = typeof target === "string" ? document.querySelector(target) : target;
     if (!(this.target instanceof Element)) throw new ProseIDError("invalid_target", "Choose an element to contain the ProseID form.");
-    if (!options?.form) throw new ProseIDError("invalid_form", "The form coordinate is required.");
+    if (!options?.form && !options?.testMode) throw new ProseIDError("invalid_form", "The form coordinate is required.");
     if (!options?.apiKey) throw new ProseIDError("invalid_api_key", "A ProseID publishable key is required.");
     this.options = options;
     this.copy = messagesFor(options.locale, options.messages);
-    this.api = new EmbedApi({ apiBase: options.apiBase, apiKey: options.apiKey, form: options.form, fetchImpl: options.fetch });
+    this.attribution = normalizeAttribution(options.branding?.proseid);
+    this.api = new EmbedApi({
+      apiBase: options.apiBase,
+      apiKey: options.apiKey,
+      form: options.form,
+      testMode: options.testMode === true,
+      attribution: this.attribution,
+      fetchImpl: options.fetch
+    });
     this.signing = new SigningCoordinator(options.signingAdapter);
     this.shadow = this.target.shadowRoot || this.target.attachShadow({ mode: "open" });
     this.values = {};
@@ -285,15 +367,25 @@ var ProseIDForm = class {
     this.validationTimer = null;
     this.validationAbort = null;
     this.sessionId = randomSessionId();
+    this.applyAppearance(options.appearance);
     this.applyTheme(options.theme);
     this.renderLoading();
     this.ready = this.load();
   }
   applyTheme(theme = {}) {
+    const aliases = { background: "canvas", text: "ink", border: "rule" };
     const allowed = /* @__PURE__ */ new Set(["accent", "canvas", "surface", "ink", "copy", "muted", "rule", "success", "radius", "font"]);
     for (const [key, value] of Object.entries(theme || {})) {
-      if (allowed.has(key) && typeof value === "string") this.target.style.setProperty(`--proseid-${key}`, value);
+      const token = aliases[key] || key;
+      if (allowed.has(token) && typeof value === "string") this.target.style.setProperty(`--proseid-${token}`, value);
     }
+  }
+  applyAppearance(appearance) {
+    const value = normalizeAppearance(appearance);
+    this.target.dataset.proseidShape = value.shape;
+    this.target.dataset.proseidFields = value.fields;
+    this.target.dataset.proseidShell = value.shell;
+    this.target.dataset.proseidDensity = value.density;
   }
   installStyles() {
     if ("adoptedStyleSheets" in this.shadow && typeof CSSStyleSheet !== "undefined" && CSSStyleSheet.prototype.replaceSync) {
@@ -320,6 +412,8 @@ var ProseIDForm = class {
     try {
       this.manifest = await this.api.manifest();
       if (this.destroyed) return this;
+      this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
+      this.api.setAttribution(this.attribution);
       if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
         throw new ProseIDError("signing_not_available", "Signing is not available in embedded forms yet.");
       }
@@ -341,10 +435,12 @@ var ProseIDForm = class {
   }
   brand(publisher) {
     const wrap = text("div", "brand");
-    if (publisher.logo) {
+    const customLogo = safeLogoUrl(this.options.branding?.logoUrl);
+    const logo = customLogo || safeLogoUrl(publisher.logo);
+    if (logo) {
       const img = document.createElement("img");
-      img.src = publisher.logo;
-      img.alt = `${publisher.name} logo`;
+      img.src = logo;
+      img.alt = this.options.branding?.logoAlt || `${publisher.name} logo`;
       wrap.append(img);
     } else {
       wrap.append(text("span", "brand-fallback", publisher.name.slice(0, 2).toUpperCase()));
@@ -356,8 +452,9 @@ var ProseIDForm = class {
     return wrap;
   }
   proseidBrand() {
+    if (this.attribution === "hidden") return null;
     const brand = this.manifest.branding.proseid;
-    const link = text("a", "proseid-brand");
+    const link = text("a", `proseid-brand${this.attribution === "compact" ? " compact" : ""}`);
     link.href = brand.url;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
@@ -365,7 +462,8 @@ var ProseIDForm = class {
     const img = document.createElement("img");
     img.src = brand.logo;
     img.alt = "ProseID";
-    link.append(text("span", "", this.copy.verifiedBy), img);
+    if (this.attribution === "full") link.append(text("span", "", this.copy.verifiedBy));
+    link.append(img);
     return link;
   }
   renderForm() {
@@ -375,7 +473,10 @@ var ProseIDForm = class {
     shell.setAttribute("aria-label", this.manifest.form.title);
     const head = text("header", "head");
     const brands = text("div", "brands");
-    brands.append(this.brand(this.manifest.publisher), this.proseidBrand());
+    brands.append(this.brand(this.manifest.publisher));
+    const proseidBrand = this.proseidBrand();
+    if (proseidBrand) brands.append(proseidBrand);
+    else brands.classList.add("publisher-only");
     head.append(brands, text("h1", "", this.manifest.form.title));
     if (this.manifest.form.description) head.append(text("p", "description", this.manifest.form.description));
     this.statusNode = text("div", "status");
@@ -397,7 +498,7 @@ var ProseIDForm = class {
     const actions = text("div", "actions");
     const privacy = text("div", "privacy");
     privacy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-    privacy.append(text("span", "", this.copy.privacy));
+    privacy.append(text("span", "", this.attribution === "hidden" ? this.copy.privacyWhiteLabel : this.copy.privacy));
     this.submitButton = text("button", "submit", this.options.submitLabel || this.copy.submit);
     this.submitButton.type = "submit";
     this.submitButton.disabled = true;
@@ -577,9 +678,9 @@ var ProseIDForm = class {
   renderComplete(result) {
     const shell = this.shadow.querySelector(".shell");
     const complete = text("div", "complete");
-    complete.append(text("div", "seal", "\u2713"), text("h2", "", this.copy.completeTitle));
-    complete.append(text("p", "", this.copy.delivered(this.manifest.publisher.name)));
-    complete.append(text("div", "receipt", this.copy.auditRecord(result.sessionId)));
+    complete.append(text("div", "seal", "\u2713"), text("h2", "", result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
+    complete.append(text("p", "", result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)));
+    complete.append(text("div", "receipt", result.test ? this.copy.testRecord(result.sessionId) : this.copy.auditRecord(result.sessionId)));
     shell.replaceChildren(text("div", "ledger"), complete);
   }
   renderFatal(error) {
@@ -610,6 +711,9 @@ var ProseIDForm = class {
 function mount(target, options) {
   return new ProseIDForm(target, options);
 }
+function mountTest(target, options) {
+  return new ProseIDForm(target, { ...options, testMode: true });
+}
 function mountAll(defaults = {}) {
   return [...document.querySelectorAll("[data-proseid-form]")].map((element) => mount(element, {
     ...defaults,
@@ -623,6 +727,7 @@ export {
   ProseIDForm,
   VERSION,
   mount,
-  mountAll
+  mountAll,
+  mountTest
 };
 //# sourceMappingURL=proseid.js.map

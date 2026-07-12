@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>ProseID SDK integration test</title>
+		<style>
+			body { margin: 0; background: #f4f5f4; color: #171918; font-family: system-ui, sans-serif; }
+			main { width: min(760px, calc(100% - 32px)); margin: 48px auto 80px; }
+			label { display: grid; gap: 7px; margin-bottom: 22px; font-size: 13px; font-weight: 650; }
+			input { padding: 10px 12px; border: 1px solid #cfd3d0; border-radius: 8px; font: inherit; }
+		</style>
+	</head>
+	<body>
+		<main>
+			<label>Publishable SDK key <input id="key" placeholder="proseid_pk_…" /></label>
+			<div id="proseid-test"></div>
+		</main>
+		<script src="../../dist/proseid.min.js"></script>
+		<script>
+			document.querySelector('#key').addEventListener('change', (event) => {
+				document.querySelector('#proseid-test').replaceChildren();
+				ProseID.mountTest('#proseid-test', {
+					apiKey: event.target.value.trim(),
+					appearance: 'underline',
+					branding: { proseid: 'compact' }
+				});
+			});
+		</script>
+	</body>
+</html>

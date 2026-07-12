@@ -8,6 +8,11 @@ export function mount(target, options) {
 	return new ProseIDForm(target, options);
 }
 
+/** Mount the server-validated built-in field gallery without publishing a form or creating a bill. */
+export function mountTest(target, options) {
+	return new ProseIDForm(target, { ...options, testMode: true });
+}
+
 export function mountAll(defaults = {}) {
 	return [...document.querySelectorAll('[data-proseid-form]')].map((element) => mount(element, {
 		...defaults,

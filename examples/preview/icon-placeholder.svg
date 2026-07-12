@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Northstar symbol">
+  <rect width="48" height="48" rx="8" fill="#171918"/>
+  <path d="M24 8 27.5 20.5 40 24l-12.5 3.5L24 40l-3.5-12.5L8 24l12.5-3.5Z" fill="#ff4d1f"/>
+  <circle cx="24" cy="24" r="3.5" fill="#fff"/>
+</svg>

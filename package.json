@@ -1,6 +1,6 @@
 {
 	"name": "@proseid/js-sdk",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Embeddable, server-validated ProseID compliance forms.",
 	"type": "module",
 	"license": "Apache-2.0",
@@ -33,7 +33,7 @@
 	},
 	"scripts": {
 		"build": "node scripts/build.mjs",
-		"check": "node --check src/index.js && node --check src/ProseIDForm.js && node --check src/api.js",
+		"check": "node --check src/index.js && node --check src/ProseIDForm.js && node --check src/api.js && node --check src/presentation.js",
 		"prepublishOnly": "npm run check && npm test && npm run build",
 		"test": "vitest run",
 		"test:watch": "vitest"
