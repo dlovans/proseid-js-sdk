@@ -9,7 +9,7 @@ const manifest = {
 	branding: { proseid: { name: 'ProseID', logo: 'https://proseid.com/icon-192.png', url: 'https://proseid.com' } },
 	presentation: { attribution: 'full', whiteLabel: false, completionMicrons: 200, surchargeMicrons: 0 },
 	schema: { definitions: { full_name: { type: 'string', label: 'Full name', required: true } } },
-	capabilities: { validation: 'remote', auditRecord: true, signing: { requested: false, available: false, mode: 'none' } }
+	capabilities: { validation: 'remote', auditRecord: true, receiptEmail: true, signing: { requested: false, available: false, mode: 'none' } }
 };
 
 const response = (body, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
@@ -91,7 +91,7 @@ describe('ProseID SDK', () => {
 			...manifest,
 			form: { ...manifest.form, ref: '__proseid_sdk_test__', title: 'SDK integration test' },
 			presentation: { attribution: 'compact', whiteLabel: false, completionMicrons: 0, surchargeMicrons: 0, testMode: true },
-			capabilities: { ...manifest.capabilities, auditRecord: false, testMode: true },
+			capabilities: { ...manifest.capabilities, auditRecord: false, receiptEmail: false, testMode: true },
 			schema: {
 				definitions: {
 					name: { type: 'string', label: 'Name' },
@@ -113,6 +113,7 @@ describe('ProseID SDK', () => {
 		expect(fetch.mock.calls[0][1].headers['x-proseid-sdk-version']).toBe(VERSION);
 		expect(document.querySelector('#form').shadowRoot.querySelectorAll('.field')).toHaveLength(7);
 		expect(document.querySelector('#form').shadowRoot.querySelector('.proseid-brand.compact')).not.toBeNull();
+		expect(document.querySelector('#form').shadowRoot.querySelector('.receipt-copy')).toBeNull();
 	});
 
 	it('validates after input and creates an audit completion', async () => {
@@ -121,9 +122,11 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response(manifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }))
 			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: manifest.schema.definitions, issues: [] }))
-			.mockImplementationOnce(() => response({ ok: true, status: 'completed', sessionId: 'audit_123', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }));
+			.mockImplementationOnce(() => response({ ok: true, status: 'completed', sessionId: 'audit_123', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }))
+			.mockImplementationOnce(() => response({ ok: true, status: 'sent' }));
 		const complete = vi.fn();
-		const instance = mount('#form', { apiKey: API_KEY, form: 'acme/intake', fetch, validateDelay: 1, onComplete: complete });
+		const receipt = vi.fn();
+		const instance = mount('#form', { apiKey: API_KEY, form: 'acme/intake', fetch, validateDelay: 1, onComplete: complete, onReceipt: receipt });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		const input = root.querySelector('input[name="full_name"]');
@@ -139,6 +142,22 @@ describe('ProseID SDK', () => {
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(complete).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'audit_123' })));
 		expect(root.textContent).toContain('Audit record audit_123');
+		expect(root.textContent).toContain('Want a copy for your records?');
+		const email = root.querySelector('.receipt-input');
+		const emailButton = root.querySelector('.receipt-button');
+		expect(emailButton.disabled).toBe(true);
+		email.value = 'respondent@example.com';
+		email.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(emailButton.disabled).toBe(false);
+		root.querySelector('.receipt-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+		await vi.waitFor(() => expect(receipt).toHaveBeenCalledWith(expect.objectContaining({
+			status: 'sent', sessionId: 'audit_123', email: 'respondent@example.com'
+		})));
+		expect(root.querySelector('.receipt-status').textContent).toContain('respondent@example.com');
+		const receiptRequest = JSON.parse(fetch.mock.calls[4][1].body);
+		expect(receiptRequest).toEqual({
+			action: 'email_receipt', formRef: 'form_1', sessionId: 'audit_123', email: 'respondent@example.com'
+		});
 		vi.useRealTimers();
 	});
 });

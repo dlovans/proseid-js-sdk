@@ -1,6 +1,6 @@
 {
 	"name": "@proseid/js-sdk",
-	"version": "0.4.0",
+	"version": "0.5.0",
 	"description": "Embeddable, server-validated ProseID compliance forms.",
 	"type": "module",
 	"license": "Apache-2.0",
@@ -18,7 +18,12 @@
 			"default": "./dist/proseid.js"
 		}
 	},
-	"files": ["dist", "README.md", "LICENSE", "NOTICE"],
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE",
+		"NOTICE"
+	],
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/dlovans/proseid-js-sdk.git"
@@ -27,7 +32,13 @@
 	"bugs": {
 		"url": "https://github.com/dlovans/proseid-js-sdk/issues"
 	},
-	"keywords": ["proseid", "compliance", "forms", "validation", "audit"],
+	"keywords": [
+		"proseid",
+		"compliance",
+		"forms",
+		"validation",
+		"audit"
+	],
 	"publishConfig": {
 		"access": "public"
 	},

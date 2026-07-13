@@ -89,11 +89,30 @@ textarea.control { min-height: 96px; resize: vertical; }
 .complete h2 { margin: 0; font: 500 30px/1.1 Georgia, serif; }
 .complete p { max-width: 46ch; margin: 12px auto 0; color: var(--proseid-copy); font-size: 13px; line-height: 1.6; }
 .receipt { width: fit-content; max-width: 100%; margin: 22px auto 0; border: 1px solid var(--proseid-rule); border-radius: 10px; background: var(--proseid-canvas); padding: 9px 12px; color: var(--proseid-muted); font: 10px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+.receipt-copy { max-width: 520px; margin: 28px auto 0; border-top: 1px solid var(--proseid-rule); padding-top: 24px; text-align: left; }
+.receipt-copy h3 { margin: 0; color: var(--proseid-ink); font: 650 14px/1.35 var(--proseid-font); }
+.complete .receipt-help { max-width: none; margin: 5px 0 0; color: var(--proseid-muted); font-size: 11px; line-height: 1.55; }
+.receipt-form { margin-top: 15px; }
+.receipt-field { display: grid; gap: 7px; }
+.receipt-label { color: var(--proseid-ink); font-size: 11px; font-weight: 650; }
+.receipt-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.receipt-input { width: 100%; min-width: 0; min-height: 42px; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-control-radius); outline: none; background: var(--proseid-surface); padding: 9px 11px; color: var(--proseid-ink); font-size: 13px; transition: border-color .16s ease, box-shadow .16s ease; }
+.receipt-input:focus { border-color: var(--proseid-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--proseid-accent) 13%, transparent); }
+.receipt-input[aria-invalid="true"] { border-color: var(--proseid-accent); }
+.receipt-button { min-height: 42px; border: 0; border-radius: var(--proseid-button-radius); background: var(--proseid-ink); padding: 9px 15px; color: var(--proseid-surface); font-size: 11px; font-weight: 720; white-space: nowrap; cursor: pointer; transition: transform .15s ease, opacity .15s ease; }
+.receipt-button:hover:not(:disabled) { transform: translateY(-1px); }
+.receipt-button:focus-visible { outline: 2px solid var(--proseid-accent); outline-offset: 3px; }
+.receipt-button:disabled { cursor: not-allowed; opacity: .42; }
+.complete .receipt-status { min-height: 17px; max-width: none; margin: 0; color: var(--proseid-muted); font-size: 11px; line-height: 1.5; }
+.complete .receipt-status[data-state="sent"] { color: var(--proseid-success); }
+.complete .receipt-status[data-state="error"] { color: var(--proseid-accent-ink); }
+.complete .receipt-test { margin-top: 18px; color: var(--proseid-muted); font-size: 11px; }
 :host([data-proseid-shell="flat"]) .shell { border-color: transparent; box-shadow: none; }
 :host([data-proseid-shell="flat"]) .ledger { height: 2px; }
 :host([data-proseid-fields="underline"]) .control { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }
 :host([data-proseid-fields="underline"]) .control:focus { border-color: var(--proseid-accent); box-shadow: 0 2px 0 -1px var(--proseid-accent); }
 :host([data-proseid-fields="underline"]) .check { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }
+:host([data-proseid-fields="underline"]) .receipt-input { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }
 :host([data-proseid-density="compact"]) .brands { margin-bottom: 18px; }
 :host([data-proseid-density="compact"]) .control { min-height: 38px; padding-top: 7px; padding-bottom: 7px; }
 :host([data-proseid-density="compact"]) .check { padding-top: 10px; padding-bottom: 10px; }
@@ -105,6 +124,8 @@ textarea.control { min-height: 96px; resize: vertical; }
 	.actions { grid-template-columns: 1fr; }
 	.submit { width: 100%; }
 	.proseid-brand span { display: none; }
+	.receipt-row { grid-template-columns: 1fr; }
+	.receipt-button { width: 100%; }
 }
-@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button { animation: none; transition: none; } }
 `;

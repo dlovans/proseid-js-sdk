@@ -37,7 +37,7 @@
 					review_date: { type: 'date', label: 'Review date', required: true },
 					approved: { type: 'attestation', statement: 'I confirm this information is complete and ready for review.', required: true }
 				} },
-				capabilities: { validation: 'remote', auditRecord: true, signing: { requested: false, available: false, mode: 'none' } }
+				capabilities: { validation: 'remote', auditRecord: true, receiptEmail: true, signing: { requested: false, available: false, mode: 'none' } }
 			};
 			const mockFetch = async (_url, options = {}) => {
 				if (!options.body) {
@@ -46,6 +46,7 @@
 				}
 				const body = JSON.parse(options.body);
 				if (body.action === 'complete') return new Response(JSON.stringify({ ok: true, status: 'completed', sessionId: 'preview_audit_record', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }), { status: 200 });
+				if (body.action === 'email_receipt') return new Response(JSON.stringify({ ok: true, status: 'sent' }), { status: 200 });
 				const valid = Boolean(body.responses.supplier_name && body.responses.jurisdiction && body.responses.review_date && body.responses.approved);
 				return new Response(JSON.stringify({ ok: true, valid, status: valid ? 'READY' : 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }), { status: 200 });
 			};

@@ -18,6 +18,10 @@ const messages = {
 	insufficient_balance: 'This form is temporarily unavailable. Contact its publisher.',
 	rate_limited: 'Too many requests. Wait a moment and try again.',
 	validation_failed: 'Check the highlighted fields and try again.',
+	invalid_email: 'Enter a valid email address.',
+	receipt_not_available: 'This completed record is not available for email delivery.',
+	email_not_configured: 'Email delivery is temporarily unavailable.',
+	send_failed: 'The copy could not be sent. Try again.',
 	signing_not_available: 'Signing is not available in embedded forms yet.',
 	service_unavailable: 'Validation is temporarily unavailable. Try again shortly.'
 };

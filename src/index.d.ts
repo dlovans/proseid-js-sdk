@@ -40,6 +40,7 @@ export interface MountOptions {
 	onValidation?: (detail: { valid: boolean; status: string; issues: unknown[] }) => void;
 	onSubmit?: (detail: { values: Record<string, unknown> }) => void;
 	onComplete?: (result: CompletionResult) => void;
+	onReceipt?: (result: ReceiptResult) => void;
 	onError?: (error: Error) => void;
 }
 
@@ -50,7 +51,14 @@ export interface EmbedManifest {
 	schema: { definitions: Record<string, Record<string, unknown>> };
 	branding: { proseid: { name: string; logo: string; url: string } };
 	presentation: { attribution: 'full' | 'compact' | 'hidden'; whiteLabel: boolean; completionMicrons: number; surchargeMicrons: number; testMode?: boolean };
-	capabilities: { validation: 'remote'; auditRecord: boolean; signing: Record<string, unknown> };
+	capabilities: { validation: 'remote'; auditRecord: boolean; receiptEmail: boolean; signing: Record<string, unknown> };
+}
+
+export interface ReceiptResult {
+	status: 'sent' | 'error';
+	sessionId: string;
+	email: string;
+	error?: Error;
 }
 
 export interface CompletionResult {

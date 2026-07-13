@@ -18,6 +18,10 @@ var messages = {
   insufficient_balance: "This form is temporarily unavailable. Contact its publisher.",
   rate_limited: "Too many requests. Wait a moment and try again.",
   validation_failed: "Check the highlighted fields and try again.",
+  invalid_email: "Enter a valid email address.",
+  receipt_not_available: "This completed record is not available for email delivery.",
+  email_not_configured: "Email delivery is temporarily unavailable.",
+  send_failed: "The copy could not be sent. Try again.",
   signing_not_available: "Signing is not available in embedded forms yet.",
   service_unavailable: "Validation is temporarily unavailable. Try again shortly."
 };
@@ -26,7 +30,7 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.4.0";
+var VERSION = "0.5.0";
 
 // src/presentation.js
 var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
@@ -123,6 +127,9 @@ var EmbedApi = class {
   }
   complete(formRef, sessionId, responses, signature = null, signal) {
     return this.request({ action: "complete", formRef, sessionId, responses, signature }, signal);
+  }
+  emailReceipt(formRef, sessionId, email, signal) {
+    return this.request({ action: "email_receipt", formRef, sessionId, email }, signal);
   }
 };
 
@@ -232,11 +239,30 @@ textarea.control { min-height: 96px; resize: vertical; }
 .complete h2 { margin: 0; font: 500 30px/1.1 Georgia, serif; }
 .complete p { max-width: 46ch; margin: 12px auto 0; color: var(--proseid-copy); font-size: 13px; line-height: 1.6; }
 .receipt { width: fit-content; max-width: 100%; margin: 22px auto 0; border: 1px solid var(--proseid-rule); border-radius: 10px; background: var(--proseid-canvas); padding: 9px 12px; color: var(--proseid-muted); font: 10px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+.receipt-copy { max-width: 520px; margin: 28px auto 0; border-top: 1px solid var(--proseid-rule); padding-top: 24px; text-align: left; }
+.receipt-copy h3 { margin: 0; color: var(--proseid-ink); font: 650 14px/1.35 var(--proseid-font); }
+.complete .receipt-help { max-width: none; margin: 5px 0 0; color: var(--proseid-muted); font-size: 11px; line-height: 1.55; }
+.receipt-form { margin-top: 15px; }
+.receipt-field { display: grid; gap: 7px; }
+.receipt-label { color: var(--proseid-ink); font-size: 11px; font-weight: 650; }
+.receipt-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.receipt-input { width: 100%; min-width: 0; min-height: 42px; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-control-radius); outline: none; background: var(--proseid-surface); padding: 9px 11px; color: var(--proseid-ink); font-size: 13px; transition: border-color .16s ease, box-shadow .16s ease; }
+.receipt-input:focus { border-color: var(--proseid-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--proseid-accent) 13%, transparent); }
+.receipt-input[aria-invalid="true"] { border-color: var(--proseid-accent); }
+.receipt-button { min-height: 42px; border: 0; border-radius: var(--proseid-button-radius); background: var(--proseid-ink); padding: 9px 15px; color: var(--proseid-surface); font-size: 11px; font-weight: 720; white-space: nowrap; cursor: pointer; transition: transform .15s ease, opacity .15s ease; }
+.receipt-button:hover:not(:disabled) { transform: translateY(-1px); }
+.receipt-button:focus-visible { outline: 2px solid var(--proseid-accent); outline-offset: 3px; }
+.receipt-button:disabled { cursor: not-allowed; opacity: .42; }
+.complete .receipt-status { min-height: 17px; max-width: none; margin: 0; color: var(--proseid-muted); font-size: 11px; line-height: 1.5; }
+.complete .receipt-status[data-state="sent"] { color: var(--proseid-success); }
+.complete .receipt-status[data-state="error"] { color: var(--proseid-accent-ink); }
+.complete .receipt-test { margin-top: 18px; color: var(--proseid-muted); font-size: 11px; }
 :host([data-proseid-shell="flat"]) .shell { border-color: transparent; box-shadow: none; }
 :host([data-proseid-shell="flat"]) .ledger { height: 2px; }
 :host([data-proseid-fields="underline"]) .control { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }
 :host([data-proseid-fields="underline"]) .control:focus { border-color: var(--proseid-accent); box-shadow: 0 2px 0 -1px var(--proseid-accent); }
 :host([data-proseid-fields="underline"]) .check { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }
+:host([data-proseid-fields="underline"]) .receipt-input { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }
 :host([data-proseid-density="compact"]) .brands { margin-bottom: 18px; }
 :host([data-proseid-density="compact"]) .control { min-height: 38px; padding-top: 7px; padding-bottom: 7px; }
 :host([data-proseid-density="compact"]) .check { padding-top: 10px; padding-bottom: 10px; }
@@ -248,8 +274,10 @@ textarea.control { min-height: 96px; resize: vertical; }
 	.actions { grid-template-columns: 1fr; }
 	.submit { width: 100%; }
 	.proseid-brand span { display: none; }
+	.receipt-row { grid-template-columns: 1fr; }
+	.receipt-button { width: 100%; }
 }
-@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button { animation: none; transition: none; } }
 `;
 
 // src/i18n.js
@@ -274,6 +302,17 @@ var dictionaries = {
     testCompleteTitle: "Test complete.",
     testDelivered: "The integration works. No session was saved or billed.",
     testRecord: (id) => `Test reference ${id}`,
+    receiptTitle: "Want a copy for your records?",
+    receiptHelp: "We\u2019ll email you a co-branded PDF of exactly what you submitted.",
+    receiptLabel: "Email address",
+    receiptPlaceholder: "you@example.com",
+    receiptAction: "Email me",
+    receiptSending: "Sending\u2026",
+    receiptSent: (email) => `A copy is on its way to ${email}.`,
+    receiptInvalid: "Enter a valid email address.",
+    receiptError: "The copy could not be sent. Check the email and try again.",
+    receiptRateLimited: "Too many email attempts. Wait a few minutes and try again.",
+    receiptTest: "Email copies are not sent in test mode.",
     formUnavailable: "Form unavailable",
     required: (label) => `${label} is required.`,
     confirm: "Please confirm to continue.",
@@ -303,6 +342,17 @@ var dictionaries = {
     testCompleteTitle: "Testet \xE4r klart.",
     testDelivered: "Integrationen fungerar. Ingen session sparades eller debiterades.",
     testRecord: (id) => `Testreferens ${id}`,
+    receiptTitle: "Vill du ha en kopia?",
+    receiptHelp: "Vi mejlar en samprofilerad PDF med exakt det du skickade in.",
+    receiptLabel: "E-postadress",
+    receiptPlaceholder: "du@exempel.se",
+    receiptAction: "Mejla mig",
+    receiptSending: "Skickar\u2026",
+    receiptSent: (email) => `En kopia \xE4r p\xE5 v\xE4g till ${email}.`,
+    receiptInvalid: "Ange en giltig e-postadress.",
+    receiptError: "Kopian kunde inte skickas. Kontrollera adressen och f\xF6rs\xF6k igen.",
+    receiptRateLimited: "F\xF6r m\xE5nga mejlf\xF6rs\xF6k. V\xE4nta n\xE5gra minuter och f\xF6rs\xF6k igen.",
+    receiptTest: "E-postkopior skickas inte i testl\xE4get.",
     formUnavailable: "Formul\xE4ret \xE4r inte tillg\xE4ngligt",
     required: (label) => `${label} \xE4r obligatoriskt.`,
     confirm: "Bekr\xE4fta f\xF6r att forts\xE4tta.",
@@ -411,6 +461,7 @@ var friendlyIssue = (issue, label, copy) => {
   }
 };
 var randomSessionId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll("-", "") || Math.random().toString(36).slice(2).padEnd(16, "0")}`;
+var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 var ProseIDForm = class {
   constructor(target, options) {
     this.target = typeof target === "string" ? document.querySelector(target) : target;
@@ -753,7 +804,84 @@ var ProseIDForm = class {
     complete.append(text("div", "seal", "\u2713"), text("h2", "", result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
     complete.append(text("p", "", result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)));
     complete.append(text("div", "receipt", result.test ? this.copy.testRecord(result.sessionId) : this.copy.auditRecord(result.sessionId)));
+    if (result.test) {
+      complete.append(text("p", "receipt-test", this.copy.receiptTest));
+    } else if (this.manifest.capabilities?.receiptEmail !== false) {
+      complete.append(this.renderReceiptEmail(result));
+    }
     shell.replaceChildren(text("div", "ledger"), complete);
+  }
+  renderReceiptEmail(result) {
+    const section = text("section", "receipt-copy");
+    const title = text("h3", "", this.copy.receiptTitle);
+    const help = text("p", "receipt-help", this.copy.receiptHelp);
+    const form = document.createElement("form");
+    form.className = "receipt-form";
+    form.noValidate = true;
+    const field = text("div", "receipt-field");
+    const id = `proseid-receipt-${String(result.sessionId).replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 48)}`;
+    const label = text("label", "receipt-label", this.copy.receiptLabel);
+    label.htmlFor = id;
+    const row = text("div", "receipt-row");
+    const input = document.createElement("input");
+    input.id = id;
+    input.className = "receipt-input";
+    input.type = "email";
+    input.inputMode = "email";
+    input.autocomplete = "email";
+    input.placeholder = this.copy.receiptPlaceholder;
+    input.maxLength = 320;
+    input.required = true;
+    const button = text("button", "receipt-button", this.copy.receiptAction);
+    button.type = "submit";
+    button.disabled = true;
+    const status = text("p", "receipt-status");
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    input.setAttribute("aria-describedby", `${id}-status`);
+    status.id = `${id}-status`;
+    input.addEventListener("input", () => {
+      button.disabled = !EMAIL_RE.test(input.value.trim());
+      input.setAttribute("aria-invalid", "false");
+      status.textContent = "";
+      status.dataset.state = "idle";
+    });
+    form.addEventListener("submit", (event) => this.sendReceipt(event, { result, input, button, status }));
+    row.append(input, button);
+    field.append(label, row, status);
+    form.append(field);
+    section.append(title, help, form);
+    return section;
+  }
+  async sendReceipt(event, { result, input, button, status }) {
+    event.preventDefault();
+    if (this.destroyed || result.test) return;
+    const email = input.value.trim();
+    if (!EMAIL_RE.test(email)) {
+      input.setAttribute("aria-invalid", "true");
+      status.dataset.state = "error";
+      status.textContent = this.copy.receiptInvalid;
+      return;
+    }
+    input.disabled = true;
+    button.disabled = true;
+    button.textContent = this.copy.receiptSending;
+    status.dataset.state = "idle";
+    status.textContent = "";
+    try {
+      await this.api.emailReceipt(this.manifest.form.ref, result.sessionId, email);
+      status.dataset.state = "sent";
+      status.textContent = this.copy.receiptSent(email);
+      button.textContent = this.copy.receiptAction;
+      this.emit("receipt", { status: "sent", sessionId: result.sessionId, email });
+    } catch (error) {
+      input.disabled = false;
+      button.disabled = false;
+      button.textContent = this.copy.receiptAction;
+      status.dataset.state = "error";
+      status.textContent = error?.code === "rate_limited" ? this.copy.receiptRateLimited : this.copy.receiptError;
+      this.emit("receipt", { status: "error", sessionId: result.sessionId, email, error });
+    }
   }
   renderFatal(error) {
     this.shadow.replaceChildren();

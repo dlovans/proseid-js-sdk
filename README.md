@@ -10,6 +10,7 @@ Final submission is not a client-side “success” flag. ProseID authoritativel
 - Customer CSS cannot break field layout, validation states, or ProseID branding.
 - The host receives lifecycle events without receiving the validation engine.
 - The completed record is identical to a hosted ProseID session.
+- After completion, the respondent can request the same co-branded email and PDF receipt as the hosted flow.
 - A provider-neutral signing adapter is already part of the composition boundary for future UIP signing.
 
 ## Install on a website
@@ -23,7 +24,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/gh/dlovans/proseid-js-sdk@v0.4.0/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@proseid/js-sdk@0.5.0/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -38,7 +39,7 @@ website—the embed API rejects secret keys.
 For an ES module build:
 
 ```bash
-npm install github:dlovans/proseid-js-sdk#v0.4.0
+npm install @proseid/js-sdk
 ```
 
 ```js
@@ -101,6 +102,18 @@ cover any DOM element. ProseID therefore meters the supported `hidden` mode serv
 claim that browser attribution is cryptographically enforceable. Building a separate UI against the
 server API remains a distinct, supported integration path.
 
+## Respondent receipt
+
+After a production completion, the SDK asks whether the respondent wants a copy. They enter and
+confirm their own email address; the SDK does not infer a recipient from schema fields. ProseID then
+rebuilds the receipt from the encrypted server record and emails the same co-branded PDF available
+in the hosted flow. Receipt delivery is not billed and a delivery failure never changes the already
+completed session.
+
+The receipt request is checked against the publishable key, exact allowed origin, organisation,
+form and completed embed session. It is rate-limited separately. Built-in test completions show that
+email is unavailable because no record is stored and no real message is sent.
+
 ## Built-in integration test
 
 Use `mountTest` before publishing a schema. It loads ProseID's server-hosted field gallery with text,
@@ -128,10 +141,11 @@ The target element dispatches bubbling custom events:
 - `proseid:validation`
 - `proseid:submit`
 - `proseid:complete`
+- `proseid:receipt`
 - `proseid:error`
 - `proseid:signing` (reserved for a future signing action)
 
-Matching callbacks can be passed as `onReady`, `onChange`, `onValidation`, `onSubmit`, `onComplete`, and `onError`.
+Matching callbacks can be passed as `onReady`, `onChange`, `onValidation`, `onSubmit`, `onComplete`, `onReceipt`, and `onError`.
 
 ## Content Security Policy
 

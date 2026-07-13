@@ -28,6 +28,7 @@ const friendlyIssue = (issue, label, copy) => {
 };
 
 const randomSessionId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll('-', '') || Math.random().toString(36).slice(2).padEnd(16, '0')}`;
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export class ProseIDForm {
 	constructor(target, options) {
@@ -401,7 +402,87 @@ export class ProseIDForm {
 		complete.append(text('div', 'seal', '✓'), text('h2', '', result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
 		complete.append(text('p', '', result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)));
 		complete.append(text('div', 'receipt', result.test ? this.copy.testRecord(result.sessionId) : this.copy.auditRecord(result.sessionId)));
+		if (result.test) {
+			complete.append(text('p', 'receipt-test', this.copy.receiptTest));
+		} else if (this.manifest.capabilities?.receiptEmail !== false) {
+			complete.append(this.renderReceiptEmail(result));
+		}
 		shell.replaceChildren(text('div', 'ledger'), complete);
+	}
+
+	renderReceiptEmail(result) {
+		const section = text('section', 'receipt-copy');
+		const title = text('h3', '', this.copy.receiptTitle);
+		const help = text('p', 'receipt-help', this.copy.receiptHelp);
+		const form = document.createElement('form');
+		form.className = 'receipt-form';
+		form.noValidate = true;
+		const field = text('div', 'receipt-field');
+		const id = `proseid-receipt-${String(result.sessionId).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 48)}`;
+		const label = text('label', 'receipt-label', this.copy.receiptLabel);
+		label.htmlFor = id;
+		const row = text('div', 'receipt-row');
+		const input = document.createElement('input');
+		input.id = id;
+		input.className = 'receipt-input';
+		input.type = 'email';
+		input.inputMode = 'email';
+		input.autocomplete = 'email';
+		input.placeholder = this.copy.receiptPlaceholder;
+		input.maxLength = 320;
+		input.required = true;
+		const button = text('button', 'receipt-button', this.copy.receiptAction);
+		button.type = 'submit';
+		button.disabled = true;
+		const status = text('p', 'receipt-status');
+		status.setAttribute('role', 'status');
+		status.setAttribute('aria-live', 'polite');
+		input.setAttribute('aria-describedby', `${id}-status`);
+		status.id = `${id}-status`;
+		input.addEventListener('input', () => {
+			button.disabled = !EMAIL_RE.test(input.value.trim());
+			input.setAttribute('aria-invalid', 'false');
+			status.textContent = '';
+			status.dataset.state = 'idle';
+		});
+		form.addEventListener('submit', (event) => this.sendReceipt(event, { result, input, button, status }));
+		row.append(input, button);
+		field.append(label, row, status);
+		form.append(field);
+		section.append(title, help, form);
+		return section;
+	}
+
+	async sendReceipt(event, { result, input, button, status }) {
+		event.preventDefault();
+		if (this.destroyed || result.test) return;
+		const email = input.value.trim();
+		if (!EMAIL_RE.test(email)) {
+			input.setAttribute('aria-invalid', 'true');
+			status.dataset.state = 'error';
+			status.textContent = this.copy.receiptInvalid;
+			return;
+		}
+
+		input.disabled = true;
+		button.disabled = true;
+		button.textContent = this.copy.receiptSending;
+		status.dataset.state = 'idle';
+		status.textContent = '';
+		try {
+			await this.api.emailReceipt(this.manifest.form.ref, result.sessionId, email);
+			status.dataset.state = 'sent';
+			status.textContent = this.copy.receiptSent(email);
+			button.textContent = this.copy.receiptAction;
+			this.emit('receipt', { status: 'sent', sessionId: result.sessionId, email });
+		} catch (error) {
+			input.disabled = false;
+			button.disabled = false;
+			button.textContent = this.copy.receiptAction;
+			status.dataset.state = 'error';
+			status.textContent = error?.code === 'rate_limited' ? this.copy.receiptRateLimited : this.copy.receiptError;
+			this.emit('receipt', { status: 'error', sessionId: result.sessionId, email, error });
+		}
 	}
 
 	renderFatal(error) {

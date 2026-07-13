@@ -69,4 +69,8 @@ export class EmbedApi {
 	complete(formRef, sessionId, responses, signature = null, signal) {
 		return this.request({ action: 'complete', formRef, sessionId, responses, signature }, signal);
 	}
+
+	emailReceipt(formRef, sessionId, email, signal) {
+		return this.request({ action: 'email_receipt', formRef, sessionId, email }, signal);
+	}
 }
