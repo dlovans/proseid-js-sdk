@@ -20,8 +20,8 @@ export interface SigningAdapter {
 }
 
 export interface MountOptions {
-	form: `${string}/${string}`;
-	/** Browser-safe `proseid_pk_…` key identifying the organization that owns the form. */
+	flow: `${string}/${string}`;
+	/** Browser-safe `proseid_pk_…` key identifying the organization that owns the Flow. */
 	apiKey: string;
 	apiBase?: string;
 	/** Curated, contrast-tested palette. Arbitrary color values are intentionally unsupported. */
@@ -46,7 +46,7 @@ export interface MountOptions {
 
 export interface EmbedManifest {
 	apiVersion: string;
-	form: { ref: string; title: string; description: string; schemaId: string; schemaVersion: string };
+	flow: { ref: string; title: string; description: string; schemaId: string; schemaVersion: string };
 	publisher: { slug: string; name: string; logo: string | null; verified: boolean };
 	schema: { definitions: Record<string, Record<string, unknown>> };
 	branding: { proseid: { name: string; logo: string; url: string } };
@@ -56,7 +56,7 @@ export interface EmbedManifest {
 
 export interface ReceiptResult {
 	status: 'sent' | 'error';
-	sessionId: string;
+	recordId: string;
 	email: string;
 	error?: Error;
 }
@@ -64,7 +64,7 @@ export interface ReceiptResult {
 export interface CompletionResult {
 	ok: true;
 	status: 'completed';
-	sessionId: string;
+	recordId: string;
 	duplicate: boolean;
 	delivered: { email: boolean; webhook: boolean };
 	nextAction: Record<string, unknown> | null;
@@ -82,5 +82,5 @@ export declare class ProseIDForm {
 export declare const VERSION: string;
 export declare const THEME_NAMES: readonly ThemeName[];
 export declare function mount(target: string | Element, options: MountOptions): ProseIDForm;
-export declare function mountTest(target: string | Element, options: Omit<MountOptions, 'form'> & { form?: never }): ProseIDForm;
+export declare function mountTest(target: string | Element, options: Omit<MountOptions, 'flow'> & { flow?: never }): ProseIDForm;
 export declare function mountAll(defaults?: Partial<MountOptions>): ProseIDForm[];

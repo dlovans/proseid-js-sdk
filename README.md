@@ -1,24 +1,24 @@
 # ProseID JavaScript SDK
 
-Embed a published ProseID form inside a customer website without shipping the ProseID validation engine or trusting the host page. The SDK renders the fields in an isolated Shadow DOM, sends respondent changes to ProseID for remote validation, and enables submission only when the pinned schema is ready.
+Embed a published ProseID Standard Form Flow inside a customer website without shipping the ProseID validation engine or trusting the host page. The SDK renders the fields in an isolated Shadow DOM, sends respondent changes to ProseID for remote validation, and enables submission only when the pinned schema is ready.
 
-Final submission is not a client-side “success” flag. ProseID authoritatively re-runs the schema, debits the publisher once, encrypts the responses, creates the normal session and audit proof, then performs the form’s email/webhook delivery.
+Final submission is not a client-side “success” flag. ProseID authoritatively re-runs the schema, debits the publisher once, encrypts the responses, creates the normal encrypted record and signed proof, then performs the form’s email/webhook delivery.
 
 ## Why use the SDK instead of an iframe?
 
 - The form feels native to the customer’s product and resizes with its content.
 - Customer CSS cannot break field layout, validation states, or ProseID branding.
 - The host receives lifecycle events without receiving the validation engine.
-- The completed record is identical to a hosted ProseID session.
+- The completed record is identical to one created by a hosted Flow.
 - After completion, the respondent can request the same co-branded email and PDF receipt as the hosted flow.
 - A provider-neutral signing adapter is already part of the composition boundary for future UIP signing.
 
 ## Install on a website
 
-First, open the form in the ProseID workspace and add the website under **Embedded form websites**. Origins are exact: use `https://www.example.com`, not a path. HTTPS is required except for localhost development.
+First, open the Flow in the ProseID workspace and add the website under **Embedded Flow websites**. Origins are exact: use `https://www.example.com`, not a path. HTTPS is required except for localhost development.
 
 Create a **Publishable / SDK** key in **Workspace → API keys**. Publishable keys begin with
-`proseid_pk_` and are safe to include in browser code. They identify the organization whose form,
+`proseid_pk_` and are safe to include in browser code. They identify the organization whose Flow,
 schema, balance, audit records, and co-branding apply. Never put a secret `proseid_sk_` key in a
 website—the embed API rejects secret keys.
 
@@ -28,9 +28,9 @@ website—the embed API rejects secret keys.
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
-    form: 'publisher-handle/form-slug',
+    flow: 'publisher-handle/flow-slug',
     onComplete(result) {
-      console.log('ProseID audit record', result.sessionId);
+      console.log('ProseID audit record', result.recordId);
     }
   });
 </script>
@@ -47,7 +47,7 @@ import { mount } from '@proseid/js-sdk';
 
 const form = mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
-  form: 'publisher-handle/form-slug',
+  flow: 'publisher-handle/flow-slug',
 	locale: 'en', // `sv` is also bundled; UI messages can be overridden
   appearance: { shape: 'capsule', fields: 'outlined', shell: 'card' },
   theme: 'charcoal',
@@ -66,7 +66,7 @@ semantics, and ProseID attribution retain a dependable visual floor. Use one geo
 ```js
 mount('#compliance-form', {
   apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
-  form: 'publisher-handle/form-slug',
+  flow: 'publisher-handle/flow-slug',
   appearance: {
     shape: 'rigid',       // soft | capsule | rigid
     fields: 'underline',  // outlined | underline
@@ -93,8 +93,8 @@ back to `light` without being applied. `THEME_NAMES` exposes the supported names
 
 `full` and `compact` attribution have the standard completion price. `hidden` is the supported
 white-label mode: the SDK tells the authenticated embed endpoint, the server returns the effective
-mode and price in `manifest.presentation`, and a completed production session is billed 25% extra
-(currently 250 microns instead of 200). The session records the embed source, publishable key,
+mode and price in `manifest.presentation`, and a completed production record is billed 25% extra
+(currently 250 microns instead of 200). The record captures the embed source, publishable key,
 origin, SDK version, attribution mode, and pricing components. Test completions are always free.
 
 The customer controls their browser and can technically modify any open-source browser bundle or
@@ -108,10 +108,10 @@ After a production completion, the SDK asks whether the respondent wants a copy.
 confirm their own email address; the SDK does not infer a recipient from schema fields. ProseID then
 rebuilds the receipt from the encrypted server record and emails the same co-branded PDF available
 in the hosted flow. Receipt delivery is not billed and a delivery failure never changes the already
-completed session.
+completed record.
 
 The receipt request is checked against the publishable key, exact allowed origin, organisation,
-form and completed embed session. It is rate-limited separately. Built-in test completions show that
+Flow and completed embed record. It is rate-limited separately. Built-in test completions show that
 email is unavailable because no record is stored and no real message is sent.
 
 ## Built-in integration test
@@ -164,14 +164,14 @@ npm test
 npm run build
 ```
 
-Serve `examples/basic` over HTTP and add its exact localhost origin to the selected ProseID form.
-Change `YOUR_PROSEID_PUBLISHABLE_KEY` and `YOUR_PUBLISHER/YOUR_FORM` in the example before loading it.
-`examples/test` needs only a publishable key because the built-in form does not require a published
+Serve `examples/basic` over HTTP and add its exact localhost origin to the selected ProseID Flow.
+Change `YOUR_PROSEID_PUBLISHABLE_KEY` and `YOUR_PUBLISHER/YOUR_FLOW` in the example before loading it.
+`examples/test` needs only a publishable key because the built-in field gallery does not require a published
 schema or a form origin allow-list.
 
 ## Signing boundary
 
-The current API returns `nextAction: null`. A future signed form can return a provider action without changing the renderer’s validation or audit flow. Pass an adapter with `sign(nextAction, context)` when UIP is live; the SDK will delegate the provider interaction rather than embedding provider-specific logic into the form renderer.
+The current API returns `nextAction: null`. A future signed Flow can return a provider action without changing the renderer’s validation or audit flow. Pass an adapter with `sign(nextAction, context)` when UIP is live; the SDK will delegate the provider interaction rather than embedding provider-specific logic into the Standard Form renderer.
 
 ## Licence
 

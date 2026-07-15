@@ -9,20 +9,20 @@ var ProseIDError = class extends Error {
   }
 };
 var messages = {
-  publishable_key_required: "This form is missing its ProseID publishable key.",
-  invalid_publishable_key: "This form is using an invalid or revoked ProseID key.",
-  form_not_allowed: "This form is not available for this ProseID key.",
-  embed_origin_not_allowed: "This website is not allowed to use this form.",
-  form_not_found: "This form is no longer available.",
-  form_unpublished: "This form is no longer available.",
-  insufficient_balance: "This form is temporarily unavailable. Contact its publisher.",
+  publishable_key_required: "This Flow is missing its ProseID publishable key.",
+  invalid_publishable_key: "This Flow is using an invalid or revoked ProseID key.",
+  flow_not_allowed: "This Flow is not available for this ProseID key.",
+  embed_origin_not_allowed: "This website is not allowed to use this Flow.",
+  flow_not_found: "This Flow is no longer available.",
+  flow_unpublished: "This Flow is no longer available.",
+  insufficient_balance: "This Flow is temporarily unavailable. Contact its publisher.",
   rate_limited: "Too many requests. Wait a moment and try again.",
   validation_failed: "Check the highlighted fields and try again.",
   invalid_email: "Enter a valid email address.",
   receipt_not_available: "This completed record is not available for email delivery.",
   email_not_configured: "Email delivery is temporarily unavailable.",
   send_failed: "The copy could not be sent. Try again.",
-  signing_not_available: "Signing is not available in embedded forms yet.",
+  signing_not_available: "Signing is not available in embedded Standard Forms yet.",
   service_unavailable: "Validation is temporarily unavailable. Try again shortly."
 };
 function errorMessage(code, fallback = "") {
@@ -70,14 +70,14 @@ function safeLogoUrl(value) {
 }
 
 // src/api.js
-function parseFormCoordinate(value) {
+function parseFlowCoordinate(value) {
   const parts = String(value ?? "").split("/").filter(Boolean);
-  if (parts.length !== 2) throw new ProseIDError("invalid_form", 'Form must be "publisher/slug".');
+  if (parts.length !== 2) throw new ProseIDError("invalid_flow", 'Flow must be "publisher/slug".');
   return { publisher: parts[0], slug: parts[1] };
 }
 var EmbedApi = class {
-  constructor({ apiBase = "https://proseid.com", apiKey, form, testMode = false, attribution = "full", fetchImpl = globalThis.fetch }) {
-    if (typeof fetchImpl !== "function") throw new ProseIDError("fetch_unavailable", "This browser cannot load the form.");
+  constructor({ apiBase = "https://proseid.com", apiKey, flow, testMode = false, attribution = "full", fetchImpl = globalThis.fetch }) {
+    if (typeof fetchImpl !== "function") throw new ProseIDError("fetch_unavailable", "This browser cannot load the Flow.");
     if (!/^proseid_pk_[a-f0-9]{32,64}$/.test(String(apiKey || ""))) {
       throw new ProseIDError("invalid_api_key", "A ProseID publishable key is required.");
     }
@@ -87,8 +87,8 @@ var EmbedApi = class {
     if (testMode) {
       this.endpoint = `${String(apiBase).replace(/\/$/, "")}/api/embed/v1/test`;
     } else {
-      const { publisher, slug } = parseFormCoordinate(form);
-      this.endpoint = `${String(apiBase).replace(/\/$/, "")}/api/embed/v1/forms/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
+      const { publisher, slug } = parseFlowCoordinate(flow);
+      this.endpoint = `${String(apiBase).replace(/\/$/, "")}/api/embed/v1/flows/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
     }
   }
   setAttribution(value) {
@@ -119,17 +119,17 @@ var EmbedApi = class {
   manifest(signal) {
     return this.request(null, signal);
   }
-  validate(formRef, responses, signal) {
-    return this.request({ action: "validate", formRef, responses }, signal);
+  validate(flowRef, responses, signal) {
+    return this.request({ action: "validate", flowRef, responses }, signal);
   }
-  prepareSigning(formRef, sessionId, responses, signal) {
-    return this.request({ action: "prepare_signing", formRef, sessionId, responses }, signal);
+  prepareSigning(flowRef, recordId, responses, signal) {
+    return this.request({ action: "prepare_signing", flowRef, recordId, responses }, signal);
   }
-  complete(formRef, sessionId, responses, signature = null, signal) {
-    return this.request({ action: "complete", formRef, sessionId, responses, signature }, signal);
+  complete(flowRef, recordId, responses, signature = null, signal) {
+    return this.request({ action: "complete", flowRef, recordId, responses, signature }, signal);
   }
-  emailReceipt(formRef, sessionId, email, signal) {
-    return this.request({ action: "email_receipt", formRef, sessionId, email }, signal);
+  emailReceipt(flowRef, recordId, email, signal) {
+    return this.request({ action: "email_receipt", flowRef, recordId, email }, signal);
   }
 };
 
@@ -300,7 +300,7 @@ var dictionaries = {
     delivered: (publisher) => `Your responses were verified and delivered to ${publisher}.`,
     auditRecord: (id) => `Audit record ${id}`,
     testCompleteTitle: "Test complete.",
-    testDelivered: "The integration works. No session was saved or billed.",
+    testDelivered: "The integration works. No record was saved or billed.",
     testRecord: (id) => `Test reference ${id}`,
     receiptTitle: "Want a copy for your records?",
     receiptHelp: "We\u2019ll email you a co-branded PDF of exactly what you submitted.",
@@ -313,7 +313,7 @@ var dictionaries = {
     receiptError: "The copy could not be sent. Check the email and try again.",
     receiptRateLimited: "Too many email attempts. Wait a few minutes and try again.",
     receiptTest: "Email copies are not sent in test mode.",
-    formUnavailable: "Form unavailable",
+    formUnavailable: "Flow unavailable",
     required: (label) => `${label} is required.`,
     confirm: "Please confirm to continue.",
     format: (label) => `${label} isn\u2019t in the expected format.`,
@@ -340,7 +340,7 @@ var dictionaries = {
     delivered: (publisher) => `Dina svar verifierades och levererades till ${publisher}.`,
     auditRecord: (id) => `Revisionspost ${id}`,
     testCompleteTitle: "Testet \xE4r klart.",
-    testDelivered: "Integrationen fungerar. Ingen session sparades eller debiterades.",
+    testDelivered: "Integrationen fungerar. Ingen post sparades eller debiterades.",
     testRecord: (id) => `Testreferens ${id}`,
     receiptTitle: "Vill du ha en kopia?",
     receiptHelp: "Vi mejlar en samprofilerad PDF med exakt det du skickade in.",
@@ -353,7 +353,7 @@ var dictionaries = {
     receiptError: "Kopian kunde inte skickas. Kontrollera adressen och f\xF6rs\xF6k igen.",
     receiptRateLimited: "F\xF6r m\xE5nga mejlf\xF6rs\xF6k. V\xE4nta n\xE5gra minuter och f\xF6rs\xF6k igen.",
     receiptTest: "E-postkopior skickas inte i testl\xE4get.",
-    formUnavailable: "Formul\xE4ret \xE4r inte tillg\xE4ngligt",
+    formUnavailable: "Fl\xF6det \xE4r inte tillg\xE4ngligt",
     required: (label) => `${label} \xE4r obligatoriskt.`,
     confirm: "Bekr\xE4fta f\xF6r att forts\xE4tta.",
     format: (label) => `${label} har inte r\xE4tt format.`,
@@ -460,13 +460,13 @@ var friendlyIssue = (issue, label, copy) => {
       return issue?.message || copy.checkValue;
   }
 };
-var randomSessionId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll("-", "") || Math.random().toString(36).slice(2).padEnd(16, "0")}`;
+var randomRecordId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll("-", "") || Math.random().toString(36).slice(2).padEnd(16, "0")}`;
 var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 var ProseIDForm = class {
   constructor(target, options) {
     this.target = typeof target === "string" ? document.querySelector(target) : target;
     if (!(this.target instanceof Element)) throw new ProseIDError("invalid_target", "Choose an element to contain the ProseID form.");
-    if (!options?.form && !options?.testMode) throw new ProseIDError("invalid_form", "The form coordinate is required.");
+    if (!options?.flow && !options?.testMode) throw new ProseIDError("invalid_flow", "The Flow coordinate is required.");
     if (!options?.apiKey) throw new ProseIDError("invalid_api_key", "A ProseID publishable key is required.");
     this.options = options;
     this.copy = messagesFor(options.locale, options.messages);
@@ -474,7 +474,7 @@ var ProseIDForm = class {
     this.api = new EmbedApi({
       apiBase: options.apiBase,
       apiKey: options.apiKey,
-      form: options.form,
+      flow: options.flow,
       testMode: options.testMode === true,
       attribution: this.attribution,
       fetchImpl: options.fetch
@@ -489,7 +489,7 @@ var ProseIDForm = class {
     this.destroyed = false;
     this.validationTimer = null;
     this.validationAbort = null;
-    this.sessionId = randomSessionId();
+    this.recordId = randomRecordId();
     this.applyAppearance(options.appearance);
     this.applyTheme(options.theme);
     this.renderLoading();
@@ -538,7 +538,7 @@ var ProseIDForm = class {
       this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
       this.api.setAttribution(this.attribution);
       if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
-        throw new ProseIDError("signing_not_available", "Signing is not available in embedded forms yet.");
+        throw new ProseIDError("signing_not_available", "Signing is not available in embedded Standard Forms yet.");
       }
       this.seedValues();
       this.renderForm();
@@ -593,15 +593,15 @@ var ProseIDForm = class {
     this.shadow.replaceChildren();
     this.installStyles();
     const shell = text("section", "shell");
-    shell.setAttribute("aria-label", this.manifest.form.title);
+    shell.setAttribute("aria-label", this.manifest.flow.title);
     const head = text("header", "head");
     const brands = text("div", "brands");
     brands.append(this.brand(this.manifest.publisher));
     const proseidBrand = this.proseidBrand();
     if (proseidBrand) brands.append(proseidBrand);
     else brands.classList.add("publisher-only");
-    head.append(brands, text("h1", "", this.manifest.form.title));
-    if (this.manifest.form.description) head.append(text("p", "description", this.manifest.form.description));
+    head.append(brands, text("h1", "", this.manifest.flow.title));
+    if (this.manifest.flow.description) head.append(text("p", "description", this.manifest.flow.description));
     this.statusNode = text("div", "status");
     this.statusNode.dataset.state = "idle";
     this.statusNode.append(text("span", "status-dot"), text("span", "status-copy", this.copy.idle));
@@ -713,7 +713,7 @@ var ProseIDForm = class {
     this.validationAbort = new AbortController();
     this.setStatus("checking", this.copy.checking);
     try {
-      const result = await this.api.validate(this.manifest.form.ref, this.values, this.validationAbort.signal);
+      const result = await this.api.validate(this.manifest.flow.ref, this.values, this.validationAbort.signal);
       this.lastValidation = result;
       this.valid = result.valid === true;
       this.applyDefinitions(result.definitions || {});
@@ -782,11 +782,11 @@ var ProseIDForm = class {
     try {
       let signature = null;
       if (this.manifest.capabilities?.signing?.requested) {
-        const nextAction = await this.api.prepareSigning(this.manifest.form.ref, this.sessionId, this.values);
+        const nextAction = await this.api.prepareSigning(this.manifest.flow.ref, this.recordId, this.values);
         signature = await this.signing.handle(nextAction, { manifest: this.manifest, values: { ...this.values } });
         this.emit("signing", { nextAction, signature });
       }
-      const result = await this.api.complete(this.manifest.form.ref, this.sessionId, this.values, signature);
+      const result = await this.api.complete(this.manifest.flow.ref, this.recordId, this.values, signature);
       this.renderComplete(result);
       this.emit("complete", result);
     } catch (error) {
@@ -803,7 +803,7 @@ var ProseIDForm = class {
     const complete = text("div", "complete");
     complete.append(text("div", "seal", "\u2713"), text("h2", "", result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
     complete.append(text("p", "", result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)));
-    complete.append(text("div", "receipt", result.test ? this.copy.testRecord(result.sessionId) : this.copy.auditRecord(result.sessionId)));
+    complete.append(text("div", "receipt", result.test ? this.copy.testRecord(result.recordId) : this.copy.auditRecord(result.recordId)));
     if (result.test) {
       complete.append(text("p", "receipt-test", this.copy.receiptTest));
     } else if (this.manifest.capabilities?.receiptEmail !== false) {
@@ -819,7 +819,7 @@ var ProseIDForm = class {
     form.className = "receipt-form";
     form.noValidate = true;
     const field = text("div", "receipt-field");
-    const id = `proseid-receipt-${String(result.sessionId).replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 48)}`;
+    const id = `proseid-receipt-${String(result.recordId).replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 48)}`;
     const label = text("label", "receipt-label", this.copy.receiptLabel);
     label.htmlFor = id;
     const row = text("div", "receipt-row");
@@ -869,18 +869,18 @@ var ProseIDForm = class {
     status.dataset.state = "idle";
     status.textContent = "";
     try {
-      await this.api.emailReceipt(this.manifest.form.ref, result.sessionId, email);
+      await this.api.emailReceipt(this.manifest.flow.ref, result.recordId, email);
       status.dataset.state = "sent";
       status.textContent = this.copy.receiptSent(email);
       button.textContent = this.copy.receiptAction;
-      this.emit("receipt", { status: "sent", sessionId: result.sessionId, email });
+      this.emit("receipt", { status: "sent", recordId: result.recordId, email });
     } catch (error) {
       input.disabled = false;
       button.disabled = false;
       button.textContent = this.copy.receiptAction;
       status.dataset.state = "error";
       status.textContent = error?.code === "rate_limited" ? this.copy.receiptRateLimited : this.copy.receiptError;
-      this.emit("receipt", { status: "error", sessionId: result.sessionId, email, error });
+      this.emit("receipt", { status: "error", recordId: result.recordId, email, error });
     }
   }
   renderFatal(error) {
@@ -915,9 +915,9 @@ function mountTest(target, options) {
   return new ProseIDForm(target, { ...options, testMode: true });
 }
 function mountAll(defaults = {}) {
-  return [...document.querySelectorAll("[data-proseid-form]")].map((element) => mount(element, {
+  return [...document.querySelectorAll("[data-proseid-flow]")].map((element) => mount(element, {
     ...defaults,
-    form: element.getAttribute("data-proseid-form"),
+    flow: element.getAttribute("data-proseid-flow"),
     apiKey: element.getAttribute("data-proseid-key") || defaults.apiKey,
     apiBase: element.getAttribute("data-proseid-api") || defaults.apiBase
   }));

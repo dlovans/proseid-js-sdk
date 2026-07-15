@@ -27,14 +27,14 @@ const friendlyIssue = (issue, label, copy) => {
 	}
 };
 
-const randomSessionId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll('-', '') || Math.random().toString(36).slice(2).padEnd(16, '0')}`;
+const randomRecordId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll('-', '') || Math.random().toString(36).slice(2).padEnd(16, '0')}`;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export class ProseIDForm {
 	constructor(target, options) {
 		this.target = typeof target === 'string' ? document.querySelector(target) : target;
 		if (!(this.target instanceof Element)) throw new ProseIDError('invalid_target', 'Choose an element to contain the ProseID form.');
-		if (!options?.form && !options?.testMode) throw new ProseIDError('invalid_form', 'The form coordinate is required.');
+		if (!options?.flow && !options?.testMode) throw new ProseIDError('invalid_flow', 'The Flow coordinate is required.');
 		if (!options?.apiKey) throw new ProseIDError('invalid_api_key', 'A ProseID publishable key is required.');
 		this.options = options;
 		this.copy = messagesFor(options.locale, options.messages);
@@ -42,7 +42,7 @@ export class ProseIDForm {
 		this.api = new EmbedApi({
 			apiBase: options.apiBase,
 			apiKey: options.apiKey,
-			form: options.form,
+			flow: options.flow,
 			testMode: options.testMode === true,
 			attribution: this.attribution,
 			fetchImpl: options.fetch
@@ -57,7 +57,7 @@ export class ProseIDForm {
 		this.destroyed = false;
 		this.validationTimer = null;
 		this.validationAbort = null;
-		this.sessionId = randomSessionId();
+		this.recordId = randomRecordId();
 		this.applyAppearance(options.appearance);
 		this.applyTheme(options.theme);
 		this.renderLoading();
@@ -111,7 +111,7 @@ export class ProseIDForm {
 			this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
 			this.api.setAttribution(this.attribution);
 			if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
-				throw new ProseIDError('signing_not_available', 'Signing is not available in embedded forms yet.');
+				throw new ProseIDError('signing_not_available', 'Signing is not available in embedded Standard Forms yet.');
 			}
 			this.seedValues();
 			this.renderForm();
@@ -170,15 +170,15 @@ export class ProseIDForm {
 		this.shadow.replaceChildren();
 		this.installStyles();
 		const shell = text('section', 'shell');
-		shell.setAttribute('aria-label', this.manifest.form.title);
+		shell.setAttribute('aria-label', this.manifest.flow.title);
 		const head = text('header', 'head');
 		const brands = text('div', 'brands');
 		brands.append(this.brand(this.manifest.publisher));
 		const proseidBrand = this.proseidBrand();
 		if (proseidBrand) brands.append(proseidBrand);
 		else brands.classList.add('publisher-only');
-		head.append(brands, text('h1', '', this.manifest.form.title));
-		if (this.manifest.form.description) head.append(text('p', 'description', this.manifest.form.description));
+		head.append(brands, text('h1', '', this.manifest.flow.title));
+		if (this.manifest.flow.description) head.append(text('p', 'description', this.manifest.flow.description));
 		this.statusNode = text('div', 'status');
 		this.statusNode.dataset.state = 'idle';
 		this.statusNode.append(text('span', 'status-dot'), text('span', 'status-copy', this.copy.idle));
@@ -305,7 +305,7 @@ export class ProseIDForm {
 		this.validationAbort = new AbortController();
 		this.setStatus('checking', this.copy.checking);
 		try {
-			const result = await this.api.validate(this.manifest.form.ref, this.values, this.validationAbort.signal);
+			const result = await this.api.validate(this.manifest.flow.ref, this.values, this.validationAbort.signal);
 			this.lastValidation = result;
 			this.valid = result.valid === true;
 			this.applyDefinitions(result.definitions || {});
@@ -379,11 +379,11 @@ export class ProseIDForm {
 		try {
 			let signature = null;
 			if (this.manifest.capabilities?.signing?.requested) {
-				const nextAction = await this.api.prepareSigning(this.manifest.form.ref, this.sessionId, this.values);
+				const nextAction = await this.api.prepareSigning(this.manifest.flow.ref, this.recordId, this.values);
 				signature = await this.signing.handle(nextAction, { manifest: this.manifest, values: { ...this.values } });
 				this.emit('signing', { nextAction, signature });
 			}
-			const result = await this.api.complete(this.manifest.form.ref, this.sessionId, this.values, signature);
+			const result = await this.api.complete(this.manifest.flow.ref, this.recordId, this.values, signature);
 			this.renderComplete(result);
 			this.emit('complete', result);
 		} catch (error) {
@@ -401,7 +401,7 @@ export class ProseIDForm {
 		const complete = text('div', 'complete');
 		complete.append(text('div', 'seal', '✓'), text('h2', '', result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
 		complete.append(text('p', '', result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)));
-		complete.append(text('div', 'receipt', result.test ? this.copy.testRecord(result.sessionId) : this.copy.auditRecord(result.sessionId)));
+		complete.append(text('div', 'receipt', result.test ? this.copy.testRecord(result.recordId) : this.copy.auditRecord(result.recordId)));
 		if (result.test) {
 			complete.append(text('p', 'receipt-test', this.copy.receiptTest));
 		} else if (this.manifest.capabilities?.receiptEmail !== false) {
@@ -418,7 +418,7 @@ export class ProseIDForm {
 		form.className = 'receipt-form';
 		form.noValidate = true;
 		const field = text('div', 'receipt-field');
-		const id = `proseid-receipt-${String(result.sessionId).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 48)}`;
+		const id = `proseid-receipt-${String(result.recordId).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 48)}`;
 		const label = text('label', 'receipt-label', this.copy.receiptLabel);
 		label.htmlFor = id;
 		const row = text('div', 'receipt-row');
@@ -470,18 +470,18 @@ export class ProseIDForm {
 		status.dataset.state = 'idle';
 		status.textContent = '';
 		try {
-			await this.api.emailReceipt(this.manifest.form.ref, result.sessionId, email);
+			await this.api.emailReceipt(this.manifest.flow.ref, result.recordId, email);
 			status.dataset.state = 'sent';
 			status.textContent = this.copy.receiptSent(email);
 			button.textContent = this.copy.receiptAction;
-			this.emit('receipt', { status: 'sent', sessionId: result.sessionId, email });
+			this.emit('receipt', { status: 'sent', recordId: result.recordId, email });
 		} catch (error) {
 			input.disabled = false;
 			button.disabled = false;
 			button.textContent = this.copy.receiptAction;
 			status.dataset.state = 'error';
 			status.textContent = error?.code === 'rate_limited' ? this.copy.receiptRateLimited : this.copy.receiptError;
-			this.emit('receipt', { status: 'error', sessionId: result.sessionId, email, error });
+			this.emit('receipt', { status: 'error', recordId: result.recordId, email, error });
 		}
 	}
 

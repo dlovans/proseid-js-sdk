@@ -4,7 +4,7 @@ import { mount, mountTest, THEME_NAMES, VERSION } from '../src/index.js';
 const manifest = {
 	ok: true,
 	apiVersion: '2026-07-12',
-	form: { ref: 'form_1', title: 'Client intake', description: 'Complete this record.', schemaId: 'schema_1', schemaVersion: '1.0.0' },
+	flow: { ref: 'flow_1', title: 'Client intake', description: 'Complete this record.', schemaId: 'schema_1', schemaVersion: '1.0.0' },
 	publisher: { slug: 'acme', name: 'Acme Legal', logo: null, verified: true },
 	branding: { proseid: { name: 'ProseID', logo: 'https://proseid.com/icon-192.png', url: 'https://proseid.com' } },
 	presentation: { attribution: 'full', whiteLabel: false, completionMicrons: 200, surchargeMicrons: 0 },
@@ -21,15 +21,15 @@ beforeEach(() => {
 
 describe('ProseID SDK', () => {
 	it('requires a browser-safe publishable key', () => {
-		expect(() => mount('#form', { form: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
-		expect(() => mount('#form', { apiKey: `proseid_sk_${'a'.repeat(48)}`, form: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
+		expect(() => mount('#form', { flow: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
+		expect(() => mount('#form', { apiKey: `proseid_sk_${'a'.repeat(48)}`, flow: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
 	});
 
 	it('renders the co-branded manifest and begins with submit gated', async () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(manifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
-		const instance = mount('#form', { apiKey: API_KEY, form: 'acme/intake', fetch });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
 		await instance.ready;
 		expect(fetch.mock.calls[0][1].headers['x-proseid-key']).toBe(API_KEY);
 		const root = document.querySelector('#form').shadowRoot;
@@ -49,7 +49,7 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
 		const instance = mount('#form', {
 			apiKey: API_KEY,
-			form: 'acme/intake',
+			flow: 'acme/intake',
 			fetch,
 			appearance: { preset: 'underline', density: 'compact' },
 			theme: 'midnight',
@@ -75,7 +75,7 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
 		const instance = mount('#form', {
 			apiKey: API_KEY,
-			form: 'acme/intake',
+			flow: 'acme/intake',
 			fetch,
 			theme: { accent: '#000000; background:url(https://evil.example)' }
 		});
@@ -86,10 +86,10 @@ describe('ProseID SDK', () => {
 		expect(target.getAttribute('style')).not.toContain('evil.example');
 	});
 
-	it('mounts the built-in remote test form without a form coordinate', async () => {
+	it('mounts the built-in remote test form without a Flow coordinate', async () => {
 		const testManifest = {
 			...manifest,
-			form: { ...manifest.form, ref: '__proseid_sdk_test__', title: 'SDK integration test' },
+			flow: { ...manifest.flow, ref: '__proseid_sdk_test__', title: 'SDK integration test' },
 			presentation: { attribution: 'compact', whiteLabel: false, completionMicrons: 0, surchargeMicrons: 0, testMode: true },
 			capabilities: { ...manifest.capabilities, auditRecord: false, receiptEmail: false, testMode: true },
 			schema: {
@@ -122,11 +122,11 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response(manifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }))
 			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: manifest.schema.definitions, issues: [] }))
-			.mockImplementationOnce(() => response({ ok: true, status: 'completed', sessionId: 'audit_123', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }))
+			.mockImplementationOnce(() => response({ ok: true, status: 'completed', recordId: 'audit_123', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }))
 			.mockImplementationOnce(() => response({ ok: true, status: 'sent' }));
 		const complete = vi.fn();
 		const receipt = vi.fn();
-		const instance = mount('#form', { apiKey: API_KEY, form: 'acme/intake', fetch, validateDelay: 1, onComplete: complete, onReceipt: receipt });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch, validateDelay: 1, onComplete: complete, onReceipt: receipt });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		const input = root.querySelector('input[name="full_name"]');
@@ -140,7 +140,7 @@ describe('ProseID SDK', () => {
 		input.dispatchEvent(new Event('change', { bubbles: true }));
 		expect(root.querySelector('button[type="submit"]').disabled).toBe(false);
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-		await vi.waitFor(() => expect(complete).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'audit_123' })));
+		await vi.waitFor(() => expect(complete).toHaveBeenCalledWith(expect.objectContaining({ recordId: 'audit_123' })));
 		expect(root.textContent).toContain('Audit record audit_123');
 		expect(root.textContent).toContain('Want a copy for your records?');
 		const email = root.querySelector('.receipt-input');
@@ -151,12 +151,12 @@ describe('ProseID SDK', () => {
 		expect(emailButton.disabled).toBe(false);
 		root.querySelector('.receipt-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(receipt).toHaveBeenCalledWith(expect.objectContaining({
-			status: 'sent', sessionId: 'audit_123', email: 'respondent@example.com'
+			status: 'sent', recordId: 'audit_123', email: 'respondent@example.com'
 		})));
 		expect(root.querySelector('.receipt-status').textContent).toContain('respondent@example.com');
 		const receiptRequest = JSON.parse(fetch.mock.calls[4][1].body);
 		expect(receiptRequest).toEqual({
-			action: 'email_receipt', formRef: 'form_1', sessionId: 'audit_123', email: 'respondent@example.com'
+			action: 'email_receipt', flowRef: 'flow_1', recordId: 'audit_123', email: 'respondent@example.com'
 		});
 		vi.useRealTimers();
 	});

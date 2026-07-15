@@ -19,9 +19,9 @@
 		<script>
 			ProseID.mount('#proseid-form', {
 				apiKey: 'YOUR_PROSEID_PUBLISHABLE_KEY',
-				form: 'YOUR_PUBLISHER/YOUR_FORM',
+				flow: 'YOUR_PUBLISHER/YOUR_FLOW',
 				apiBase: 'http://localhost:5173',
-				onComplete(result) { console.log('Audit record:', result.sessionId); }
+				onComplete(result) { console.log('Audit record:', result.recordId); }
 			});
 		</script>
 	</body>

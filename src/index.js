@@ -9,15 +9,15 @@ export function mount(target, options) {
 	return new ProseIDForm(target, options);
 }
 
-/** Mount the server-validated built-in field gallery without publishing a form or creating a bill. */
+/** Mount the server-validated built-in field gallery without publishing a Flow or creating a bill. */
 export function mountTest(target, options) {
 	return new ProseIDForm(target, { ...options, testMode: true });
 }
 
 export function mountAll(defaults = {}) {
-	return [...document.querySelectorAll('[data-proseid-form]')].map((element) => mount(element, {
+	return [...document.querySelectorAll('[data-proseid-flow]')].map((element) => mount(element, {
 		...defaults,
-		form: element.getAttribute('data-proseid-form'),
+		flow: element.getAttribute('data-proseid-flow'),
 		apiKey: element.getAttribute('data-proseid-key') || defaults.apiKey,
 		apiBase: element.getAttribute('data-proseid-api') || defaults.apiBase
 	}));
