@@ -2,7 +2,7 @@
 
 Embed a published ProseID Standard Form Flow inside a customer website without shipping the ProseID validation engine or trusting the host page. The SDK renders the fields in an isolated Shadow DOM, sends respondent changes to ProseID for remote validation, and enables submission only when the pinned schema is ready.
 
-Final submission is not a client-side “success” flag. ProseID authoritatively re-runs the schema, debits the publisher once, encrypts the responses, creates the normal encrypted record and signed proof, then performs the form’s email/webhook delivery.
+Final submission is not a client-side “success” flag. ProseID authoritatively re-runs the schema, debits the publisher once, encrypts the responses, creates the normal encrypted record and signed proof, then performs the Flow's email/webhook delivery.
 
 ## Why use the SDK instead of an iframe?
 
