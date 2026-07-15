@@ -24,7 +24,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/npm/@proseid/js-sdk@0.5.0/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@proseid/js-sdk@0.6.0/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -117,8 +117,9 @@ email is unavailable because no record is stored and no real message is sent.
 ## Built-in integration test
 
 Use `mountTest` before publishing a schema. It loads ProseID's server-hosted field gallery with text,
-number, yes/no, select, date, currency, confirmation, and conditional fields. Validation reaches the
-real ProseID engine, but completion is simulated: nothing is stored, delivered, or billed.
+number, yes/no, select, date, currency, confirmation, field information, placeholders, metadata, and
+conditional UI messages. Validation reaches the real ProseID engine, but completion is simulated:
+nothing is stored, delivered, or billed.
 
 ```js
 import { mountTest } from '@proseid/js-sdk';
@@ -167,11 +168,19 @@ npm run build
 Serve `examples/basic` over HTTP and add its exact localhost origin to the selected ProseID Flow.
 Change `YOUR_PROSEID_PUBLISHABLE_KEY` and `YOUR_PUBLISHER/YOUR_FLOW` in the example before loading it.
 `examples/test` needs only a publishable key because the built-in field gallery does not require a published
-schema or a form origin allow-list.
+schema or a Flow origin allow-list.
 
-## Signing boundary
+## Flow and signing support
 
-The current API returns `nextAction: null`. A future signed Flow can return a provider action without changing the renderer’s validation or audit flow. Pass an adapter with `sign(nextAction, context)` when UIP is live; the SDK will delegate the provider interaction rather than embedding provider-specific logic into the Standard Form renderer.
+The JavaScript SDK currently embeds **Standard Form Flows**. Guided Assessments and Determinations
+remain available through their hosted ProseID Flow pages; the embed API rejects them rather than
+rendering the wrong interaction.
+
+Unsigned and basic-signature Standard Forms are supported. For a basic signature, the SDK collects
+the respondent's typed legal name and explicit acknowledgement immediately before completion, then
+sends that evidence through the normal encrypted record pipeline. The provider-neutral
+`signingAdapter` boundary remains available for a future UIP signing action without coupling the
+renderer to UIP.
 
 ## Licence
 

@@ -3,8 +3,8 @@ import { mount, mountTest, THEME_NAMES, VERSION } from '../src/index.js';
 
 const manifest = {
 	ok: true,
-	apiVersion: '2026-07-12',
-	flow: { ref: 'flow_1', title: 'Client intake', description: 'Complete this record.', schemaId: 'schema_1', schemaVersion: '1.0.0' },
+	apiVersion: '2026-07-15',
+	flow: { ref: 'flow_1', flowType: 'form', title: 'Client intake', description: 'Complete this record.', schemaId: 'schema_1', schemaVersion: '1.0.0' },
 	publisher: { slug: 'acme', name: 'Acme Legal', logo: null, verified: true },
 	branding: { proseid: { name: 'ProseID', logo: 'https://proseid.com/icon-192.png', url: 'https://proseid.com' } },
 	presentation: { attribution: 'full', whiteLabel: false, completionMicrons: 200, surchargeMicrons: 0 },
@@ -37,6 +37,58 @@ describe('ProseID SDK', () => {
 		expect(root.textContent).toContain('Acme Legal');
 		expect(root.textContent).toContain('Verified by');
 		expect(root.querySelector('button[type="submit"]').disabled).toBe(true);
+	});
+
+	it('refuses a non-form Flow instead of rendering the wrong interaction', async () => {
+		const fetch = vi.fn().mockImplementationOnce(() => response({
+			...manifest,
+			flow: { ...manifest.flow, flowType: 'guided_assessment' }
+		}));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		await expect(instance.ready).rejects.toMatchObject({ code: 'flow_type_not_supported' });
+		expect(document.querySelector('#form').shadowRoot.textContent).toContain('Only Standard Form Flows');
+		expect(fetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('renders metadata, field information, placeholders, constraints and resolved UI state', async () => {
+		const richManifest = {
+			...manifest,
+			schema: {
+				metadata: {
+					jurisdictions: ['SE', 'EU'],
+					legal_references: [{ instrument: 'Example Act', provision: 'Section 2', source_url: 'https://example.com/act' }]
+				},
+				definitions: {
+					full_name: {
+						type: 'string', label: 'Full name', placeholder: 'Ada Lovelace', info: 'Use your legal name.',
+						min_length: 2, max_length: 160, pattern: '.+'
+					},
+					country: { type: 'select', label: 'Country', placeholder: 'Choose a country', options: ['Sweden'] }
+				}
+			}
+		};
+		const resolved = {
+			...richManifest.schema.definitions,
+			full_name: { ...richManifest.schema.definitions.full_name, required: true, ui_message: 'Enter the name shown on your identification.' }
+		};
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(richManifest))
+			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: resolved, issues: [] }));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		const name = root.querySelector('input[name="full_name"]');
+		expect(name.placeholder).toBe('Ada Lovelace');
+		expect(name.minLength).toBe(2);
+		expect(name.maxLength).toBe(160);
+		expect(name.pattern).toBe('.+');
+		expect(name.required).toBe(true);
+		expect(root.querySelector('.info-popover').textContent).toBe('Use your legal name.');
+		expect(root.querySelector('.field-message').textContent).toContain('identification');
+		expect(root.querySelector('select[name="country"] option').textContent).toBe('Choose a country');
+		expect(root.querySelector('.schema-details').textContent).toContain('Example Act');
+		expect(root.querySelector('.schema-details').textContent).toContain('Sweden');
+		expect(root.querySelector('.schema-details').textContent).toContain('SE');
 	});
 
 	it('applies bounded appearance, theme and branding overrides', async () => {
@@ -159,5 +211,41 @@ describe('ProseID SDK', () => {
 			action: 'email_receipt', flowRef: 'flow_1', recordId: 'audit_123', email: 'respondent@example.com'
 		});
 		vi.useRealTimers();
+	});
+
+	it('collects basic signature evidence without requesting a provider signing action', async () => {
+		const signedManifest = {
+			...manifest,
+			capabilities: {
+				...manifest.capabilities,
+				signing: { requested: true, available: true, provider: null, mode: 'basic' }
+			}
+		};
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(signedManifest))
+			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: signedManifest.schema.definitions, issues: [] }))
+			.mockImplementationOnce(() => response({ ok: true, status: 'completed', recordId: 'signed_record', duplicate: false, delivered: { email: false, webhook: false }, nextAction: null }));
+		const complete = vi.fn();
+		const signing = vi.fn();
+		const instance = mount('#form', {
+			apiKey: API_KEY, flow: 'acme/intake', fetch, onComplete: complete, onSigning: signing
+		});
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+		await vi.waitFor(() => expect(root.querySelector('.signature-dialog')).not.toBeNull());
+		const name = root.querySelector('.signature-input');
+		const checkbox = root.querySelector('.signature-acknowledgement input');
+		name.value = 'Ada Lovelace';
+		checkbox.checked = true;
+		root.querySelector('.signature-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+		await vi.waitFor(() => expect(complete).toHaveBeenCalledWith(expect.objectContaining({ recordId: 'signed_record' })));
+		expect(signing).toHaveBeenCalledWith(expect.objectContaining({
+			mode: 'basic', signature: { kind: 'basic', typed_name: 'Ada Lovelace', acknowledged: true }
+		}));
+		expect(fetch).toHaveBeenCalledTimes(3);
+		const completionRequest = JSON.parse(fetch.mock.calls[2][1].body);
+		expect(completionRequest.action).toBe('complete');
+		expect(completionRequest.signature).toEqual({ kind: 'basic', typed_name: 'Ada Lovelace', acknowledged: true });
 	});
 });

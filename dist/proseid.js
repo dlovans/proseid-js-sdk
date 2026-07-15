@@ -15,9 +15,12 @@ var messages = {
   embed_origin_not_allowed: "This website is not allowed to use this Flow.",
   flow_not_found: "This Flow is no longer available.",
   flow_unpublished: "This Flow is no longer available.",
+  flow_type_not_supported: "Only Standard Form Flows can be embedded with the JavaScript SDK.",
   insufficient_balance: "This Flow is temporarily unavailable. Contact its publisher.",
   rate_limited: "Too many requests. Wait a moment and try again.",
   validation_failed: "Check the highlighted fields and try again.",
+  signature_required: "A signature is required before this Flow can be completed.",
+  invalid_signature: "The signature details are incomplete or invalid.",
   invalid_email: "Enter a valid email address.",
   receipt_not_available: "This completed record is not available for email delivery.",
   email_not_configured: "Email delivery is temporarily unavailable.",
@@ -30,7 +33,7 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.5.0";
+var VERSION = "0.6.0";
 
 // src/presentation.js
 var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
@@ -199,6 +202,18 @@ button, input, select, textarea { font: inherit; }
 .proseid-brand.compact span { display: none; }
 h1 { max-width: 22ch; margin: 0; font: 500 clamp(25px, 5vw, 35px)/1.04 Georgia, "Times New Roman", serif; letter-spacing: -.025em; }
 .description { max-width: 62ch; margin: 12px 0 0; color: var(--proseid-copy); font-size: 14px; line-height: 1.65; }
+.schema-details { margin-top: 17px; border-top: 1px solid var(--proseid-rule); padding-top: 14px; }
+.schema-details summary { width: fit-content; color: var(--proseid-copy); font-size: 11px; font-weight: 650; cursor: pointer; }
+.schema-details summary::marker { color: var(--proseid-accent); }
+.schema-details-content { display: grid; gap: 13px; margin-top: 13px; }
+.schema-summary { margin: 0; color: var(--proseid-copy); font-size: 12px; line-height: 1.55; }
+.metadata-group { display: grid; gap: 6px; }
+.metadata-label { color: var(--proseid-muted); font-size: 9px; font-weight: 720; letter-spacing: .09em; text-transform: uppercase; }
+.jurisdiction-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.jurisdiction { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--proseid-rule); border-radius: 999px; background: var(--proseid-surface); padding: 4px 8px; color: var(--proseid-copy); font-size: 10px; line-height: 1.2; }
+.jurisdiction code { color: var(--proseid-muted); font: 9px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.reference-list { display: grid; gap: 6px; margin: 0; padding-left: 17px; color: var(--proseid-copy); font-size: 11px; line-height: 1.45; }
+.reference-list a { color: var(--proseid-accent-ink); text-underline-offset: 2px; }
 .status { display: flex; align-items: center; gap: 9px; margin-top: 20px; color: var(--proseid-muted); font-size: 11px; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #aeb4b0; }
 .status[data-state="checking"] .status-dot { background: var(--proseid-accent); animation: pulse 1s ease-in-out infinite; }
@@ -210,9 +225,19 @@ h1 { max-width: 22ch; margin: 0; font: 500 clamp(25px, 5vw, 35px)/1.04 Georgia, 
 .fields { display: grid; gap: var(--proseid-field-gap); }
 .field { display: grid; gap: 7px; }
 .field[hidden] { display: none; }
+.label-row, .check-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.check-row .check { flex: 1 1 auto; }
 .label { color: var(--proseid-ink); font-size: 12px; font-weight: 650; }
 .required { color: var(--proseid-accent-ink); }
+.required[hidden] { display: none; }
+.info-tip { position: relative; z-index: 1; flex: 0 0 auto; }
+.info-trigger { display: grid; width: 19px; height: 19px; place-items: center; border: 1px solid var(--proseid-rule); border-radius: 50%; outline: 0; background: var(--proseid-surface); padding: 0; color: var(--proseid-muted); font: 700 11px/1 Georgia, serif; cursor: help; }
+.info-trigger:focus-visible { border-color: var(--proseid-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--proseid-accent) 13%, transparent); }
+.info-popover { position: absolute; right: 0; bottom: calc(100% + 8px); width: min(260px, calc(100vw - 60px)); border: 1px solid var(--proseid-rule); border-radius: 9px; background: var(--proseid-ink); box-shadow: 0 12px 35px rgba(0, 0, 0, .2); padding: 9px 10px; color: var(--proseid-surface); font-size: 10px; font-weight: 500; line-height: 1.5; opacity: 0; pointer-events: none; transform: translateY(3px); transition: opacity .14s ease, transform .14s ease; }
+.info-tip:hover .info-popover, .info-tip:focus-within .info-popover { opacity: 1; transform: translateY(0); }
 .hint { color: var(--proseid-muted); font-size: 11px; line-height: 1.45; }
+.field-message { border-left: 2px solid var(--proseid-accent); padding-left: 9px; color: var(--proseid-copy); font-size: 11px; line-height: 1.5; }
+.field-message[hidden] { display: none; }
 .control { width: 100%; min-height: 44px; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-control-radius); outline: none; background: var(--proseid-surface); padding: 10px 12px; color: var(--proseid-ink); font-size: 14px; transition: border-color .16s ease, box-shadow .16s ease; }
 .control:focus { border-color: var(--proseid-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--proseid-accent) 13%, transparent); }
 .control[aria-invalid="true"] { border-color: var(--proseid-accent); }
@@ -230,6 +255,23 @@ textarea.control { min-height: 96px; resize: vertical; }
 .submit:hover:not(:disabled) { filter: brightness(.94); transform: translateY(-1px); }
 .submit:focus-visible { outline: 2px solid var(--proseid-ink); outline-offset: 3px; }
 .submit:disabled { cursor: not-allowed; filter: grayscale(.25); opacity: .48; }
+.signature-overlay { position: fixed; z-index: 2147483647; inset: 0; display: grid; place-items: center; background: rgba(18, 20, 19, .62); padding: 20px; }
+.signature-dialog { width: min(480px, 100%); max-height: calc(100vh - 40px); overflow: auto; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); box-shadow: 0 28px 90px rgba(0, 0, 0, .28); padding: 26px; }
+.signature-eyebrow { margin-bottom: 9px; color: var(--proseid-accent-ink); font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.signature-dialog h2 { margin: 0; color: var(--proseid-ink); font: 500 28px/1.08 Georgia, "Times New Roman", serif; }
+.signature-help { margin: 9px 0 0; color: var(--proseid-copy); font-size: 12px; line-height: 1.6; }
+.signature-form { display: grid; gap: 10px; margin-top: 21px; }
+.signature-label { color: var(--proseid-ink); font-size: 11px; font-weight: 650; }
+.signature-input { width: 100%; min-height: 44px; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-control-radius); outline: 0; background: var(--proseid-surface); padding: 10px 12px; color: var(--proseid-ink); }
+.signature-input:focus { border-color: var(--proseid-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--proseid-accent) 13%, transparent); }
+.signature-acknowledgement { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 10px; margin-top: 5px; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-control-radius); padding: 12px; color: var(--proseid-copy); font-size: 10px; line-height: 1.55; cursor: pointer; }
+.signature-acknowledgement input { width: 17px; height: 17px; margin: 1px 0 0; accent-color: var(--proseid-accent); }
+.signature-error { min-height: 15px; margin: 0; color: var(--proseid-accent-ink); font-size: 10px; line-height: 1.45; }
+.signature-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 4px; }
+.signature-cancel, .signature-confirm { min-height: 40px; border-radius: var(--proseid-button-radius); padding: 9px 14px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.signature-cancel { border: 1px solid var(--proseid-rule); background: var(--proseid-surface); color: var(--proseid-copy); }
+.signature-confirm { border: 0; background: var(--proseid-accent); color: var(--proseid-submit-ink); }
+.signature-cancel:focus-visible, .signature-confirm:focus-visible { outline: 2px solid var(--proseid-ink); outline-offset: 2px; }
 .skeleton { padding: 28px; }
 .skeleton-line { height: 12px; margin: 10px 0; border-radius: 8px; background: linear-gradient(90deg, var(--proseid-canvas), var(--proseid-skeleton-glow), var(--proseid-canvas)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 .skeleton-line:nth-child(2) { width: 62%; height: 30px; margin-top: 28px; }
@@ -276,8 +318,10 @@ textarea.control { min-height: 96px; resize: vertical; }
 	.proseid-brand span { display: none; }
 	.receipt-row { grid-template-columns: 1fr; }
 	.receipt-button { width: 100%; }
+	.signature-dialog { padding: 22px 18px; }
+	.signature-actions { display: grid; grid-template-columns: 1fr 1fr; }
 }
-@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button, .info-popover { animation: none; transition: none; } }
 `;
 
 // src/i18n.js
@@ -286,6 +330,11 @@ var dictionaries = {
     verifiedPublisher: "\u2713 Verified publisher",
     verifiedBy: "Verified by",
     select: "Select\u2026",
+    schemaDetails: "Schema details",
+    jurisdictions: "Applies in",
+    legalReferences: "Legal references",
+    legalReference: "Legal reference",
+    moreInformation: (label) => `More information about ${label}`,
     idle: "Enter your details to check this form",
     checking: "Checking your answers\u2026",
     ready: "Ready to submit",
@@ -313,6 +362,17 @@ var dictionaries = {
     receiptError: "The copy could not be sent. Check the email and try again.",
     receiptRateLimited: "Too many email attempts. Wait a few minutes and try again.",
     receiptTest: "Email copies are not sent in test mode.",
+    basicSignature: "Basic electronic signature",
+    signatureTitle: "Sign and submit",
+    signatureHelp: "Type your full legal name and confirm your intent before this record is completed.",
+    signatureName: "Full legal name",
+    signaturePlaceholder: "Your full legal name",
+    signatureAcknowledgement: "I intend to sign this completion by typing my name. I understand this is a basic electronic signature, not a qualified electronic signature; its legal effect depends on the document, intent, and applicable law.",
+    signatureNameError: "Enter at least two characters for your full legal name.",
+    signatureAcknowledgementError: "Confirm that you intend to sign before continuing.",
+    signAndSubmit: "Sign & submit",
+    cancel: "Cancel",
+    awaitingSignature: "Waiting for your signature\u2026",
     formUnavailable: "Flow unavailable",
     required: (label) => `${label} is required.`,
     confirm: "Please confirm to continue.",
@@ -326,6 +386,11 @@ var dictionaries = {
     verifiedPublisher: "\u2713 Verifierad utgivare",
     verifiedBy: "Verifierat av",
     select: "V\xE4lj\u2026",
+    schemaDetails: "Schemadetaljer",
+    jurisdictions: "G\xE4ller i",
+    legalReferences: "R\xE4ttsliga h\xE4nvisningar",
+    legalReference: "R\xE4ttslig h\xE4nvisning",
+    moreInformation: (label) => `Mer information om ${label}`,
     idle: "Fyll i uppgifterna f\xF6r att kontrollera formul\xE4ret",
     checking: "Kontrollerar dina svar\u2026",
     ready: "Redo att skicka",
@@ -353,6 +418,17 @@ var dictionaries = {
     receiptError: "Kopian kunde inte skickas. Kontrollera adressen och f\xF6rs\xF6k igen.",
     receiptRateLimited: "F\xF6r m\xE5nga mejlf\xF6rs\xF6k. V\xE4nta n\xE5gra minuter och f\xF6rs\xF6k igen.",
     receiptTest: "E-postkopior skickas inte i testl\xE4get.",
+    basicSignature: "Enkel elektronisk signatur",
+    signatureTitle: "Signera och skicka",
+    signatureHelp: "Skriv ditt fullst\xE4ndiga juridiska namn och bekr\xE4fta din avsikt innan posten slutf\xF6rs.",
+    signatureName: "Fullst\xE4ndigt juridiskt namn",
+    signaturePlaceholder: "Ditt fullst\xE4ndiga juridiska namn",
+    signatureAcknowledgement: "Jag avser att signera denna inl\xE4mning genom att skriva mitt namn. Jag f\xF6rst\xE5r att detta \xE4r en enkel elektronisk signatur, inte en kvalificerad elektronisk signatur, och att dess r\xE4ttsverkan beror p\xE5 dokumentet, avsikten och till\xE4mplig lag.",
+    signatureNameError: "Ange minst tv\xE5 tecken f\xF6r ditt fullst\xE4ndiga juridiska namn.",
+    signatureAcknowledgementError: "Bekr\xE4fta att du avser att signera innan du forts\xE4tter.",
+    signAndSubmit: "Signera och skicka",
+    cancel: "Avbryt",
+    awaitingSignature: "V\xE4ntar p\xE5 din signatur\u2026",
     formUnavailable: "Fl\xF6det \xE4r inte tillg\xE4ngligt",
     required: (label) => `${label} \xE4r obligatoriskt.`,
     confirm: "Bekr\xE4fta f\xF6r att forts\xE4tta.",
@@ -462,6 +538,17 @@ var friendlyIssue = (issue, label, copy) => {
 };
 var randomRecordId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll("-", "") || Math.random().toString(36).slice(2).padEnd(16, "0")}`;
 var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+var jurisdictionName = (value, locale = "en") => {
+  const code = String(value || "").trim().toUpperCase();
+  const language = String(locale || "en").toLowerCase().split("-")[0];
+  const supranational = language === "sv" ? { GLOBAL: "Globalt", EU: "Europeiska unionen", EEA: "Europeiska ekonomiska samarbetsomr\xE5det" } : { GLOBAL: "Global", EU: "European Union", EEA: "European Economic Area" };
+  if (supranational[code]) return supranational[code];
+  try {
+    return new Intl.DisplayNames([locale], { type: "region" }).of(code) || code;
+  } catch {
+    return code;
+  }
+};
 var ProseIDForm = class {
   constructor(target, options) {
     this.target = typeof target === "string" ? document.querySelector(target) : target;
@@ -535,6 +622,12 @@ var ProseIDForm = class {
     try {
       this.manifest = await this.api.manifest();
       if (this.destroyed) return this;
+      if (this.manifest.flow?.flowType && this.manifest.flow.flowType !== "form") {
+        throw new ProseIDError(
+          "flow_type_not_supported",
+          "Only Standard Form Flows can be embedded with the JavaScript SDK."
+        );
+      }
       this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
       this.api.setAttribution(this.attribution);
       if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
@@ -589,6 +682,54 @@ var ProseIDForm = class {
     link.append(img);
     return link;
   }
+  renderSchemaDetails() {
+    const metadata = this.manifest.schema?.metadata || {};
+    const description = String(metadata.description || "").trim();
+    const jurisdictions = Array.isArray(metadata.jurisdictions) ? metadata.jurisdictions.filter(Boolean) : [];
+    const references = Array.isArray(metadata.legal_references) ? metadata.legal_references.filter(Boolean) : [];
+    if (!description && jurisdictions.length === 0 && references.length === 0) return null;
+    const details = text("details", "schema-details");
+    details.append(text("summary", "", this.copy.schemaDetails));
+    const content = text("div", "schema-details-content");
+    if (description && description !== this.manifest.flow.description) {
+      content.append(text("p", "schema-summary", description));
+    }
+    if (jurisdictions.length) {
+      const group = text("div", "metadata-group");
+      group.append(text("div", "metadata-label", this.copy.jurisdictions));
+      const values = text("div", "jurisdiction-list");
+      for (const jurisdiction of jurisdictions) {
+        const code = String(jurisdiction).toUpperCase();
+        const chip = text("span", "jurisdiction", jurisdictionName(code, this.options.locale));
+        chip.append(text("code", "", code));
+        values.append(chip);
+      }
+      group.append(values);
+      content.append(group);
+    }
+    if (references.length) {
+      const group = text("div", "metadata-group");
+      group.append(text("div", "metadata-label", this.copy.legalReferences));
+      const list = text("ul", "reference-list");
+      for (const reference of references) {
+        const item = document.createElement("li");
+        const label = [reference.instrument, reference.provision].filter(Boolean).join(" \xB7 ") || this.copy.legalReference;
+        const source = safeLogoUrl(reference.source_url);
+        if (source) {
+          const link = text("a", "", label);
+          link.href = source;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          item.append(link);
+        } else item.textContent = label;
+        list.append(item);
+      }
+      group.append(list);
+      content.append(group);
+    }
+    details.append(content);
+    return details;
+  }
   renderForm() {
     this.shadow.replaceChildren();
     this.installStyles();
@@ -602,6 +743,8 @@ var ProseIDForm = class {
     else brands.classList.add("publisher-only");
     head.append(brands, text("h1", "", this.manifest.flow.title));
     if (this.manifest.flow.description) head.append(text("p", "description", this.manifest.flow.description));
+    const schemaDetails = this.renderSchemaDetails();
+    if (schemaDetails) head.append(schemaDetails);
     this.statusNode = text("div", "status");
     this.statusNode.dataset.state = "idle";
     this.statusNode.append(text("span", "status-dot"), text("span", "status-copy", this.copy.idle));
@@ -637,22 +780,46 @@ var ProseIDForm = class {
     const labelText = definition.label || name.replaceAll("_", " ");
     const id = `proseid-${name.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
     let control;
+    const required = text("span", "required", " *");
+    required.hidden = definition.required !== true;
+    const infoId = `${id}-info`;
+    const messageId = `${id}-message`;
+    const hintId = `${id}-hint`;
+    let info = null;
+    if (definition.info) {
+      info = text("span", "info-tip");
+      const trigger = text("button", "info-trigger", "i");
+      trigger.type = "button";
+      trigger.setAttribute("aria-label", this.copy.moreInformation(labelText));
+      trigger.setAttribute("aria-describedby", infoId);
+      const popover = text("span", "info-popover", definition.info);
+      popover.id = infoId;
+      popover.setAttribute("role", "tooltip");
+      info.append(trigger, popover);
+    }
     if (["boolean", "attestation"].includes(definition.type)) {
       const label = text("label", "check");
       control = document.createElement("input");
       control.type = "checkbox";
       control.checked = Boolean(this.values[name]);
       const copy = text("span", "check-copy", definition.statement || labelText);
+      copy.append(required);
       label.append(control, copy);
-      wrap.append(label);
+      const row = text("div", "check-row");
+      row.append(label);
+      if (info) row.append(info);
+      wrap.append(row);
     } else {
       const label = text("label", "label", labelText);
       label.htmlFor = id;
-      if (definition.required) label.append(text("span", "required", " *"));
-      wrap.append(label);
+      label.append(required);
+      const row = text("div", "label-row");
+      row.append(label);
+      if (info) row.append(info);
+      wrap.append(row);
       if (definition.type === "select") {
         control = document.createElement("select");
-        const empty = text("option", "", this.copy.select);
+        const empty = text("option", "", definition.placeholder || this.copy.select);
         empty.value = "";
         control.append(empty);
         for (const option of definition.options || []) {
@@ -671,14 +838,27 @@ var ProseIDForm = class {
       control.id = id;
       control.className = "control";
       control.value = this.values[name] ?? "";
-      if (definition.placeholder) control.placeholder = definition.placeholder;
+      if (definition.placeholder && definition.type !== "select") control.placeholder = definition.placeholder;
       if (definition.min != null) control.min = definition.min;
       if (definition.max != null) control.max = definition.max;
+      if (definition.min_length != null) control.minLength = definition.min_length;
+      if (definition.max_length != null) control.maxLength = definition.max_length;
+      if (definition.pattern) control.pattern = definition.pattern;
       wrap.append(control);
-      if (definition.description || definition.help) wrap.append(text("span", "hint", definition.description || definition.help));
+      if (definition.description || definition.help) {
+        const hint = text("span", "hint", definition.description || definition.help);
+        hint.id = hintId;
+        wrap.append(hint);
+      }
     }
     control.name = name;
-    control.setAttribute("aria-describedby", `${id}-error`);
+    control.required = definition.required === true;
+    const message = text("span", "field-message", definition.ui_message || "");
+    message.id = messageId;
+    message.hidden = !definition.ui_message;
+    wrap.append(message);
+    const describedBy = [definition.info ? infoId : "", definition.description || definition.help ? hintId : "", messageId, `${id}-error`].filter(Boolean);
+    control.setAttribute("aria-describedby", describedBy.join(" "));
     control.addEventListener("input", () => this.change(name, definition, control));
     control.addEventListener("change", () => this.change(name, definition, control, true));
     control.addEventListener("blur", () => {
@@ -690,7 +870,7 @@ var ProseIDForm = class {
     error.id = `${id}-error`;
     error.setAttribute("aria-live", "polite");
     wrap.append(error);
-    this.fields.set(name, { wrap, control, error, definition, label: labelText });
+    this.fields.set(name, { wrap, control, error, message, required, definition, label: labelText });
     return wrap;
   }
   change(name, definition, control, immediate = false) {
@@ -736,6 +916,11 @@ var ProseIDForm = class {
       const field = this.fields.get(name);
       if (!field) continue;
       field.wrap.hidden = resolved?.visible === false;
+      const required = resolved?.required === true;
+      field.control.required = required;
+      field.required.hidden = !required;
+      field.message.textContent = resolved?.ui_message || "";
+      field.message.hidden = !resolved?.ui_message;
     }
   }
   shouldShow(issue) {
@@ -766,6 +951,74 @@ var ProseIDForm = class {
     this.statusNode.dataset.state = state;
     this.statusNode.querySelector(".status-copy").textContent = copy;
   }
+  collectBasicSignature() {
+    return new Promise((resolve) => {
+      const overlay = text("div", "signature-overlay");
+      const dialog = text("section", "signature-dialog");
+      dialog.setAttribute("role", "dialog");
+      dialog.setAttribute("aria-modal", "true");
+      dialog.setAttribute("aria-labelledby", "proseid-signature-title");
+      const eyebrow = text("div", "signature-eyebrow", this.copy.basicSignature);
+      const title = text("h2", "", this.copy.signatureTitle);
+      title.id = "proseid-signature-title";
+      const help = text("p", "signature-help", this.copy.signatureHelp);
+      const form = document.createElement("form");
+      form.className = "signature-form";
+      form.noValidate = true;
+      const nameLabel = text("label", "signature-label", this.copy.signatureName);
+      nameLabel.htmlFor = "proseid-signature-name";
+      const name = document.createElement("input");
+      name.id = "proseid-signature-name";
+      name.className = "signature-input";
+      name.type = "text";
+      name.autocomplete = "name";
+      name.maxLength = 160;
+      name.required = true;
+      name.placeholder = this.copy.signaturePlaceholder;
+      const acknowledgement = text("label", "signature-acknowledgement");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.required = true;
+      acknowledgement.append(checkbox, text("span", "", this.copy.signatureAcknowledgement));
+      const error = text("p", "signature-error");
+      error.setAttribute("role", "alert");
+      const actions = text("div", "signature-actions");
+      const cancel = text("button", "signature-cancel", this.copy.cancel);
+      cancel.type = "button";
+      const confirm = text("button", "signature-confirm", this.copy.signAndSubmit);
+      confirm.type = "submit";
+      actions.append(cancel, confirm);
+      form.append(nameLabel, name, acknowledgement, error, actions);
+      dialog.append(eyebrow, title, help, form);
+      overlay.append(dialog);
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        this.signatureCancel = null;
+        overlay.remove();
+        resolve(value);
+      };
+      this.signatureCancel = () => finish(null);
+      cancel.addEventListener("click", () => finish(null));
+      overlay.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") finish(null);
+      });
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const typedName = name.value.trim();
+        if (typedName.length < 2 || !checkbox.checked) {
+          error.textContent = typedName.length < 2 ? this.copy.signatureNameError : this.copy.signatureAcknowledgementError;
+          if (typedName.length < 2) name.focus();
+          else checkbox.focus();
+          return;
+        }
+        finish({ kind: "basic", typed_name: typedName, acknowledged: true });
+      });
+      this.shadow.append(overlay);
+      name.focus();
+    });
+  }
   async submit(event) {
     event.preventDefault();
     if (this.destroyed) return;
@@ -782,9 +1035,22 @@ var ProseIDForm = class {
     try {
       let signature = null;
       if (this.manifest.capabilities?.signing?.requested) {
-        const nextAction = await this.api.prepareSigning(this.manifest.flow.ref, this.recordId, this.values);
-        signature = await this.signing.handle(nextAction, { manifest: this.manifest, values: { ...this.values } });
-        this.emit("signing", { nextAction, signature });
+        const mode = this.manifest.capabilities.signing.mode;
+        if (mode === "basic") {
+          this.setStatus("checking", this.copy.awaitingSignature);
+          signature = await this.collectBasicSignature();
+          if (!signature) {
+            this.submitButton.disabled = !this.valid;
+            this.submitButton.textContent = this.options.submitLabel || this.copy.submit;
+            this.setStatus("ready", this.copy.ready);
+            return;
+          }
+          this.emit("signing", { mode, signature });
+        } else {
+          const nextAction = await this.api.prepareSigning(this.manifest.flow.ref, this.recordId, this.values);
+          signature = await this.signing.handle(nextAction, { manifest: this.manifest, values: { ...this.values } });
+          this.emit("signing", { mode, nextAction, signature });
+        }
       }
       const result = await this.api.complete(this.manifest.flow.ref, this.recordId, this.values, signature);
       this.renderComplete(result);
@@ -902,6 +1168,7 @@ var ProseIDForm = class {
     this.destroyed = true;
     clearTimeout(this.validationTimer);
     this.validationAbort?.abort();
+    this.signatureCancel?.();
     this.shadow.replaceChildren();
     this.fields.clear();
   }

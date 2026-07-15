@@ -27,12 +27,12 @@
 		<script>
 			const manifest = {
 				ok: true,
-				apiVersion: '2026-07-12',
-				flow: { ref: 'preview', title: 'Supplier assurance record', description: 'Document the supplier, review scope, and accountable declaration before the engagement proceeds.', schemaId: 'acme/supplier-assurance', schemaVersion: '1.0.0' },
+				apiVersion: '2026-07-15',
+				flow: { ref: 'preview', flowType: 'form', title: 'Supplier assurance record', description: 'Document the supplier, review scope, and accountable declaration before the engagement proceeds.', schemaId: 'acme/supplier-assurance', schemaVersion: '1.0.0' },
 				publisher: { slug: 'acme', name: 'Northstar Compliance', logo: null, verified: true },
 				branding: { proseid: { name: 'ProseID', logo: 'http://127.0.0.1:8091/icon-placeholder.svg', url: 'https://proseid.com' } },
-				schema: { definitions: {
-					supplier_name: { type: 'string', label: 'Supplier name', required: true, placeholder: 'Registered organisation name' },
+				schema: { metadata: { jurisdictions: ['SE', 'EU'], legal_references: [{ instrument: 'Supplier Assurance Act', provision: 'Section 4', source_url: 'https://example.com/act' }] }, definitions: {
+					supplier_name: { type: 'string', label: 'Supplier name', required: true, placeholder: 'Registered organisation name', info: 'Use the name in the supplier’s official registration.' },
 					jurisdiction: { type: 'select', label: 'Primary jurisdiction', required: true, options: ['Sweden', 'United Kingdom', 'European Union'] },
 					review_date: { type: 'date', label: 'Review date', required: true },
 					approved: { type: 'attestation', statement: 'I confirm this information is complete and ready for review.', required: true }

@@ -29,6 +29,16 @@ const friendlyIssue = (issue, label, copy) => {
 
 const randomRecordId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll('-', '') || Math.random().toString(36).slice(2).padEnd(16, '0')}`;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const jurisdictionName = (value, locale = 'en') => {
+	const code = String(value || '').trim().toUpperCase();
+	const language = String(locale || 'en').toLowerCase().split('-')[0];
+	const supranational = language === 'sv'
+		? { GLOBAL: 'Globalt', EU: 'Europeiska unionen', EEA: 'Europeiska ekonomiska samarbetsområdet' }
+		: { GLOBAL: 'Global', EU: 'European Union', EEA: 'European Economic Area' };
+	if (supranational[code]) return supranational[code];
+	try { return new Intl.DisplayNames([locale], { type: 'region' }).of(code) || code; }
+	catch { return code; }
+};
 
 export class ProseIDForm {
 	constructor(target, options) {
@@ -108,6 +118,12 @@ export class ProseIDForm {
 		try {
 			this.manifest = await this.api.manifest();
 			if (this.destroyed) return this;
+			if (this.manifest.flow?.flowType && this.manifest.flow.flowType !== 'form') {
+				throw new ProseIDError(
+					'flow_type_not_supported',
+					'Only Standard Form Flows can be embedded with the JavaScript SDK.'
+				);
+			}
 			this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
 			this.api.setAttribution(this.attribution);
 			if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
@@ -166,6 +182,56 @@ export class ProseIDForm {
 		return link;
 	}
 
+	renderSchemaDetails() {
+		const metadata = this.manifest.schema?.metadata || {};
+		const description = String(metadata.description || '').trim();
+		const jurisdictions = Array.isArray(metadata.jurisdictions) ? metadata.jurisdictions.filter(Boolean) : [];
+		const references = Array.isArray(metadata.legal_references) ? metadata.legal_references.filter(Boolean) : [];
+		if (!description && jurisdictions.length === 0 && references.length === 0) return null;
+
+		const details = text('details', 'schema-details');
+		details.append(text('summary', '', this.copy.schemaDetails));
+		const content = text('div', 'schema-details-content');
+		if (description && description !== this.manifest.flow.description) {
+			content.append(text('p', 'schema-summary', description));
+		}
+		if (jurisdictions.length) {
+			const group = text('div', 'metadata-group');
+			group.append(text('div', 'metadata-label', this.copy.jurisdictions));
+			const values = text('div', 'jurisdiction-list');
+			for (const jurisdiction of jurisdictions) {
+				const code = String(jurisdiction).toUpperCase();
+				const chip = text('span', 'jurisdiction', jurisdictionName(code, this.options.locale));
+				chip.append(text('code', '', code));
+				values.append(chip);
+			}
+			group.append(values);
+			content.append(group);
+		}
+		if (references.length) {
+			const group = text('div', 'metadata-group');
+			group.append(text('div', 'metadata-label', this.copy.legalReferences));
+			const list = text('ul', 'reference-list');
+			for (const reference of references) {
+				const item = document.createElement('li');
+				const label = [reference.instrument, reference.provision].filter(Boolean).join(' · ') || this.copy.legalReference;
+				const source = safeLogoUrl(reference.source_url);
+				if (source) {
+					const link = text('a', '', label);
+					link.href = source;
+					link.target = '_blank';
+					link.rel = 'noopener noreferrer';
+					item.append(link);
+				} else item.textContent = label;
+				list.append(item);
+			}
+			group.append(list);
+			content.append(group);
+		}
+		details.append(content);
+		return details;
+	}
+
 	renderForm() {
 		this.shadow.replaceChildren();
 		this.installStyles();
@@ -179,6 +245,8 @@ export class ProseIDForm {
 		else brands.classList.add('publisher-only');
 		head.append(brands, text('h1', '', this.manifest.flow.title));
 		if (this.manifest.flow.description) head.append(text('p', 'description', this.manifest.flow.description));
+		const schemaDetails = this.renderSchemaDetails();
+		if (schemaDetails) head.append(schemaDetails);
 		this.statusNode = text('div', 'status');
 		this.statusNode.dataset.state = 'idle';
 		this.statusNode.append(text('span', 'status-dot'), text('span', 'status-copy', this.copy.idle));
@@ -218,22 +286,47 @@ export class ProseIDForm {
 		const id = `proseid-${name.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 		let control;
 
+		const required = text('span', 'required', ' *');
+		required.hidden = definition.required !== true;
+		const infoId = `${id}-info`;
+		const messageId = `${id}-message`;
+		const hintId = `${id}-hint`;
+		let info = null;
+		if (definition.info) {
+			info = text('span', 'info-tip');
+			const trigger = text('button', 'info-trigger', 'i');
+			trigger.type = 'button';
+			trigger.setAttribute('aria-label', this.copy.moreInformation(labelText));
+			trigger.setAttribute('aria-describedby', infoId);
+			const popover = text('span', 'info-popover', definition.info);
+			popover.id = infoId;
+			popover.setAttribute('role', 'tooltip');
+			info.append(trigger, popover);
+		}
+
 		if (['boolean', 'attestation'].includes(definition.type)) {
 			const label = text('label', 'check');
 			control = document.createElement('input');
 			control.type = 'checkbox';
 			control.checked = Boolean(this.values[name]);
 			const copy = text('span', 'check-copy', definition.statement || labelText);
+			copy.append(required);
 			label.append(control, copy);
-			wrap.append(label);
+			const row = text('div', 'check-row');
+			row.append(label);
+			if (info) row.append(info);
+			wrap.append(row);
 		} else {
 			const label = text('label', 'label', labelText);
 			label.htmlFor = id;
-			if (definition.required) label.append(text('span', 'required', ' *'));
-			wrap.append(label);
+			label.append(required);
+			const row = text('div', 'label-row');
+			row.append(label);
+			if (info) row.append(info);
+			wrap.append(row);
 			if (definition.type === 'select') {
 				control = document.createElement('select');
-				const empty = text('option', '', this.copy.select);
+				const empty = text('option', '', definition.placeholder || this.copy.select);
 				empty.value = '';
 				control.append(empty);
 				for (const option of definition.options || []) {
@@ -252,15 +345,28 @@ export class ProseIDForm {
 			control.id = id;
 			control.className = 'control';
 			control.value = this.values[name] ?? '';
-			if (definition.placeholder) control.placeholder = definition.placeholder;
+			if (definition.placeholder && definition.type !== 'select') control.placeholder = definition.placeholder;
 			if (definition.min != null) control.min = definition.min;
 			if (definition.max != null) control.max = definition.max;
+			if (definition.min_length != null) control.minLength = definition.min_length;
+			if (definition.max_length != null) control.maxLength = definition.max_length;
+			if (definition.pattern) control.pattern = definition.pattern;
 			wrap.append(control);
-			if (definition.description || definition.help) wrap.append(text('span', 'hint', definition.description || definition.help));
+			if (definition.description || definition.help) {
+				const hint = text('span', 'hint', definition.description || definition.help);
+				hint.id = hintId;
+				wrap.append(hint);
+			}
 		}
 
 		control.name = name;
-		control.setAttribute('aria-describedby', `${id}-error`);
+		control.required = definition.required === true;
+		const message = text('span', 'field-message', definition.ui_message || '');
+		message.id = messageId;
+		message.hidden = !definition.ui_message;
+		wrap.append(message);
+		const describedBy = [definition.info ? infoId : '', definition.description || definition.help ? hintId : '', messageId, `${id}-error`].filter(Boolean);
+		control.setAttribute('aria-describedby', describedBy.join(' '));
 		control.addEventListener('input', () => this.change(name, definition, control));
 		control.addEventListener('change', () => this.change(name, definition, control, true));
 		control.addEventListener('blur', () => {
@@ -272,7 +378,7 @@ export class ProseIDForm {
 		error.id = `${id}-error`;
 		error.setAttribute('aria-live', 'polite');
 		wrap.append(error);
-		this.fields.set(name, { wrap, control, error, definition, label: labelText });
+		this.fields.set(name, { wrap, control, error, message, required, definition, label: labelText });
 		return wrap;
 	}
 
@@ -329,6 +435,11 @@ export class ProseIDForm {
 			const field = this.fields.get(name);
 			if (!field) continue;
 			field.wrap.hidden = resolved?.visible === false;
+			const required = resolved?.required === true;
+			field.control.required = required;
+			field.required.hidden = !required;
+			field.message.textContent = resolved?.ui_message || '';
+			field.message.hidden = !resolved?.ui_message;
 		}
 	}
 
@@ -363,6 +474,76 @@ export class ProseIDForm {
 		this.statusNode.querySelector('.status-copy').textContent = copy;
 	}
 
+	collectBasicSignature() {
+		return new Promise((resolve) => {
+			const overlay = text('div', 'signature-overlay');
+			const dialog = text('section', 'signature-dialog');
+			dialog.setAttribute('role', 'dialog');
+			dialog.setAttribute('aria-modal', 'true');
+			dialog.setAttribute('aria-labelledby', 'proseid-signature-title');
+			const eyebrow = text('div', 'signature-eyebrow', this.copy.basicSignature);
+			const title = text('h2', '', this.copy.signatureTitle);
+			title.id = 'proseid-signature-title';
+			const help = text('p', 'signature-help', this.copy.signatureHelp);
+			const form = document.createElement('form');
+			form.className = 'signature-form';
+			form.noValidate = true;
+			const nameLabel = text('label', 'signature-label', this.copy.signatureName);
+			nameLabel.htmlFor = 'proseid-signature-name';
+			const name = document.createElement('input');
+			name.id = 'proseid-signature-name';
+			name.className = 'signature-input';
+			name.type = 'text';
+			name.autocomplete = 'name';
+			name.maxLength = 160;
+			name.required = true;
+			name.placeholder = this.copy.signaturePlaceholder;
+			const acknowledgement = text('label', 'signature-acknowledgement');
+			const checkbox = document.createElement('input');
+			checkbox.type = 'checkbox';
+			checkbox.required = true;
+			acknowledgement.append(checkbox, text('span', '', this.copy.signatureAcknowledgement));
+			const error = text('p', 'signature-error');
+			error.setAttribute('role', 'alert');
+			const actions = text('div', 'signature-actions');
+			const cancel = text('button', 'signature-cancel', this.copy.cancel);
+			cancel.type = 'button';
+			const confirm = text('button', 'signature-confirm', this.copy.signAndSubmit);
+			confirm.type = 'submit';
+			actions.append(cancel, confirm);
+			form.append(nameLabel, name, acknowledgement, error, actions);
+			dialog.append(eyebrow, title, help, form);
+			overlay.append(dialog);
+
+			let settled = false;
+			const finish = (value) => {
+				if (settled) return;
+				settled = true;
+				this.signatureCancel = null;
+				overlay.remove();
+				resolve(value);
+			};
+			this.signatureCancel = () => finish(null);
+			cancel.addEventListener('click', () => finish(null));
+			overlay.addEventListener('keydown', (event) => {
+				if (event.key === 'Escape') finish(null);
+			});
+			form.addEventListener('submit', (event) => {
+				event.preventDefault();
+				const typedName = name.value.trim();
+				if (typedName.length < 2 || !checkbox.checked) {
+					error.textContent = typedName.length < 2 ? this.copy.signatureNameError : this.copy.signatureAcknowledgementError;
+					if (typedName.length < 2) name.focus();
+					else checkbox.focus();
+					return;
+				}
+				finish({ kind: 'basic', typed_name: typedName, acknowledged: true });
+			});
+			this.shadow.append(overlay);
+			name.focus();
+		});
+	}
+
 	async submit(event) {
 		event.preventDefault();
 		if (this.destroyed) return;
@@ -379,9 +560,22 @@ export class ProseIDForm {
 		try {
 			let signature = null;
 			if (this.manifest.capabilities?.signing?.requested) {
-				const nextAction = await this.api.prepareSigning(this.manifest.flow.ref, this.recordId, this.values);
-				signature = await this.signing.handle(nextAction, { manifest: this.manifest, values: { ...this.values } });
-				this.emit('signing', { nextAction, signature });
+				const mode = this.manifest.capabilities.signing.mode;
+				if (mode === 'basic') {
+					this.setStatus('checking', this.copy.awaitingSignature);
+					signature = await this.collectBasicSignature();
+					if (!signature) {
+						this.submitButton.disabled = !this.valid;
+						this.submitButton.textContent = this.options.submitLabel || this.copy.submit;
+						this.setStatus('ready', this.copy.ready);
+						return;
+					}
+					this.emit('signing', { mode, signature });
+				} else {
+					const nextAction = await this.api.prepareSigning(this.manifest.flow.ref, this.recordId, this.values);
+					signature = await this.signing.handle(nextAction, { manifest: this.manifest, values: { ...this.values } });
+					this.emit('signing', { mode, nextAction, signature });
+				}
 			}
 			const result = await this.api.complete(this.manifest.flow.ref, this.recordId, this.values, signature);
 			this.renderComplete(result);
@@ -506,6 +700,7 @@ export class ProseIDForm {
 		this.destroyed = true;
 		clearTimeout(this.validationTimer);
 		this.validationAbort?.abort();
+		this.signatureCancel?.();
 		this.shadow.replaceChildren();
 		this.fields.clear();
 	}

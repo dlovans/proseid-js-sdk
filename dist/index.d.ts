@@ -39,6 +39,7 @@ export interface MountOptions {
 	onChange?: (detail: { name: string; value: unknown; values: Record<string, unknown> }) => void;
 	onValidation?: (detail: { valid: boolean; status: string; issues: unknown[] }) => void;
 	onSubmit?: (detail: { values: Record<string, unknown> }) => void;
+	onSigning?: (detail: { mode: string; signature?: unknown; nextAction?: Record<string, unknown> }) => void;
 	onComplete?: (result: CompletionResult) => void;
 	onReceipt?: (result: ReceiptResult) => void;
 	onError?: (error: Error) => void;
@@ -46,12 +47,32 @@ export interface MountOptions {
 
 export interface EmbedManifest {
 	apiVersion: string;
-	flow: { ref: string; title: string; description: string; schemaId: string; schemaVersion: string };
+	flow: { ref: string; flowType: 'form'; title: string; description: string; schemaId: string; schemaVersion: string };
 	publisher: { slug: string; name: string; logo: string | null; verified: boolean };
-	schema: { definitions: Record<string, Record<string, unknown>> };
+	schema: {
+		title?: string;
+		description?: string;
+		metadata?: {
+			description?: string;
+			jurisdictions?: string[];
+			legal_references?: Array<{ instrument?: string; provision?: string; source_url?: string }>;
+		};
+		definitions: Record<string, Record<string, unknown>>;
+	};
 	branding: { proseid: { name: string; logo: string; url: string } };
 	presentation: { attribution: 'full' | 'compact' | 'hidden'; whiteLabel: boolean; completionMicrons: number; surchargeMicrons: number; testMode?: boolean };
-	capabilities: { validation: 'remote'; auditRecord: boolean; receiptEmail: boolean; signing: Record<string, unknown> };
+	capabilities: {
+		validation: 'remote';
+		auditRecord: boolean;
+		receiptEmail: boolean;
+		testMode?: boolean;
+		signing: {
+			requested: boolean;
+			available: boolean;
+			provider: string | null;
+			mode: 'none' | 'basic' | 'coming_soon' | string;
+		};
+	};
 }
 
 export interface ReceiptResult {
