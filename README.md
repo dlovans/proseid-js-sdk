@@ -1,12 +1,14 @@
 # ProseID JavaScript SDK
 
-Embed a published ProseID Standard Form Flow inside a customer website without shipping the ProseID validation engine or trusting the host page. The SDK renders the fields in an isolated Shadow DOM, sends respondent changes to ProseID for remote validation, and enables submission only when the pinned schema is ready.
+Embed a published ProseID Flow inside a customer website without shipping the ProseID validation engine or trusting the host page. The SDK renders the Flow in an isolated Shadow DOM, sends respondent changes to ProseID for remote validation, and enables final completion only when the pinned schema is ready.
+
+The renderer follows the Flow selected by its publisher: a Standard Form, one-question-at-a-time Guided Assessment, calculated Determination, or auditable Compliance Checklist. Required controls carry a visible text label as well as native accessibility semantics in every experience, and dates use the ProseID calendar instead of the browser's inconsistent native picker.
 
 Final submission is not a client-side “success” flag. ProseID authoritatively re-runs the schema, debits the publisher once, encrypts the responses, creates the normal encrypted record and signed proof, then performs the Flow's email/webhook delivery.
 
 ## Why use the SDK instead of an iframe?
 
-- The form feels native to the customer’s product and resizes with its content.
+- The Flow feels native to the customer’s product and resizes with its content.
 - Customer CSS cannot break field layout, validation states, or ProseID branding.
 - The host receives lifecycle events without receiving the validation engine.
 - The completed record is identical to one created by a hosted Flow.
@@ -15,7 +17,7 @@ Final submission is not a client-side “success” flag. ProseID authoritativel
 
 ## Install on a website
 
-First, open the Flow in the ProseID workspace and add the website under **Embedded Flow websites**. Origins are exact: use `https://www.example.com`, not a path. HTTPS is required except for localhost development.
+First, open the Flow in the ProseID workspace, choose its theme and embedded-attribution mode, then add the website under **Embedded Flow websites**. Origins are exact: use `https://www.example.com`, not a path. HTTPS is required except for localhost development.
 
 Create a **Publishable / SDK** key in **Workspace → API keys**. Publishable keys begin with
 `proseid_pk_` and are safe to include in browser code. They identify the organization whose Flow,
@@ -24,7 +26,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/npm/@proseid/js-sdk@0.6.0/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@proseid/js-sdk@0.7.0/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -50,8 +52,7 @@ const form = mount('#compliance-form', {
   flow: 'publisher-handle/flow-slug',
 	locale: 'en', // `sv` is also bundled; UI messages can be overridden
   appearance: { shape: 'capsule', fields: 'outlined', shell: 'card' },
-  theme: 'charcoal',
-  branding: { logoUrl: 'https://example.com/logo.svg', logoAlt: 'Example', proseid: 'compact' }
+  branding: { logoUrl: 'https://example.com/logo.svg', logoAlt: 'Example' }
 });
 
 await form.ready;
@@ -73,11 +74,9 @@ mount('#compliance-form', {
     shell: 'flat',        // card | flat
     density: 'compact'    // comfortable | compact
   },
-  theme: 'midnight', // light | charcoal | midnight | forest
   branding: {
     logoUrl: 'https://example.com/brand.svg',
-    logoAlt: 'Example',
-    proseid: 'full' // full | compact | hidden
+    logoAlt: 'Example'
   }
 });
 ```
@@ -85,17 +84,21 @@ mount('#compliance-form', {
 `logoUrl` accepts HTTPS images (plus HTTP on localhost) and falls back to the organization logo in
 ProseID. Raw HTML, raw SVG markup, arbitrary CSS, and custom color values are not accepted.
 
-Themes are curated and WCAG AA contrast-tested across body copy, muted/status copy, errors, success
-states, and button labels. `light` is the default. `charcoal` is neutral and architectural;
+Themes are selected on the Flow in ProseID so the hosted and embedded renderers cannot drift. They
+are curated and WCAG AA contrast-tested across body copy, muted/status copy, errors, success states,
+and button labels. `light` is the default. `charcoal` is neutral and architectural;
 `midnight` uses a restrained ink-blue field; `forest` uses a deep institutional green. All four keep
 vermillion as the ProseID signal. Unknown values—including objects containing color strings—fall
-back to `light` without being applied. `THEME_NAMES` exposes the supported names for configuration UIs.
+back to `light` without being applied. The `theme` mount option remains a loading and `mountTest`
+preview fallback; a production manifest replaces it with the Flow's saved theme. `THEME_NAMES`
+exposes the supported names for configuration UIs.
 
 `full` and `compact` attribution have the standard completion price. `hidden` is the supported
-white-label mode: the SDK tells the authenticated embed endpoint, the server returns the effective
-mode and price in `manifest.presentation`, and a completed production record is billed 25% extra
+white-label mode. The publisher selects it on the Flow; the authenticated server returns that
+authoritative mode and price in `manifest.presentation`, and a completed production record is billed 25% extra
 (currently 250 microns instead of 200). The record captures the embed source, publishable key,
 origin, SDK version, attribution mode, and pricing components. Test completions are always free.
+The legacy `branding.proseid` mount preference cannot override a production Flow or its billing.
 
 The customer controls their browser and can technically modify any open-source browser bundle or
 cover any DOM element. ProseID therefore meters the supported `hidden` mode server-side; it does not
@@ -172,11 +175,14 @@ schema or a Flow origin allow-list.
 
 ## Flow and signing support
 
-The JavaScript SDK currently embeds **Standard Form Flows**. Guided Assessments and Determinations
-remain available through their hosted ProseID Flow pages; the embed API rejects them rather than
-rendering the wrong interaction.
+The JavaScript SDK embeds all four current Flow experiences:
 
-Unsigned and basic-signature Standard Forms are supported. For a basic signature, the SDK collects
+- **Standard Form** shows the visible questions in one responsive document.
+- **Guided Assessment** validates each current question before moving to a final answer review.
+- **Determination** calculates and displays the schema's read-only outcomes before the respondent confirms; calculation alone never creates or bills a record.
+- **Compliance Checklist** separates context from explicit controls and requires every yes/no or confirmation control to be reviewed.
+
+Unsigned and basic-signature Flows are supported. For a basic signature, the SDK collects
 the respondent's typed legal name and explicit acknowledgement immediately before completion, then
 sends that evidence through the normal encrypted record pipeline. The provider-neutral
 `signingAdapter` boundary remains available for a future UIP signing action without coupling the

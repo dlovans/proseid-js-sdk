@@ -17,17 +17,17 @@
 		<main>
 			<p class="preview-label">SDK development preview · no data leaves this page</p>
 			<div class="gallery">
-				<div class="variant"><span>Light · soft · full attribution</span><div id="soft"></div></div>
-				<div class="variant"><span>Charcoal · capsule · compact attribution</span><div id="capsule"></div></div>
-				<div class="variant"><span>Midnight · rigid · custom logo</span><div id="rigid"></div></div>
-				<div class="variant"><span>Forest · underline · hidden attribution</span><div id="underline"></div></div>
+				<div class="variant"><span>Standard Form · light · full attribution</span><div id="soft"></div></div>
+				<div class="variant"><span>Guided Assessment · charcoal · compact attribution</span><div id="capsule"></div></div>
+				<div class="variant"><span>Determination · midnight · custom logo</span><div id="rigid"></div></div>
+				<div class="variant"><span>Compliance Checklist · forest · hidden attribution</span><div id="underline"></div></div>
 			</div>
 		</main>
 		<script src="../../dist/proseid.min.js"></script>
 		<script>
-			const manifest = {
+			const baseManifest = {
 				ok: true,
-				apiVersion: '2026-07-15',
+				apiVersion: '2026-07-16',
 				flow: { ref: 'preview', flowType: 'form', title: 'Supplier assurance record', description: 'Document the supplier, review scope, and accountable declaration before the engagement proceeds.', schemaId: 'acme/supplier-assurance', schemaVersion: '1.0.0' },
 				publisher: { slug: 'acme', name: 'Northstar Compliance', logo: null, verified: true },
 				branding: { proseid: { name: 'ProseID', logo: 'http://127.0.0.1:8091/icon-placeholder.svg', url: 'https://proseid.com' } },
@@ -39,7 +39,27 @@
 				} },
 				capabilities: { validation: 'remote', auditRecord: true, receiptEmail: true, signing: { requested: false, available: false, mode: 'none' } }
 			};
-			const mockFetch = async (_url, options = {}) => {
+			const manifests = {
+				form: baseManifest,
+				guided: { ...baseManifest, flow: { ...baseManifest.flow, ref: 'guided', flowType: 'guided_assessment', title: 'Supplier risk assessment' }, schema: { ...baseManifest.schema, definitions: {
+					supplier_name: baseManifest.schema.definitions.supplier_name,
+					jurisdiction: baseManifest.schema.definitions.jurisdiction,
+					approved: baseManifest.schema.definitions.approved
+				} } },
+				determination: { ...baseManifest, flow: { ...baseManifest.flow, ref: 'determination', flowType: 'determination', title: 'Notification deadline' }, schema: { ...baseManifest.schema, definitions: {
+					hours_elapsed: { type: 'number', label: 'Hours since awareness', required: true, min: 0, placeholder: '24' },
+					risk_likely: { type: 'boolean', label: 'The incident is likely to risk individuals', required: true },
+					deadline_status: { type: 'string', label: 'Deadline status', readonly: true, visible: true }
+				} } },
+				checklist: { ...baseManifest, flow: { ...baseManifest.flow, ref: 'checklist', flowType: 'checklist', title: 'Supplier control review' }, schema: { ...baseManifest.schema, definitions: {
+					supplier_name: baseManifest.schema.definitions.supplier_name,
+					security_reviewed: { type: 'boolean', label: 'Security evidence has been reviewed', required: true },
+					approved: baseManifest.schema.definitions.approved
+				} } }
+			};
+			const mockFetch = async (url, options = {}) => {
+				const kind = url.includes('/guided') ? 'guided' : url.includes('/determination') ? 'determination' : url.includes('/checklist') ? 'checklist' : 'form';
+				const manifest = manifests[kind];
 				if (!options.body) {
 					const attribution = options.headers['x-proseid-attribution'] || 'full';
 					return new Response(JSON.stringify({ ...manifest, presentation: { attribution, whiteLabel: attribution === 'hidden', completionMicrons: attribution === 'hidden' ? 250 : 200, surchargeMicrons: attribution === 'hidden' ? 50 : 0 } }), { status: 200 });
@@ -47,14 +67,16 @@
 				const body = JSON.parse(options.body);
 				if (body.action === 'complete') return new Response(JSON.stringify({ ok: true, status: 'completed', recordId: 'preview_audit_record', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }), { status: 200 });
 				if (body.action === 'email_receipt') return new Response(JSON.stringify({ ok: true, status: 'sent' }), { status: 200 });
-				const valid = Boolean(body.responses.supplier_name && body.responses.jurisdiction && body.responses.review_date && body.responses.approved);
-				return new Response(JSON.stringify({ ok: true, valid, status: valid ? 'READY' : 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }), { status: 200 });
+				const editable = Object.entries(manifest.schema.definitions).filter(([, definition]) => definition.readonly !== true);
+				const missing = editable.filter(([name, definition]) => definition.required && (body.responses[name] === '' || body.responses[name] == null || (definition.type === 'attestation' && body.responses[name] !== true)));
+				const definitions = kind === 'determination' ? { ...manifest.schema.definitions, deadline_status: { ...manifest.schema.definitions.deadline_status, value: Number(body.responses.hours_elapsed) <= 72 ? 'Within 72 hours' : 'Late' } } : manifest.schema.definitions;
+				return new Response(JSON.stringify({ ok: true, valid: missing.length === 0, status: missing.length ? 'INCOMPLETE' : 'READY', definitions, issues: missing.map(([name]) => ({ field_id: name, severity: 'error', kind: 'missing_required', trigger: 'correction' })) }), { status: 200 });
 			};
-			const base = { apiKey: `proseid_pk_${'a'.repeat(40)}`, flow: 'acme/supplier-assurance', fetch: mockFetch };
-			ProseID.mount('#soft', { ...base, appearance: 'soft', theme: 'light' });
-			ProseID.mount('#capsule', { ...base, appearance: 'capsule', theme: 'charcoal', branding: { proseid: 'compact' } });
-			ProseID.mount('#rigid', { ...base, appearance: { shape: 'rigid', density: 'compact' }, theme: 'midnight', branding: { logoUrl: 'http://127.0.0.1:8091/examples/preview/icon-placeholder.svg', logoAlt: 'Northstar symbol' } });
-			ProseID.mount('#underline', { ...base, appearance: 'underline', theme: 'forest', branding: { proseid: 'hidden' } });
+			const base = { apiKey: `proseid_pk_${'a'.repeat(40)}`, fetch: mockFetch };
+			ProseID.mount('#soft', { ...base, flow: 'acme/form', appearance: 'soft', theme: 'light' });
+			ProseID.mount('#capsule', { ...base, flow: 'acme/guided', appearance: 'capsule', theme: 'charcoal', branding: { proseid: 'compact' } });
+			ProseID.mount('#rigid', { ...base, flow: 'acme/determination', appearance: { shape: 'rigid', density: 'compact' }, theme: 'midnight', branding: { logoUrl: 'http://127.0.0.1:8091/examples/preview/icon-placeholder.svg', logoAlt: 'Northstar symbol' } });
+			ProseID.mount('#underline', { ...base, flow: 'acme/checklist', appearance: 'underline', theme: 'forest', branding: { proseid: 'hidden' } });
 		</script>
 	</body>
 </html>

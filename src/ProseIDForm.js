@@ -29,6 +29,7 @@ const friendlyIssue = (issue, label, copy) => {
 
 const randomRecordId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll('-', '') || Math.random().toString(36).slice(2).padEnd(16, '0')}`;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const FLOW_TYPES = new Set(['form', 'guided_assessment', 'determination', 'checklist']);
 const jurisdictionName = (value, locale = 'en') => {
 	const code = String(value || '').trim().toUpperCase();
 	const language = String(locale || 'en').toLowerCase().split('-')[0];
@@ -62,11 +63,17 @@ export class ProseIDForm {
 		this.values = {};
 		this.fields = new Map();
 		this.blurred = new Set();
+		this.reviewed = new Set();
 		this.submittedAttempted = false;
 		this.valid = false;
+		this.calculated = false;
+		this.guidedPhase = 'questions';
+		this.guidedIndex = 0;
+		this.guidedChecking = false;
 		this.destroyed = false;
 		this.validationTimer = null;
 		this.validationAbort = null;
+		this.cleanupFns = [];
 		this.recordId = randomRecordId();
 		this.applyAppearance(options.appearance);
 		this.applyTheme(options.theme);
@@ -118,16 +125,20 @@ export class ProseIDForm {
 		try {
 			this.manifest = await this.api.manifest();
 			if (this.destroyed) return this;
-			if (this.manifest.flow?.flowType && this.manifest.flow.flowType !== 'form') {
+			this.flowType = this.manifest.flow?.flowType || 'form';
+			if (!FLOW_TYPES.has(this.flowType)) {
 				throw new ProseIDError(
 					'flow_type_not_supported',
-					'Only Standard Form Flows can be embedded with the JavaScript SDK.'
+					`This version of the JavaScript SDK cannot render the “${this.flowType}” Flow experience.`
 				);
 			}
 			this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
 			this.api.setAttribution(this.attribution);
+			// Published Flows own their curated theme. The mount option remains the loading/test fallback,
+			// but production presentation cannot drift between the hosted and embedded renderers.
+			this.applyTheme(this.manifest.presentation?.theme ?? this.options.theme);
 			if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
-				throw new ProseIDError('signing_not_available', 'Signing is not available in embedded Standard Forms yet.');
+				throw new ProseIDError('signing_not_available', 'Signing is not available in this embedded Flow yet.');
 			}
 			this.seedValues();
 			this.renderForm();
@@ -263,30 +274,528 @@ export class ProseIDForm {
 			if (definition?.readonly === true) continue;
 			this.fieldList.append(this.renderField(name, definition));
 		}
-		this.formNode.append(this.fieldList);
-
-		const actions = text('div', 'actions');
-		const privacy = text('div', 'privacy');
-		privacy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-		privacy.append(text('span', '', this.attribution === 'hidden' ? this.copy.privacyWhiteLabel : this.copy.privacy));
-		this.submitButton = text('button', 'submit', this.options.submitLabel || this.copy.submit);
+		this.submitButton = text('button', 'submit', this.options.submitLabel || this.defaultSubmitLabel());
 		this.submitButton.type = 'submit';
 		this.submitButton.disabled = true;
-		actions.append(privacy, this.submitButton);
-		this.formNode.append(actions);
+		if (this.flowType === 'guided_assessment') this.formNode.append(this.renderGuided());
+		else if (this.flowType === 'determination') this.formNode.append(this.renderDetermination());
+		else if (this.flowType === 'checklist') this.formNode.append(this.renderChecklist());
+		else this.formNode.append(this.fieldList, this.renderActions());
 		body.append(this.formError, this.formNode);
 		shell.append(text('div', 'ledger'), head, body);
 		this.shadow.append(shell);
 	}
 
+	defaultSubmitLabel() {
+		if (this.flowType === 'guided_assessment') return this.copy.completeAssessment;
+		if (this.flowType === 'determination') return this.copy.confirmDetermination;
+		if (this.flowType === 'checklist') return this.copy.completeChecklist;
+		return this.copy.submit;
+	}
+
+	renderPrivacy() {
+		const privacy = text('div', 'privacy');
+		privacy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+		privacy.append(text('span', '', this.attribution === 'hidden' ? this.copy.privacyWhiteLabel : this.copy.privacy));
+		return privacy;
+	}
+
+	renderActions() {
+		const actions = text('div', 'actions');
+		actions.append(this.renderPrivacy(), this.submitButton);
+		return actions;
+	}
+
+	visibleFields() {
+		return [...this.fields.entries()].filter(([, field]) => field.engineVisible !== false);
+	}
+
+	displayValue(value, definition) {
+		if (['boolean', 'attestation'].includes(definition?.type)) return value === true ? this.copy.yes : this.copy.no;
+		if (value === undefined || value === null || value === '') return this.copy.notAnswered;
+		if (typeof value === 'object') return JSON.stringify(value);
+		return String(value);
+	}
+
+	renderGuided() {
+		const guided = text('div', 'guided');
+		this.guidedQuestion = text('section', 'guided-question');
+		this.guidedIndexNode = text('div', 'guided-index');
+		this.guidedFieldSlot = text('div', 'guided-field-slot');
+		const navigation = text('div', 'guided-navigation');
+		this.guidedBack = text('button', 'secondary-action', this.copy.back);
+		this.guidedBack.type = 'button';
+		this.guidedBack.addEventListener('click', () => this.guidedPrevious());
+		this.guidedNext = text('button', 'primary-action', this.copy.continue);
+		this.guidedNext.type = 'button';
+		this.guidedNext.addEventListener('click', () => this.guidedContinue());
+		navigation.append(this.guidedBack, this.guidedNext);
+		this.guidedQuestion.append(this.guidedIndexNode, this.guidedFieldSlot, navigation);
+
+		this.guidedPath = text('aside', 'guided-path');
+		this.guidedReview = text('section', 'guided-review');
+		this.guidedReview.hidden = true;
+		this.guidedParking = text('div', 'field-parking');
+		this.guidedParking.hidden = true;
+		for (const field of this.fields.values()) this.guidedParking.append(field.wrap);
+		const layout = text('div', 'guided-layout');
+		layout.append(this.guidedPath, this.guidedQuestion, this.guidedReview, this.guidedParking);
+		guided.append(layout);
+		this.refreshGuided();
+		return guided;
+	}
+
+	refreshGuided() {
+		if (!this.guidedQuestion) return;
+		const entries = this.visibleFields();
+		if (!entries.length) {
+			this.guidedQuestion.replaceChildren(text('p', 'empty-state', 'This Flow has no visible questions.'));
+			this.guidedPath.hidden = true;
+			return;
+		}
+		this.guidedIndex = Math.min(this.guidedIndex, entries.length - 1);
+		const [, field] = entries[this.guidedIndex];
+		for (const [, candidate] of entries) {
+			candidate.wrap.hidden = candidate !== field;
+			if (candidate !== field && candidate.wrap.parentNode !== this.guidedParking) this.guidedParking.append(candidate.wrap);
+		}
+		field.wrap.hidden = false;
+		this.guidedFieldSlot.replaceChildren(field.wrap);
+		this.guidedIndexNode.textContent = this.copy.guidedProgress(this.guidedIndex + 1, entries.length);
+		this.guidedBack.disabled = this.guidedIndex === 0;
+		this.guidedNext.disabled = this.guidedChecking;
+		this.guidedNext.textContent = this.guidedIndex === entries.length - 1 ? this.copy.reviewAnswers : this.copy.continue;
+
+		this.guidedPath.replaceChildren();
+		const heading = text('div', 'guided-path-heading');
+		heading.append(text('span', '', this.copy.guidedPath), text('strong', '', `${this.guidedIndex + 1}/${entries.length}`));
+		const rail = text('div', 'guided-progress');
+		const fill = text('span', '');
+		fill.style.width = `${Math.round(((this.guidedIndex + 1) / entries.length) * 100)}%`;
+		rail.append(fill);
+		const list = document.createElement('ol');
+		entries.forEach(([entryName, entryField], index) => {
+			const item = text('li', index < this.guidedIndex ? 'answered' : index === this.guidedIndex ? 'active' : 'remaining');
+			const button = text('button', 'guided-path-button');
+			button.type = 'button';
+			button.disabled = index > this.guidedIndex;
+			const copy = text('span', 'guided-path-copy');
+			copy.append(
+				text('strong', '', entryField.label),
+				text('small', '', index < this.guidedIndex ? this.displayValue(this.values[entryName], entryField.definition) : index === this.guidedIndex ? this.copy.guidedCurrent : this.copy.guidedUpdated)
+			);
+			button.append(text('span', 'guided-marker', index < this.guidedIndex ? '✓' : ''), copy);
+			button.addEventListener('click', () => {
+				this.guidedIndex = index;
+				this.guidedPhase = 'questions';
+				this.refreshGuided();
+			});
+			item.append(button);
+			list.append(item);
+		});
+		this.guidedPath.append(heading, rail, list);
+	}
+
+	async guidedContinue() {
+		if (this.guidedNext.disabled) return;
+		clearTimeout(this.validationTimer);
+		const entries = this.visibleFields();
+		const current = entries[this.guidedIndex];
+		if (!current) return;
+		this.blurred.add(current[0]);
+		this.guidedChecking = true;
+		this.guidedNext.disabled = true;
+		this.guidedNext.textContent = this.copy.checking;
+		const result = await this.validate();
+		if (!result) {
+			this.guidedChecking = false;
+			this.refreshGuided();
+			return;
+		}
+		const blocking = (result?.issues || []).some((issue) => issue.field_id === current[0] && issue.severity === 'error');
+		if (blocking) {
+			this.guidedChecking = false;
+			this.refreshGuided();
+			return;
+		}
+		const refreshed = this.visibleFields();
+		this.guidedChecking = false;
+		if (this.guidedIndex < refreshed.length - 1) {
+			this.guidedIndex += 1;
+			this.refreshGuided();
+			this.guidedFieldSlot.querySelector('input, select, textarea, button')?.focus?.();
+		} else this.showGuidedReview();
+	}
+
+	guidedPrevious() {
+		if (this.guidedPhase === 'review') {
+			this.guidedPhase = 'questions';
+			this.guidedReview.hidden = true;
+			this.guidedQuestion.hidden = false;
+			this.guidedPath.hidden = false;
+			this.refreshGuided();
+			return;
+		}
+		if (this.guidedIndex > 0) {
+			this.guidedIndex -= 1;
+			this.refreshGuided();
+		}
+	}
+
+	showGuidedReview() {
+		this.guidedPhase = 'review';
+		for (const field of this.fields.values()) this.guidedParking.append(field.wrap);
+		this.guidedQuestion.hidden = true;
+		this.guidedPath.hidden = true;
+		this.guidedReview.hidden = false;
+		this.guidedReview.replaceChildren();
+		const head = text('header', 'review-head');
+		head.append(text('span', 'eyebrow', this.copy.finalCheck), text('h2', '', this.copy.reviewTitle), text('p', '', this.copy.reviewHelp));
+		const list = text('div', 'review-list');
+		this.visibleFields().forEach(([name, field], index) => {
+			const row = text('div', 'review-row');
+			const answer = text('span', 'review-answer');
+			answer.append(text('small', '', field.label), text('strong', '', this.displayValue(this.values[name], field.definition)));
+			const change = text('button', 'review-change', this.copy.changeAnswer);
+			change.type = 'button';
+			change.addEventListener('click', () => {
+				this.guidedIndex = index;
+				this.guidedPrevious();
+			});
+			row.append(answer, change);
+			list.append(row);
+		});
+		const outcomes = this.renderOutcomeList(this.lastValidation?.definitions || {});
+		const actions = text('div', 'guided-review-actions');
+		const back = text('button', 'secondary-action', this.copy.back);
+		back.type = 'button';
+		back.addEventListener('click', () => this.guidedPrevious());
+		actions.append(back, this.submitButton);
+		this.guidedReview.append(head, list);
+		if (outcomes) this.guidedReview.append(outcomes);
+		this.guidedReview.append(this.renderPrivacy(), actions);
+		this.updateSubmitState();
+	}
+
+	renderDetermination() {
+		const layout = text('div', 'determination-layout');
+		const facts = text('section', 'determination-facts');
+		const head = text('header', 'experience-head');
+		head.append(text('span', 'eyebrow', this.copy.determinationFacts), text('h2', '', this.copy.determinationTitle), text('p', '', this.copy.determinationHelp));
+		this.calculateButton = text('button', 'primary-action', this.copy.calculate);
+		this.calculateButton.type = 'button';
+		this.calculateButton.addEventListener('click', () => this.calculateDetermination());
+		facts.append(head, this.fieldList, this.calculateButton);
+		this.determinationResult = text('aside', 'determination-result');
+		this.renderDeterminationWaiting();
+		layout.append(facts, this.determinationResult);
+		const wrap = text('div', 'determination');
+		wrap.append(layout, this.renderActions());
+		return wrap;
+	}
+
+	renderDeterminationWaiting() {
+		if (!this.determinationResult) return;
+		this.determinationResult.replaceChildren(
+			text('span', 'eyebrow', this.copy.determinationResult),
+			text('h2', '', this.copy.calculatedOutcome),
+			text('p', 'determination-waiting', this.copy.determinationWaiting)
+		);
+	}
+
+	async calculateDetermination() {
+		if (this.calculateButton.disabled) return;
+		clearTimeout(this.validationTimer);
+		this.submittedAttempted = true;
+		this.calculateButton.disabled = true;
+		this.calculateButton.textContent = this.copy.calculating;
+		const result = await this.validate();
+		this.calculateButton.disabled = false;
+		if (!result?.valid) {
+			this.calculateButton.textContent = this.copy.calculate;
+			return;
+		}
+		this.calculated = true;
+		this.calculateButton.textContent = this.copy.calculateAgain;
+		this.determinationResult.replaceChildren(
+			text('span', 'eyebrow', this.copy.determinationResult),
+			text('h2', '', this.copy.calculatedOutcome)
+		);
+		const outcomes = this.renderOutcomeList(result.definitions || {});
+		if (outcomes) this.determinationResult.append(outcomes);
+		else this.determinationResult.append(text('p', 'determination-waiting', this.copy.notAnswered));
+		this.updateSubmitState();
+	}
+
+	renderOutcomeList(definitions) {
+		const entries = Object.entries(definitions).filter(([, definition]) => definition?.readonly === true && definition?.visible !== false);
+		if (!entries.length) return null;
+		const list = text('div', 'outcome-list');
+		for (const [name, definition] of entries) {
+			const item = text('article', 'outcome');
+			item.append(text('small', '', definition.label || name.replaceAll('_', ' ')), text('strong', '', this.displayValue(definition.value, definition)));
+			if (definition.ui_message) item.append(text('p', '', definition.ui_message));
+			list.append(item);
+		}
+		return list;
+	}
+
+	renderChecklist() {
+		const checklist = text('div', 'checklist');
+		const head = text('header', 'checklist-head');
+		const copy = text('div', 'checklist-title');
+		copy.append(text('span', 'eyebrow', this.copy.checklistControls), text('h2', '', this.copy.checklistTitle), text('p', '', this.copy.checklistHelp));
+		this.checklistProgress = text('div', 'checklist-progress');
+		head.append(copy, this.checklistProgress);
+		const context = text('section', 'checklist-section');
+		const controls = text('section', 'checklist-section checklist-controls');
+		const contextFields = [];
+		const controlFields = [];
+		for (const [, field] of this.fields) {
+			if (['boolean', 'attestation'].includes(field.definition.type)) controlFields.push(field.wrap);
+			else contextFields.push(field.wrap);
+		}
+		if (contextFields.length) {
+			context.append(text('h3', '', this.copy.checklistContext));
+			const grid = text('div', 'checklist-context-grid');
+			grid.append(...contextFields);
+			context.append(grid);
+		}
+		controls.append(text('h3', '', this.copy.checklistControls));
+		const list = text('div', 'checklist-control-list');
+		list.append(...controlFields);
+		controls.append(list);
+		checklist.append(head);
+		if (contextFields.length) checklist.append(context);
+		checklist.append(controls, this.renderActions());
+		this.updateChecklistProgress();
+		return checklist;
+	}
+
+	checklistControlNames() {
+		return [...this.fields.entries()]
+			.filter(([, field]) => field.engineVisible !== false && ['boolean', 'attestation'].includes(field.definition.type))
+			.map(([name]) => name);
+	}
+
+	updateChecklistProgress() {
+		if (!this.checklistProgress) return;
+		const names = this.checklistControlNames();
+		const reviewed = names.filter((name) => this.reviewed.has(name)).length;
+		this.checklistProgress.replaceChildren(
+			text('strong', '', `${reviewed}/${names.length}`),
+			text('span', '', this.copy.checklistProgress(reviewed, names.length))
+		);
+		const rail = text('div', 'checklist-progress-rail');
+		const fill = text('i', '');
+		fill.style.width = `${names.length ? Math.round((reviewed / names.length) * 100) : 100}%`;
+		rail.append(fill);
+		this.checklistProgress.append(rail);
+	}
+
+	updateSubmitState() {
+		if (!this.submitButton) return;
+		let allowed = this.valid;
+		if (this.flowType === 'determination') allowed = allowed && this.calculated;
+		if (this.flowType === 'checklist') {
+			const controls = this.checklistControlNames();
+			allowed = allowed && controls.every((name) => this.reviewed.has(name));
+		}
+		this.submitButton.disabled = !allowed;
+	}
+
+	renderDatePicker(id, definition, labelText) {
+		const wrap = text('div', 'date-control');
+		const input = document.createElement('input');
+		input.id = id;
+		input.type = 'text';
+		input.inputMode = 'numeric';
+		input.autocomplete = 'off';
+		input.spellcheck = false;
+		input.className = 'control date-input';
+		input.placeholder = definition.placeholder || 'YYYY-MM-DD';
+		const trigger = text('button', 'date-trigger');
+		trigger.type = 'button';
+		trigger.setAttribute('aria-label', `Choose date for ${labelText}`);
+		trigger.setAttribute('aria-haspopup', 'dialog');
+		trigger.setAttribute('aria-expanded', 'false');
+		trigger.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 9.5h17"/></svg>';
+		wrap.append(input, trigger);
+
+		const isoParts = (value) => {
+			const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+			if (!match) return null;
+			const year = Number(match[1]);
+			const month = Number(match[2]);
+			const day = Number(match[3]);
+			const date = new Date(Date.UTC(year, month - 1, day));
+			return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+				? { year, month, day }
+				: null;
+		};
+		const iso = (year, month, day) => `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+		const today = new Date();
+		const todayIso = iso(today.getFullYear(), today.getMonth() + 1, today.getDate());
+		let anchor = isoParts(input.value) || isoParts(todayIso);
+		let viewYear = anchor.year;
+		let viewMonth = anchor.month;
+		let panel = null;
+
+		const allowed = (value) => {
+			if (!isoParts(value)) return false;
+			if (definition.min && value < String(definition.min)) return false;
+			if (definition.max && value > String(definition.max)) return false;
+			return true;
+		};
+		const monthTitle = () => new Intl.DateTimeFormat(this.options.locale || 'en', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+			.format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
+		const displayDate = (value) => {
+			const parsed = isoParts(value);
+			if (!parsed) return value;
+			return new Intl.DateTimeFormat(this.options.locale || 'en', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+				.format(new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day)));
+		};
+
+		const close = ({ focus = false } = {}) => {
+			panel?.remove();
+			panel = null;
+			trigger.setAttribute('aria-expanded', 'false');
+			if (focus) trigger.focus();
+		};
+		const choose = (value) => {
+			if (!allowed(value)) return;
+			input.value = value;
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+			input.dispatchEvent(new Event('change', { bubbles: true }));
+			close({ focus: true });
+		};
+		const clear = () => {
+			input.value = '';
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+			input.dispatchEvent(new Event('change', { bubbles: true }));
+			close({ focus: true });
+		};
+		const place = () => {
+			if (!panel) return;
+			const rect = trigger.getBoundingClientRect();
+			const width = Math.min(326, window.innerWidth - 24);
+			const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
+			const height = Math.min(panel.getBoundingClientRect().height || 420, window.innerHeight - 24);
+			const below = window.innerHeight - rect.bottom;
+			const top = below >= height + 8 ? rect.bottom + 8 : Math.max(12, rect.top - height - 8);
+			panel.style.setProperty('--date-left', `${left}px`);
+			panel.style.setProperty('--date-top', `${top}px`);
+			panel.style.setProperty('--date-width', `${width}px`);
+		};
+
+		const renderPanel = () => {
+			if (!panel) return;
+			panel.replaceChildren();
+			const header = text('header', 'date-panel-head');
+			const title = text('div', 'date-panel-title');
+			title.append(text('span', '', 'Select date'), text('strong', '', monthTitle()));
+			const navigation = text('nav', 'date-navigation');
+			navigation.setAttribute('aria-label', 'Change month');
+			const previous = text('button', '', '‹');
+			previous.type = 'button';
+			previous.setAttribute('aria-label', 'Previous month');
+			const next = text('button', '', '›');
+			next.type = 'button';
+			next.setAttribute('aria-label', 'Next month');
+			const move = (delta) => {
+				const date = new Date(Date.UTC(viewYear, viewMonth - 1 + delta, 1));
+				viewYear = date.getUTCFullYear();
+				viewMonth = date.getUTCMonth() + 1;
+				renderPanel();
+				place();
+			};
+			previous.addEventListener('click', () => move(-1));
+			next.addEventListener('click', () => move(1));
+			navigation.append(previous, next);
+			header.append(title, navigation);
+
+			const weekdays = text('div', 'date-weekdays');
+			for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) weekdays.append(text('span', '', day));
+			const grid = text('div', 'date-grid');
+			grid.setAttribute('role', 'grid');
+			grid.setAttribute('aria-label', monthTitle());
+			const first = new Date(Date.UTC(viewYear, viewMonth - 1, 1));
+			const startOffset = (first.getUTCDay() + 6) % 7;
+			for (let index = 0; index < 42; index += 1) {
+				const date = new Date(Date.UTC(viewYear, viewMonth - 1, index - startOffset + 1));
+				const value = iso(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+				const day = text('button', date.getUTCMonth() + 1 === viewMonth ? '' : 'outside', String(date.getUTCDate()));
+				day.type = 'button';
+				day.setAttribute('role', 'gridcell');
+				day.setAttribute('aria-label', displayDate(value));
+				day.setAttribute('aria-selected', String(input.value === value));
+				if (input.value === value) day.classList.add('selected');
+				if (todayIso === value) day.classList.add('today');
+				day.disabled = !allowed(value);
+				day.addEventListener('click', () => choose(value));
+				grid.append(day);
+			}
+
+			const footer = text('footer', 'date-panel-footer');
+			const clearButton = text('button', '', 'Clear');
+			clearButton.type = 'button';
+			clearButton.disabled = !input.value;
+			clearButton.addEventListener('click', clear);
+			const todayButton = text('button', 'today-action', 'Today');
+			todayButton.type = 'button';
+			todayButton.disabled = !allowed(todayIso);
+			todayButton.addEventListener('click', () => choose(todayIso));
+			footer.append(clearButton, todayButton);
+			panel.append(header, weekdays, grid, footer);
+		};
+		const open = () => {
+			if (panel) return close();
+			anchor = isoParts(input.value) || isoParts(todayIso);
+			viewYear = anchor.year;
+			viewMonth = anchor.month;
+			panel = text('section', 'date-panel');
+			panel.setAttribute('role', 'dialog');
+			panel.setAttribute('aria-label', `Choose date for ${labelText}`);
+			this.shadow.append(panel);
+			trigger.setAttribute('aria-expanded', 'true');
+			renderPanel();
+			place();
+			panel.querySelector('[aria-selected="true"]:not(:disabled), .today:not(:disabled), button:not(:disabled)')?.focus?.();
+		};
+		trigger.addEventListener('click', open);
+		const outside = (event) => {
+			const path = event.composedPath?.() || [];
+			if (panel && !path.includes(panel) && !path.includes(wrap)) close();
+		};
+		const escape = (event) => {
+			if (panel && event.key === 'Escape') {
+				event.preventDefault();
+				close({ focus: true });
+			}
+		};
+		document.addEventListener('pointerdown', outside);
+		document.addEventListener('keydown', escape);
+		window.addEventListener('resize', place);
+		window.addEventListener('scroll', place, true);
+		this.cleanupFns.push(() => {
+			close();
+			document.removeEventListener('pointerdown', outside);
+			document.removeEventListener('keydown', escape);
+			window.removeEventListener('resize', place);
+			window.removeEventListener('scroll', place, true);
+		});
+		return { input, wrap };
+	}
+
 	renderField(name, definition) {
 		const wrap = text('div', 'field');
+		wrap.dataset.fieldName = name;
 		wrap.hidden = definition.visible === false;
-		const labelText = definition.label || name.replaceAll('_', ' ');
+		const labelText = definition.label || definition.statement || name.replaceAll('_', ' ');
 		const id = `proseid-${name.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 		let control;
 
-		const required = text('span', 'required', ' *');
+		const required = text('span', 'required', this.copy.requiredLabel);
 		required.hidden = definition.required !== true;
 		const infoId = `${id}-info`;
 		const messageId = `${id}-message`;
@@ -304,14 +813,41 @@ export class ProseIDForm {
 			info.append(trigger, popover);
 		}
 
-		if (['boolean', 'attestation'].includes(definition.type)) {
+		if (this.flowType === 'checklist' && definition.type === 'boolean') {
+			control = document.createElement('input');
+			control.type = 'hidden';
+			control.value = String(Boolean(this.values[name]));
+			const row = text('div', 'checklist-boolean');
+			const copy = text('div', 'checklist-boolean-copy');
+			const label = text('span', 'label', definition.statement || labelText);
+			label.id = `${id}-label`;
+			copy.append(label, required);
+			if (info) copy.append(info);
+			const choices = text('div', 'boolean-choice');
+			choices.setAttribute('role', 'group');
+			choices.setAttribute('aria-labelledby', label.id);
+			const yes = text('button', '', this.copy.yes);
+			const no = text('button', '', this.copy.no);
+			yes.type = no.type = 'button';
+			yes.setAttribute('aria-pressed', 'false');
+			no.setAttribute('aria-pressed', 'false');
+			yes.addEventListener('click', () => this.setChecklistBoolean(name, true));
+			no.addEventListener('click', () => this.setChecklistBoolean(name, false));
+			choices.append(yes, no);
+			row.append(copy, choices);
+			wrap.append(row);
+			wrap.choiceButtons = { yes, no };
+		} else if (['boolean', 'attestation'].includes(definition.type)) {
 			const label = text('label', 'check');
 			control = document.createElement('input');
 			control.type = 'checkbox';
 			control.checked = Boolean(this.values[name]);
+			control.setAttribute('role', 'switch');
+			const track = text('span', 'toggle-track');
+			track.setAttribute('aria-hidden', 'true');
 			const copy = text('span', 'check-copy', definition.statement || labelText);
 			copy.append(required);
-			label.append(control, copy);
+			label.append(control, track, copy);
 			const row = text('div', 'check-row');
 			row.append(label);
 			if (info) row.append(info);
@@ -335,15 +871,19 @@ export class ProseIDForm {
 					item.value = value;
 					control.append(item);
 				}
+			} else if (definition.type === 'date') {
+				const datePicker = this.renderDatePicker(id, definition, labelText);
+				control = datePicker.input;
+				wrap.append(datePicker.wrap);
 			} else if (definition.multiline) {
 				control = document.createElement('textarea');
 			} else {
 				control = document.createElement('input');
-				control.type = ['number', 'currency'].includes(definition.type) ? 'number' : definition.type === 'date' ? 'date' : definition.format === 'email' ? 'email' : 'text';
+				control.type = ['number', 'currency'].includes(definition.type) ? 'number' : definition.format === 'email' ? 'email' : 'text';
 				if (definition.type === 'currency') control.step = '0.01';
 			}
 			control.id = id;
-			control.className = 'control';
+			control.className = definition.type === 'date' ? 'control date-input' : 'control';
 			control.value = this.values[name] ?? '';
 			if (definition.placeholder && definition.type !== 'select') control.placeholder = definition.placeholder;
 			if (definition.min != null) control.min = definition.min;
@@ -351,7 +891,7 @@ export class ProseIDForm {
 			if (definition.min_length != null) control.minLength = definition.min_length;
 			if (definition.max_length != null) control.maxLength = definition.max_length;
 			if (definition.pattern) control.pattern = definition.pattern;
-			wrap.append(control);
+			if (definition.type !== 'date') wrap.append(control);
 			if (definition.description || definition.help) {
 				const hint = text('span', 'hint', definition.description || definition.help);
 				hint.id = hintId;
@@ -371,15 +911,45 @@ export class ProseIDForm {
 		control.addEventListener('change', () => this.change(name, definition, control, true));
 		control.addEventListener('blur', () => {
 			this.blurred.add(name);
-			this.renderIssues(this.lastValidation?.issues || []);
-			this.scheduleValidation(0);
+			this.scheduleValidation(120);
 		});
 		const error = text('span', 'error');
 		error.id = `${id}-error`;
 		error.setAttribute('aria-live', 'polite');
 		wrap.append(error);
-		this.fields.set(name, { wrap, control, error, message, required, definition, label: labelText });
+		this.fields.set(name, {
+			wrap, control, error, message, required, definition, label: labelText,
+			engineVisible: definition.visible !== false,
+			choiceButtons: wrap.choiceButtons || null
+		});
 		return wrap;
+	}
+
+	setChecklistBoolean(name, value) {
+		const field = this.fields.get(name);
+		if (!field) return;
+		const firstReview = !this.reviewed.has(name);
+		this.reviewed.add(name);
+		field.control.value = String(value);
+		field.choiceButtons?.yes.classList.toggle('selected', value === true);
+		field.choiceButtons?.no.classList.toggle('selected', value === false);
+		field.choiceButtons?.yes.setAttribute('aria-pressed', String(value === true));
+		field.choiceButtons?.no.setAttribute('aria-pressed', String(value === false));
+		this.updateChecklistProgress();
+		if (Object.is(this.values[name], value)) {
+			this.updateSubmitState();
+			if (firstReview) {
+				this.emit('change', { name, value, values: { ...this.values } });
+				this.scheduleValidation(0);
+			}
+			return;
+		}
+		this.values[name] = value;
+		this.valid = false;
+		this.updateSubmitState();
+		this.setStatus('checking', this.copy.checking);
+		this.emit('change', { name, value, values: { ...this.values } });
+		this.scheduleValidation(0);
 	}
 
 	change(name, definition, control, immediate = false) {
@@ -391,10 +961,22 @@ export class ProseIDForm {
 		// Browsers fire `change` again when a filled control loses focus. Do not invalidate a value
 		// that the server has already approved: doing so can disable Submit between pointer-down and
 		// click when the user moves directly from the last field to the button.
-		if (Object.is(this.values[name], value)) return;
+		if (this.flowType === 'checklist' && ['boolean', 'attestation'].includes(definition.type)) {
+			this.reviewed.add(name);
+			this.updateChecklistProgress();
+		}
+		if (Object.is(this.values[name], value)) {
+			this.updateSubmitState();
+			return;
+		}
 		this.values[name] = value;
 		this.valid = false;
-		this.submitButton.disabled = true;
+		if (this.flowType === 'determination') {
+			this.calculated = false;
+			if (this.calculateButton) this.calculateButton.textContent = this.copy.calculate;
+			this.renderDeterminationWaiting();
+		}
+		this.updateSubmitState();
 		this.setStatus('checking', this.copy.checking);
 		this.emit('change', { name, value: this.values[name], values: { ...this.values } });
 		this.scheduleValidation(immediate ? 0 : (this.options.validateDelay ?? 400));
@@ -416,14 +998,14 @@ export class ProseIDForm {
 			this.valid = result.valid === true;
 			this.applyDefinitions(result.definitions || {});
 			this.renderIssues(result.issues || []);
-			this.submitButton.disabled = !this.valid;
+			this.updateSubmitState();
 			this.setStatus(this.valid ? 'ready' : 'idle', this.valid ? this.copy.ready : this.copy.incomplete);
 			this.emit('validation', { valid: this.valid, status: result.status, issues: result.issues || [] });
 			return result;
 		} catch (error) {
 			if (error?.name === 'AbortError') return null;
 			this.valid = false;
-			this.submitButton.disabled = true;
+			this.updateSubmitState();
 			this.setStatus('error', this.copy.checkFailed);
 			this.emit('error', { error });
 			return null;
@@ -434,13 +1016,17 @@ export class ProseIDForm {
 		for (const [name, resolved] of Object.entries(definitions)) {
 			const field = this.fields.get(name);
 			if (!field) continue;
-			field.wrap.hidden = resolved?.visible === false;
+			field.engineVisible = resolved?.visible !== false;
+			field.definition = { ...field.definition, ...resolved };
+			field.wrap.hidden = !field.engineVisible;
 			const required = resolved?.required === true;
 			field.control.required = required;
 			field.required.hidden = !required;
 			field.message.textContent = resolved?.ui_message || '';
 			field.message.hidden = !resolved?.ui_message;
 		}
+		if (this.flowType === 'guided_assessment' && this.guidedPhase === 'questions') this.refreshGuided();
+		if (this.flowType === 'checklist') this.updateChecklistProgress();
 	}
 
 	shouldShow(issue) {
@@ -463,6 +1049,15 @@ export class ProseIDForm {
 				field.error.textContent = friendlyIssue(issue, field.label, this.copy);
 				field.control.setAttribute('aria-invalid', 'true');
 			} else formIssues.push(friendlyIssue(issue, 'This field', this.copy));
+		}
+		if (this.submittedAttempted && this.flowType === 'checklist') {
+			for (const name of this.checklistControlNames()) {
+				if (this.reviewed.has(name)) continue;
+				const field = this.fields.get(name);
+				if (!field || field.error.textContent) continue;
+				field.error.textContent = this.copy.checklistChoose;
+				field.control.setAttribute('aria-invalid', 'true');
+			}
 		}
 		this.formError.textContent = formIssues.join(' ');
 		this.formError.hidden = formIssues.length === 0;
@@ -547,8 +1142,11 @@ export class ProseIDForm {
 	async submit(event) {
 		event.preventDefault();
 		if (this.destroyed) return;
+		clearTimeout(this.validationTimer);
 		this.submittedAttempted = true;
 		this.renderIssues(this.lastValidation?.issues || []);
+		if (this.flowType === 'determination' && !this.calculated) return;
+		if (this.flowType === 'checklist' && !this.checklistControlNames().every((name) => this.reviewed.has(name))) return;
 		if (!this.valid) {
 			await this.validate();
 			if (!this.valid) return;
@@ -565,8 +1163,8 @@ export class ProseIDForm {
 					this.setStatus('checking', this.copy.awaitingSignature);
 					signature = await this.collectBasicSignature();
 					if (!signature) {
-						this.submitButton.disabled = !this.valid;
-						this.submitButton.textContent = this.options.submitLabel || this.copy.submit;
+						this.updateSubmitState();
+						this.submitButton.textContent = this.options.submitLabel || this.defaultSubmitLabel();
 						this.setStatus('ready', this.copy.ready);
 						return;
 					}
@@ -581,8 +1179,8 @@ export class ProseIDForm {
 			this.renderComplete(result);
 			this.emit('complete', result);
 		} catch (error) {
-			this.submitButton.disabled = !this.valid;
-			this.submitButton.textContent = this.options.submitLabel || this.copy.submit;
+			this.updateSubmitState();
+			this.submitButton.textContent = this.options.submitLabel || this.defaultSubmitLabel();
 			this.formError.hidden = false;
 			this.formError.textContent = errorMessage(error.code, error.message);
 			this.setStatus('error', 'Submission not saved');
@@ -591,6 +1189,7 @@ export class ProseIDForm {
 	}
 
 	renderComplete(result) {
+		for (const cleanup of this.cleanupFns.splice(0)) cleanup();
 		const shell = this.shadow.querySelector('.shell');
 		const complete = text('div', 'complete');
 		complete.append(text('div', 'seal', '✓'), text('h2', '', result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
@@ -701,6 +1300,7 @@ export class ProseIDForm {
 		clearTimeout(this.validationTimer);
 		this.validationAbort?.abort();
 		this.signatureCancel?.();
+		for (const cleanup of this.cleanupFns.splice(0)) cleanup();
 		this.shadow.replaceChildren();
 		this.fields.clear();
 	}

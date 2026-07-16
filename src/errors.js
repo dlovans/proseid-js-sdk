@@ -15,7 +15,7 @@ const messages = {
 	embed_origin_not_allowed: 'This website is not allowed to use this Flow.',
 	flow_not_found: 'This Flow is no longer available.',
 	flow_unpublished: 'This Flow is no longer available.',
-	flow_type_not_supported: 'Only Standard Form Flows can be embedded with the JavaScript SDK.',
+	flow_type_not_supported: 'This Flow experience is not supported by the installed JavaScript SDK version.',
 	insufficient_balance: 'This Flow is temporarily unavailable. Contact its publisher.',
 	rate_limited: 'Too many requests. Wait a moment and try again.',
 	validation_failed: 'Check the highlighted fields and try again.',
@@ -25,7 +25,7 @@ const messages = {
 	receipt_not_available: 'This completed record is not available for email delivery.',
 	email_not_configured: 'Email delivery is temporarily unavailable.',
 	send_failed: 'The copy could not be sent. Try again.',
-	signing_not_available: 'Signing is not available in embedded Standard Forms yet.',
+	signing_not_available: 'Signing is not available in this embedded Flow yet.',
 	service_unavailable: 'Validation is temporarily unavailable. Try again shortly.'
 };
 

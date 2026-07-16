@@ -1,7 +1,7 @@
 {
 	"name": "@proseid/js-sdk",
-	"version": "0.6.0",
-	"description": "Embeddable, server-validated ProseID compliance forms.",
+	"version": "0.7.0",
+	"description": "Embeddable, server-validated ProseID compliance Flows.",
 	"type": "module",
 	"license": "Apache-2.0",
 	"main": "./dist/proseid.js",
@@ -35,7 +35,7 @@
 	"keywords": [
 		"proseid",
 		"compliance",
-		"forms",
+		"flows",
 		"validation",
 		"audit"
 	],

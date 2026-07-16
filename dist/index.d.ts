@@ -1,4 +1,5 @@
 export type ThemeName = 'light' | 'charcoal' | 'midnight' | 'forest';
+export type FlowType = 'form' | 'guided_assessment' | 'determination' | 'checklist';
 export type AppearancePreset = 'soft' | 'capsule' | 'rigid' | 'underline';
 export interface Appearance {
 	preset?: AppearancePreset;
@@ -11,7 +12,7 @@ export interface Branding {
 	/** Safe HTTPS image URL. Falls back to the publisher's ProseID organization logo. */
 	logoUrl?: string;
 	logoAlt?: string;
-	/** `hidden` removes ProseID attribution and adds the server-enforced white-label completion surcharge. */
+	/** Preview/loading preference. A production Flow's saved attribution is authoritative. */
 	proseid?: 'full' | 'compact' | 'hidden';
 }
 
@@ -24,7 +25,7 @@ export interface MountOptions {
 	/** Browser-safe `proseid_pk_…` key identifying the organization that owns the Flow. */
 	apiKey: string;
 	apiBase?: string;
-	/** Curated, contrast-tested palette. Arbitrary color values are intentionally unsupported. */
+	/** Curated loading/test fallback. A production Flow's saved theme is authoritative. */
 	theme?: ThemeName;
 	appearance?: AppearancePreset | Appearance;
 	branding?: Branding;
@@ -47,7 +48,7 @@ export interface MountOptions {
 
 export interface EmbedManifest {
 	apiVersion: string;
-	flow: { ref: string; flowType: 'form'; title: string; description: string; schemaId: string; schemaVersion: string };
+	flow: { ref: string; flowType: FlowType; title: string; description: string; schemaId: string; schemaVersion: string; completionBinding?: string };
 	publisher: { slug: string; name: string; logo: string | null; verified: boolean };
 	schema: {
 		title?: string;
@@ -60,7 +61,7 @@ export interface EmbedManifest {
 		definitions: Record<string, Record<string, unknown>>;
 	};
 	branding: { proseid: { name: string; logo: string; url: string } };
-	presentation: { attribution: 'full' | 'compact' | 'hidden'; whiteLabel: boolean; completionMicrons: number; surchargeMicrons: number; testMode?: boolean };
+	presentation: { theme?: ThemeName; attribution: 'full' | 'compact' | 'hidden'; whiteLabel: boolean; completionMicrons: number; surchargeMicrons: number; testMode?: boolean };
 	capabilities: {
 		validation: 'remote';
 		auditRecord: boolean;
