@@ -4,7 +4,7 @@ import { mount, mountTest, THEME_NAMES, VERSION } from '../src/index.js';
 const manifest = {
 	ok: true,
 	apiVersion: '2026-07-16',
-	flow: { ref: 'flow_1', flowType: 'form', title: 'Client intake', description: 'Complete this record.', schemaId: 'schema_1', schemaVersion: '1.0.0' },
+	flow: { ref: 'flow_1', flowType: 'form', title: 'Client intake', description: 'Complete this record.', schemaId: 'schema_1', schemaVersion: '1.0.0', effectiveAt: '2026-07-16' },
 	publisher: { slug: 'acme', name: 'Acme Legal', logo: null, verified: true },
 	branding: { proseid: { name: 'ProseID', logo: 'https://proseid.com/icon-192.png', url: 'https://proseid.com' } },
 	presentation: { attribution: 'full', whiteLabel: false, completionMicrons: 200, surchargeMicrons: 0 },
@@ -32,10 +32,23 @@ describe('ProseID SDK', () => {
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
 		await instance.ready;
 		expect(fetch.mock.calls[0][1].headers['x-proseid-key']).toBe(API_KEY);
+		expect(JSON.parse(fetch.mock.calls[1][1].body).effectiveAt).toBe('2026-07-16');
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('h1').textContent).toBe('Client intake');
 		expect(root.textContent).toContain('Acme Legal');
 		expect(root.textContent).toContain('Verified by');
+		expect(root.querySelector('button[type="submit"]').disabled).toBe(true);
+	});
+
+	it('tells a respondent to reload when the server rejects a stale legal date', async () => {
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(manifest))
+			.mockImplementationOnce(() => response({ ok: false, error: 'flow_changed' }, 409));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		expect(root.querySelector('.form-error').hidden).toBe(false);
+		expect(root.textContent).toContain('Reload the page');
 		expect(root.querySelector('button[type="submit"]').disabled).toBe(true);
 	});
 

@@ -6,6 +6,12 @@ The renderer follows the Flow selected by its publisher: a Standard Form, one-qu
 
 Final submission is not a client-side “success” flag. ProseID authoritatively re-runs the schema, debits the publisher once, encrypts the responses, creates the normal encrypted record and signed proof, then performs the Flow's email/webhook delivery.
 
+For time-aware schemas, the manifest also supplies the server's current UTC `effectiveAt` date and
+the legal period selected for it. The SDK sends that date on every validation and completion call;
+the completed record and proof retain the date, rule-set name, and inclusive range. If a Flow stays
+open across UTC midnight, the server returns `flow_changed` and the respondent must reload before
+continuing, so an old page cannot complete against stale legal logic.
+
 ## Why use the SDK instead of an iframe?
 
 - The Flow feels native to the customer’s product and resizes with its content.

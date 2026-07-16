@@ -15,6 +15,7 @@ const messages = {
 	embed_origin_not_allowed: 'This website is not allowed to use this Flow.',
 	flow_not_found: 'This Flow is no longer available.',
 	flow_unpublished: 'This Flow is no longer available.',
+	flow_changed: 'The applicable rules changed while this Flow was open. Reload the page before continuing.',
 	flow_type_not_supported: 'This Flow experience is not supported by the installed JavaScript SDK version.',
 	insufficient_balance: 'This Flow is temporarily unavailable. Contact its publisher.',
 	rate_limited: 'Too many requests. Wait a moment and try again.',

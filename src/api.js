@@ -58,16 +58,16 @@ export class EmbedApi {
 		return this.request(null, signal);
 	}
 
-	validate(flowRef, responses, signal) {
-		return this.request({ action: 'validate', flowRef, responses }, signal);
+	validate(flowRef, responses, effectiveAt, signal) {
+		return this.request({ action: 'validate', flowRef, responses, effectiveAt }, signal);
 	}
 
-	prepareSigning(flowRef, recordId, responses, signal) {
-		return this.request({ action: 'prepare_signing', flowRef, recordId, responses }, signal);
+	prepareSigning(flowRef, recordId, responses, effectiveAt, signal) {
+		return this.request({ action: 'prepare_signing', flowRef, recordId, responses, effectiveAt }, signal);
 	}
 
-	complete(flowRef, recordId, responses, signature = null, signal) {
-		return this.request({ action: 'complete', flowRef, recordId, responses, signature }, signal);
+	complete(flowRef, recordId, responses, effectiveAt, signature = null, signal) {
+		return this.request({ action: 'complete', flowRef, recordId, responses, effectiveAt, signature }, signal);
 	}
 
 	emailReceipt(flowRef, recordId, email, signal) {

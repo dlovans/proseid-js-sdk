@@ -993,7 +993,12 @@ export class ProseIDForm {
 		this.validationAbort = new AbortController();
 		this.setStatus('checking', this.copy.checking);
 		try {
-			const result = await this.api.validate(this.manifest.flow.ref, this.values, this.validationAbort.signal);
+			const result = await this.api.validate(
+				this.manifest.flow.ref,
+				this.values,
+				this.manifest.flow.effectiveAt,
+				this.validationAbort.signal
+			);
 			this.lastValidation = result;
 			this.valid = result.valid === true;
 			this.applyDefinitions(result.definitions || {});
@@ -1006,7 +1011,12 @@ export class ProseIDForm {
 			if (error?.name === 'AbortError') return null;
 			this.valid = false;
 			this.updateSubmitState();
-			this.setStatus('error', this.copy.checkFailed);
+			const message = errorMessage(error.code, this.copy.checkFailed);
+			this.setStatus('error', message);
+			if (error?.code === 'flow_changed' && this.formError) {
+				this.formError.hidden = false;
+				this.formError.textContent = message;
+			}
 			this.emit('error', { error });
 			return null;
 		}
@@ -1170,12 +1180,23 @@ export class ProseIDForm {
 					}
 					this.emit('signing', { mode, signature });
 				} else {
-					const nextAction = await this.api.prepareSigning(this.manifest.flow.ref, this.recordId, this.values);
+					const nextAction = await this.api.prepareSigning(
+						this.manifest.flow.ref,
+						this.recordId,
+						this.values,
+						this.manifest.flow.effectiveAt
+					);
 					signature = await this.signing.handle(nextAction, { manifest: this.manifest, values: { ...this.values } });
 					this.emit('signing', { mode, nextAction, signature });
 				}
 			}
-			const result = await this.api.complete(this.manifest.flow.ref, this.recordId, this.values, signature);
+			const result = await this.api.complete(
+				this.manifest.flow.ref,
+				this.recordId,
+				this.values,
+				this.manifest.flow.effectiveAt,
+				signature
+			);
 			this.renderComplete(result);
 			this.emit('complete', result);
 		} catch (error) {
