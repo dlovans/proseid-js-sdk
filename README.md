@@ -101,8 +101,10 @@ exposes the supported names for configuration UIs.
 
 `full` and `compact` attribution have the standard completion price. `hidden` is the supported
 white-label mode. The publisher selects it on the Flow; the authenticated server returns that
-authoritative mode and price in `manifest.presentation`, and a completed production record is billed 25% extra
-(currently 250 microns instead of 200). The record captures the embed source, publishable key,
+authoritative mode and frozen price in `manifest.presentation`, and a completed production record is
+billed 25% extra on its base price. Prices use integer microns internally (1,000 microns = US$1) to
+avoid floating-point money; use `completionMicrons / 1000` when displaying USD. The record captures
+the embed source, publishable key,
 origin, SDK version, attribution mode, and pricing components. Test completions are always free.
 The legacy `branding.proseid` mount preference cannot override a production Flow or its billing.
 

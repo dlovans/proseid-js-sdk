@@ -61,6 +61,7 @@ export interface EmbedManifest {
 		definitions: Record<string, Record<string, unknown>>;
 	};
 	branding: { proseid: { name: string; logo: string; url: string } };
+	/** Frozen Flow price. Monetary fields are integer microns: 1,000 microns = US$1. */
 	presentation: { theme?: ThemeName; attribution: 'full' | 'compact' | 'hidden'; whiteLabel: boolean; completionMicrons: number; surchargeMicrons: number; testMode?: boolean };
 	capabilities: {
 		validation: 'remote';
