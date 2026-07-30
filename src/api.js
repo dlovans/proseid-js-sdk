@@ -9,7 +9,7 @@ export function parseFlowCoordinate(value) {
 }
 
 export class EmbedApi {
-	constructor({ apiBase = 'https://proseid.com', apiKey, flow, testMode = false, attribution = 'full', fetchImpl = globalThis.fetch }) {
+	constructor({ apiBase = 'https://proseid.com', apiKey, flow, testMode = false, attribution = 'full', parentOrigin = '', fetchImpl = globalThis.fetch }) {
 		if (typeof fetchImpl !== 'function') throw new ProseIDError('fetch_unavailable', 'This browser cannot load the Flow.');
 		if (!/^proseid_pk_[a-f0-9]{32,64}$/.test(String(apiKey || ''))) {
 			throw new ProseIDError('invalid_api_key', 'A ProseID publishable key is required.');
@@ -19,6 +19,7 @@ export class EmbedApi {
 		this.fetch = fetchImpl.bind(globalThis);
 		this.apiKey = apiKey;
 		this.attribution = normalizeAttribution(attribution);
+		this.parentOrigin = parentOrigin;
 		if (testMode) {
 			this.endpoint = `${String(apiBase).replace(/\/$/, '')}/api/embed/v1/test`;
 		} else {
@@ -41,6 +42,7 @@ export class EmbedApi {
 				'x-proseid-key': this.apiKey,
 				'x-proseid-sdk-version': VERSION,
 				'x-proseid-attribution': this.attribution,
+				...(this.parentOrigin ? { 'x-proseid-embed-origin': this.parentOrigin } : {}),
 				...(body ? { 'content-type': 'application/json' } : {})
 			},
 			...(body ? { body: JSON.stringify(body) } : {}),
@@ -58,16 +60,16 @@ export class EmbedApi {
 		return this.request(null, signal);
 	}
 
-	validate(flowRef, responses, effectiveAt, signal) {
-		return this.request({ action: 'validate', flowRef, responses, effectiveAt }, signal);
+	validate(flowRef, responses, effectiveAt, language, signal) {
+		return this.request({ action: 'validate', flowRef, responses, effectiveAt, language }, signal);
 	}
 
 	prepareSigning(flowRef, recordId, responses, effectiveAt, signal) {
 		return this.request({ action: 'prepare_signing', flowRef, recordId, responses, effectiveAt }, signal);
 	}
 
-	complete(flowRef, recordId, responses, effectiveAt, signature = null, signal) {
-		return this.request({ action: 'complete', flowRef, recordId, responses, effectiveAt, signature }, signal);
+	complete(flowRef, recordId, responses, effectiveAt, signature = null, language = 'en', signal) {
+		return this.request({ action: 'complete', flowRef, recordId, responses, effectiveAt, signature, language }, signal);
 	}
 
 	emailReceipt(flowRef, recordId, email, signal) {

@@ -1,4 +1,18 @@
 export type ThemeName = 'light' | 'charcoal' | 'midnight' | 'forest';
+export interface FlowColors {
+	accent?: string;
+	accentInk?: string;
+	canvas?: string;
+	surface?: string;
+	ink?: string;
+	copy?: string;
+	muted?: string;
+	rule?: string;
+	success?: string;
+	successTint?: string;
+	submitInk?: string;
+	skeletonGlow?: string;
+}
 export type FlowType = 'form' | 'guided_assessment' | 'determination' | 'checklist';
 export type AppearancePreset = 'soft' | 'capsule' | 'rigid' | 'underline';
 export interface Appearance {
@@ -27,15 +41,19 @@ export interface MountOptions {
 	apiBase?: string;
 	/** Curated loading/test fallback. A production Flow's saved theme is authoritative. */
 	theme?: ThemeName;
+	/** Optional palette overrides. Only exact six-digit hex values such as #1a2b3c are accepted. */
+	colors?: FlowColors;
 	appearance?: AppearancePreset | Appearance;
 	branding?: Branding;
-	nonce?: string;
 	validateDelay?: number;
 	locale?: 'en' | 'sv' | string;
-	messages?: Record<string, string | ((value: string) => string)>;
+	messages?: Record<string, unknown>;
 	submitLabel?: string;
 	signingAdapter?: SigningAdapter;
-	fetch?: typeof fetch;
+	/** Browser loading policy for the ProseID-controlled iframe. Defaults to eager. */
+	loading?: 'eager' | 'lazy';
+	/** Accessible title applied to the iframe. */
+	title?: string;
 	onReady?: (detail: { manifest: EmbedManifest }) => void;
 	onChange?: (detail: { name: string; value: unknown; values: Record<string, unknown> }) => void;
 	onValidation?: (detail: { valid: boolean; status: string; issues: unknown[] }) => void;
@@ -43,18 +61,21 @@ export interface MountOptions {
 	onSigning?: (detail: { mode: string; signature?: unknown; nextAction?: Record<string, unknown> }) => void;
 	onComplete?: (result: CompletionResult) => void;
 	onReceipt?: (result: ReceiptResult) => void;
+	onLanguage?: (detail: { language: 'en' | 'sv' }) => void;
 	onError?: (error: Error) => void;
 }
 
 export interface EmbedManifest {
 	apiVersion: string;
-	flow: { ref: string; flowType: FlowType; title: string; description: string; schemaId: string; schemaVersion: string; effectiveAt: string; temporalContext?: { effective_at: string; logic_version: string | null; valid_range: [string | null, string | null] | null } | null; completionBinding?: string };
+	flow: { ref: string; flowType: FlowType; title: string; description: string; schemaId: string; schemaVersion: string; effectiveAt: string; language?: 'en' | 'sv'; temporalContext?: { effective_at: string; logic_version: string | null; valid_range: [string | null, string | null] | null } | null; completionBinding?: string };
 	publisher: { slug: string; name: string; logo: string | null; verified: boolean };
 	schema: {
 		title?: string;
 		description?: string;
 		metadata?: {
+			title?: string;
 			description?: string;
+			language?: 'en' | 'sv';
 			jurisdictions?: string[];
 			legal_references?: Array<{ instrument?: string; provision?: string; source_url?: string }>;
 		};
@@ -107,6 +128,7 @@ export declare class ProseIDForm {
 }
 export declare const VERSION: string;
 export declare const THEME_NAMES: readonly ThemeName[];
+export declare const COLOR_TOKEN_NAMES: readonly (keyof FlowColors)[];
 export declare function mount(target: string | Element, options: MountOptions): ProseIDForm;
 export declare function mountTest(target: string | Element, options: Omit<MountOptions, 'flow'> & { flow?: never }): ProseIDForm;
 export declare function mountAll(defaults?: Partial<MountOptions>): ProseIDForm[];

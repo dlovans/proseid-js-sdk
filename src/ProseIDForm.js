@@ -4,7 +4,7 @@ import { SigningCoordinator } from './signing.js';
 import { styles } from './styles.js';
 import { messagesFor } from './i18n.js';
 import { normalizeAppearance, normalizeAttribution, safeLogoUrl } from './presentation.js';
-import { normalizeTheme, THEMES } from './themes.js';
+import { normalizeColors, normalizeTheme, THEMES } from './themes.js';
 
 const text = (tag, className, value = '') => {
 	const node = document.createElement(tag);
@@ -30,6 +30,50 @@ const friendlyIssue = (issue, label, copy) => {
 const randomRecordId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll('-', '') || Math.random().toString(36).slice(2).padEnd(16, '0')}`;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const FLOW_TYPES = new Set(['form', 'guided_assessment', 'determination', 'checklist']);
+const LANGUAGES = new Set(['en', 'sv']);
+const LANGUAGE_STORAGE_KEY = 'proseid_flow_language';
+const normalizeLocale = (value) => {
+	const language = String(value || '').trim().toLowerCase().split('-')[0];
+	return LANGUAGES.has(language) ? language : 'en';
+};
+const readLocalePreference = () => {
+	try {
+		const value = globalThis.localStorage?.getItem?.(LANGUAGE_STORAGE_KEY);
+		return LANGUAGES.has(value) ? value : '';
+	} catch { return ''; }
+};
+const saveLocalePreference = (value) => {
+	try { globalThis.localStorage?.setItem?.(LANGUAGE_STORAGE_KEY, value); }
+	catch { /* Storage can be unavailable in strict privacy modes. */ }
+};
+const CHOICE_ACRONYMS = new Map([
+	['api', 'API'], ['ccpa', 'CCPA'], ['dns', 'DNS'], ['dora', 'DORA'], ['eea', 'EEA'],
+	['eu', 'EU'], ['ftc', 'FTC'], ['gdpr', 'GDPR'], ['hipaa', 'HIPAA'], ['ict', 'ICT'],
+	['nis2', 'NIS2'], ['osha', 'OSHA'], ['pdf', 'PDF'], ['sec', 'SEC'], ['tld', 'TLD'],
+	['uk', 'UK'], ['us', 'US']
+]);
+const humanizeText = (value) => {
+	const source = String(value ?? '').trim();
+	if (!source || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(source) || /^[a-z][a-z0-9+.-]*:\/\//i.test(source)) return source;
+	const spaced = source.replace(/_+/g, ' ').replace(/\s+/g, ' ');
+	return spaced.charAt(0).toLocaleUpperCase() + spaced.slice(1);
+};
+const humanizeChoice = (value) => humanizeText(value).split(' ')
+	.map((word) => CHOICE_ACRONYMS.get(word.toLocaleLowerCase()) ?? word)
+	.join(' ');
+const isEmptyValue = (definition, value) => value === undefined || value === null ||
+	((definition?.type === 'string' || definition?.type === 'select') && value === '');
+const answerProvided = (definition, value) => {
+	if (definition?.type === 'attestation' && definition?.required === true) return value === true;
+	return !isEmptyValue(definition, value);
+};
+const normalizedResponses = (definitions, values) => Object.fromEntries(
+	Object.entries(values).map(([name, value]) => {
+		const definition = definitions?.[name];
+		if (value === '' && ['select', 'date', 'number', 'currency'].includes(definition?.type)) return [name, undefined];
+		return [name, value];
+	})
+);
 const jurisdictionName = (value, locale = 'en') => {
 	const code = String(value || '').trim().toUpperCase();
 	const language = String(locale || 'en').toLowerCase().split('-')[0];
@@ -48,7 +92,9 @@ export class ProseIDForm {
 		if (!options?.flow && !options?.testMode) throw new ProseIDError('invalid_flow', 'The Flow coordinate is required.');
 		if (!options?.apiKey) throw new ProseIDError('invalid_api_key', 'A ProseID publishable key is required.');
 		this.options = options;
-		this.copy = messagesFor(options.locale, options.messages);
+		this.explicitLocale = options.locale ? normalizeLocale(options.locale) : '';
+		this.locale = this.explicitLocale || readLocalePreference() || 'en';
+		this.copy = messagesFor(this.locale, options.messages);
 		this.attribution = normalizeAttribution(options.branding?.proseid);
 		this.api = new EmbedApi({
 			apiBase: options.apiBase,
@@ -56,6 +102,7 @@ export class ProseIDForm {
 			flow: options.flow,
 			testMode: options.testMode === true,
 			attribution: this.attribution,
+			parentOrigin: options.parentOrigin,
 			fetchImpl: options.fetch
 		});
 		this.signing = new SigningCoordinator(options.signingAdapter);
@@ -66,13 +113,15 @@ export class ProseIDForm {
 		this.reviewed = new Set();
 		this.submittedAttempted = false;
 		this.valid = false;
-		this.calculated = false;
 		this.guidedPhase = 'questions';
 		this.guidedIndex = 0;
 		this.guidedChecking = false;
 		this.destroyed = false;
 		this.validationTimer = null;
 		this.validationAbort = null;
+		this.validationSequence = 0;
+		this.submitting = false;
+		this.validationLocked = false;
 		this.cleanupFns = [];
 		this.recordId = randomRecordId();
 		this.applyAppearance(options.appearance);
@@ -84,7 +133,8 @@ export class ProseIDForm {
 	applyTheme(theme = {}) {
 		const name = normalizeTheme(theme);
 		this.target.dataset.proseidTheme = name;
-		for (const [key, value] of Object.entries(THEMES[name])) {
+		const colors = { ...THEMES[name], ...normalizeColors(this.options.colors) };
+		for (const [key, value] of Object.entries(colors)) {
 			const token = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 			this.target.style.setProperty(`--proseid-${token}`, value);
 		}
@@ -133,6 +183,8 @@ export class ProseIDForm {
 				);
 			}
 			this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
+			this.locale = this.explicitLocale || readLocalePreference() || normalizeLocale(this.manifest.flow?.language);
+			this.copy = messagesFor(this.locale, this.options.messages);
 			this.api.setAttribution(this.attribution);
 			// Published Flows own their curated theme. The mount option remains the loading/test fallback,
 			// but production presentation cannot drift between the hosted and embedded renderers.
@@ -154,8 +206,43 @@ export class ProseIDForm {
 
 	seedValues() {
 		for (const [name, definition] of Object.entries(this.manifest.schema?.definitions || {})) {
-			this.values[name] = definition?.value ?? (['boolean', 'attestation'].includes(definition?.type) ? false : '');
+			let value = definition?.value;
+			if (definition?.type === 'select' && (value === undefined || value === null)) value = '';
+			if (definition?.type === 'attestation' && value !== true) value = false;
+			this.values[name] = value;
 		}
+	}
+
+	setLocale(locale) {
+		const next = normalizeLocale(locale);
+		if (next === this.locale) return;
+		this.locale = next;
+		this.copy = messagesFor(next, this.options.messages);
+		saveLocalePreference(next);
+		for (const cleanup of this.cleanupFns.splice(0)) cleanup();
+		this.fields.clear();
+		this.renderForm();
+		if (this.lastValidation) {
+			this.applyDefinitions(this.lastValidation.definitions || {});
+			this.renderIssues(this.lastValidation.issues || []);
+		}
+		this.updateSubmitState();
+		this.emit('language', { language: next });
+	}
+
+	renderLanguageSelector() {
+		const selector = text('div', 'language-selector');
+		selector.setAttribute('role', 'group');
+		selector.setAttribute('aria-label', this.copy.languageLabel);
+		for (const language of ['en', 'sv']) {
+			const button = text('button', language === this.locale ? 'active' : '', language.toUpperCase());
+			button.type = 'button';
+			button.setAttribute('aria-pressed', String(language === this.locale));
+			button.setAttribute('title', language === 'sv' ? this.copy.swedish : this.copy.english);
+			button.addEventListener('click', () => this.setLocale(language));
+			selector.append(button);
+		}
+		return selector;
 	}
 
 	brand(publisher) {
@@ -195,16 +282,27 @@ export class ProseIDForm {
 
 	renderSchemaDetails() {
 		const metadata = this.manifest.schema?.metadata || {};
+		const title = String(metadata.title || this.manifest.schema?.title || '').trim();
 		const description = String(metadata.description || '').trim();
 		const jurisdictions = Array.isArray(metadata.jurisdictions) ? metadata.jurisdictions.filter(Boolean) : [];
 		const references = Array.isArray(metadata.legal_references) ? metadata.legal_references.filter(Boolean) : [];
-		if (!description && jurisdictions.length === 0 && references.length === 0) return null;
+		const temporal = this.manifest.flow?.temporalContext;
+		if (!title && !description && jurisdictions.length === 0 && references.length === 0 && !temporal?.logic_version) return null;
 
 		const details = text('details', 'schema-details');
 		details.append(text('summary', '', this.copy.schemaDetails));
 		const content = text('div', 'schema-details-content');
+		if (title && title !== this.manifest.flow.title) content.append(text('strong', 'schema-title', title));
 		if (description && description !== this.manifest.flow.description) {
 			content.append(text('p', 'schema-summary', description));
+		}
+		if (temporal?.logic_version) {
+			const period = text('div', 'temporal-context');
+			period.append(
+				text('span', '', this.copy.appliesOn(this.manifest.flow.effectiveAt)),
+				text('span', '', this.copy.interpretation(temporal.logic_version))
+			);
+			content.append(period);
 		}
 		if (jurisdictions.length) {
 			const group = text('div', 'metadata-group');
@@ -212,7 +310,7 @@ export class ProseIDForm {
 			const values = text('div', 'jurisdiction-list');
 			for (const jurisdiction of jurisdictions) {
 				const code = String(jurisdiction).toUpperCase();
-				const chip = text('span', 'jurisdiction', jurisdictionName(code, this.options.locale));
+				const chip = text('span', 'jurisdiction', jurisdictionName(code, this.locale));
 				chip.append(text('code', '', code));
 				values.append(chip);
 			}
@@ -251,9 +349,11 @@ export class ProseIDForm {
 		const head = text('header', 'head');
 		const brands = text('div', 'brands');
 		brands.append(this.brand(this.manifest.publisher));
+		const respondentTools = text('div', 'respondent-tools');
+		respondentTools.append(this.renderLanguageSelector());
 		const proseidBrand = this.proseidBrand();
-		if (proseidBrand) brands.append(proseidBrand);
-		else brands.classList.add('publisher-only');
+		if (proseidBrand) respondentTools.append(proseidBrand);
+		brands.append(respondentTools);
 		head.append(brands, text('h1', '', this.manifest.flow.title));
 		if (this.manifest.flow.description) head.append(text('p', 'description', this.manifest.flow.description));
 		const schemaDetails = this.renderSchemaDetails();
@@ -311,10 +411,10 @@ export class ProseIDForm {
 	}
 
 	displayValue(value, definition) {
+		if (isEmptyValue(definition, value)) return this.copy.notAnswered;
 		if (['boolean', 'attestation'].includes(definition?.type)) return value === true ? this.copy.yes : this.copy.no;
-		if (value === undefined || value === null || value === '') return this.copy.notAnswered;
 		if (typeof value === 'object') return JSON.stringify(value);
-		return String(value);
+		return String(value).includes('_') ? humanizeChoice(value) : humanizeText(value);
 	}
 
 	renderGuided() {
@@ -329,7 +429,9 @@ export class ProseIDForm {
 		this.guidedNext = text('button', 'primary-action', this.copy.continue);
 		this.guidedNext.type = 'button';
 		this.guidedNext.addEventListener('click', () => this.guidedContinue());
-		navigation.append(this.guidedBack, this.guidedNext);
+		this.guidedRequirement = text('span', 'guided-requirement', this.copy.answerRequired);
+		this.guidedRequirement.hidden = true;
+		navigation.append(this.guidedBack, this.guidedRequirement, this.guidedNext);
 		this.guidedQuestion.append(this.guidedIndexNode, this.guidedFieldSlot, navigation);
 
 		this.guidedPath = text('aside', 'guided-path');
@@ -354,7 +456,7 @@ export class ProseIDForm {
 			return;
 		}
 		this.guidedIndex = Math.min(this.guidedIndex, entries.length - 1);
-		const [, field] = entries[this.guidedIndex];
+		const [currentName, field] = entries[this.guidedIndex];
 		for (const [, candidate] of entries) {
 			candidate.wrap.hidden = candidate !== field;
 			if (candidate !== field && candidate.wrap.parentNode !== this.guidedParking) this.guidedParking.append(candidate.wrap);
@@ -363,7 +465,9 @@ export class ProseIDForm {
 		this.guidedFieldSlot.replaceChildren(field.wrap);
 		this.guidedIndexNode.textContent = this.copy.guidedProgress(this.guidedIndex + 1, entries.length);
 		this.guidedBack.disabled = this.guidedIndex === 0;
-		this.guidedNext.disabled = this.guidedChecking;
+		const needsAnswer = field.definition?.required === true && !answerProvided(field.definition, this.values[currentName]);
+		this.guidedNext.disabled = this.guidedChecking || needsAnswer;
+		this.guidedRequirement.hidden = !needsAnswer;
 		this.guidedNext.textContent = this.guidedIndex === entries.length - 1 ? this.copy.reviewAnswers : this.copy.continue;
 
 		this.guidedPath.replaceChildren();
@@ -394,6 +498,10 @@ export class ProseIDForm {
 			list.append(item);
 		});
 		this.guidedPath.append(heading, rail, list);
+		requestAnimationFrame(() => {
+			const active = list.querySelector('.active');
+			if (active && list.scrollHeight > list.clientHeight) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+		});
 	}
 
 	async guidedContinue() {
@@ -402,6 +510,12 @@ export class ProseIDForm {
 		const entries = this.visibleFields();
 		const current = entries[this.guidedIndex];
 		if (!current) return;
+		if (current[1].definition?.required === true && !answerProvided(current[1].definition, this.values[current[0]])) {
+			this.blurred.add(current[0]);
+			this.refreshGuided();
+			current[1].control?.focus?.();
+			return;
+		}
 		this.blurred.add(current[0]);
 		this.guidedChecking = true;
 		this.guidedNext.disabled = true;
@@ -423,13 +537,14 @@ export class ProseIDForm {
 		if (this.guidedIndex < refreshed.length - 1) {
 			this.guidedIndex += 1;
 			this.refreshGuided();
-			this.guidedFieldSlot.querySelector('input, select, textarea, button')?.focus?.();
+			this.guidedFieldSlot.querySelector('input:not([type="hidden"]), select, textarea, button')?.focus?.({ preventScroll: true });
 		} else this.showGuidedReview();
 	}
 
 	guidedPrevious() {
 		if (this.guidedPhase === 'review') {
 			this.guidedPhase = 'questions';
+			this.guidedIndex = Math.max(0, this.visibleFields().length - 1);
 			this.guidedReview.hidden = true;
 			this.guidedQuestion.hidden = false;
 			this.guidedPath.hidden = false;
@@ -471,8 +586,9 @@ export class ProseIDForm {
 		back.type = 'button';
 		back.addEventListener('click', () => this.guidedPrevious());
 		actions.append(back, this.submitButton);
-		this.guidedReview.append(head, list);
+		this.guidedReview.append(head);
 		if (outcomes) this.guidedReview.append(outcomes);
+		this.guidedReview.append(list);
 		this.guidedReview.append(this.renderPrivacy(), actions);
 		this.updateSubmitState();
 	}
@@ -482,10 +598,9 @@ export class ProseIDForm {
 		const facts = text('section', 'determination-facts');
 		const head = text('header', 'experience-head');
 		head.append(text('span', 'eyebrow', this.copy.determinationFacts), text('h2', '', this.copy.determinationTitle), text('p', '', this.copy.determinationHelp));
-		this.calculateButton = text('button', 'primary-action', this.copy.calculate);
-		this.calculateButton.type = 'button';
-		this.calculateButton.addEventListener('click', () => this.calculateDetermination());
-		facts.append(head, this.fieldList, this.calculateButton);
+		this.determinationActivity = text('div', 'determination-activity');
+		this.determinationActivity.append(text('i', ''), text('span', '', this.copy.determinationPreparing));
+		facts.append(head, this.fieldList, this.determinationActivity);
 		this.determinationResult = text('aside', 'determination-result');
 		this.renderDeterminationWaiting();
 		layout.append(facts, this.determinationResult);
@@ -498,42 +613,50 @@ export class ProseIDForm {
 		if (!this.determinationResult) return;
 		this.determinationResult.replaceChildren(
 			text('span', 'eyebrow', this.copy.determinationResult),
-			text('h2', '', this.copy.calculatedOutcome),
+			text('h2', '', this.copy.determinationLive),
 			text('p', 'determination-waiting', this.copy.determinationWaiting)
 		);
 	}
 
-	async calculateDetermination() {
-		if (this.calculateButton.disabled) return;
-		clearTimeout(this.validationTimer);
-		this.submittedAttempted = true;
-		this.calculateButton.disabled = true;
-		this.calculateButton.textContent = this.copy.calculating;
-		const result = await this.validate();
-		this.calculateButton.disabled = false;
-		if (!result?.valid) {
-			this.calculateButton.textContent = this.copy.calculate;
+	refreshDetermination() {
+		if (!this.determinationResult) return;
+		const result = this.lastValidation;
+		if (!result) return this.renderDeterminationWaiting();
+		const issues = (result.issues || []).filter((issue) => this.shouldShow(issue));
+		const blocking = this.submittedAttempted && result.valid !== true;
+		this.determinationResult.replaceChildren(text('span', 'eyebrow', blocking ? this.copy.needsAttention : this.copy.determinationResult));
+		if (blocking) {
+			this.determinationResult.classList.add('blocked');
+			this.determinationResult.append(text('h2', '', this.copy.reviewAnswersTitle), text('p', 'determination-waiting', this.copy.noRecordCreated));
+			if (issues.length) {
+				const list = text('ul', 'determination-issues');
+				for (const issue of issues) {
+					const field = this.fields.get(issue.field_id);
+					list.append(text('li', '', friendlyIssue(issue, field?.label || this.copy.thisField, this.copy)));
+				}
+				this.determinationResult.append(list);
+			}
 			return;
 		}
-		this.calculated = true;
-		this.calculateButton.textContent = this.copy.calculateAgain;
-		this.determinationResult.replaceChildren(
-			text('span', 'eyebrow', this.copy.determinationResult),
-			text('h2', '', this.copy.calculatedOutcome)
-		);
+		this.determinationResult.classList.remove('blocked');
+		this.determinationResult.append(text('h2', '', this.copy.calculatedOutcome));
 		const outcomes = this.renderOutcomeList(result.definitions || {});
 		if (outcomes) this.determinationResult.append(outcomes);
-		else this.determinationResult.append(text('p', 'determination-waiting', this.copy.notAnswered));
-		this.updateSubmitState();
+		else this.determinationResult.append(text('p', 'determination-waiting', this.copy.determinationWaiting));
 	}
 
 	renderOutcomeList(definitions) {
-		const entries = Object.entries(definitions).filter(([, definition]) => definition?.readonly === true && definition?.visible !== false);
+		const derivedNames = new Set(Object.keys(this.manifest.schema?.state_model?.derived || {}));
+		const entries = Object.entries(definitions).filter(([name, definition]) =>
+			definition?.readonly === true && definition?.visible !== false &&
+			(this.flowType !== 'determination' || derivedNames.size === 0 || derivedNames.has(name))
+		);
 		if (!entries.length) return null;
+		if (this.flowType === 'determination' && !entries.some(([, definition]) => !isEmptyValue(definition, definition?.value))) return null;
 		const list = text('div', 'outcome-list');
 		for (const [name, definition] of entries) {
 			const item = text('article', 'outcome');
-			item.append(text('small', '', definition.label || name.replaceAll('_', ' ')), text('strong', '', this.displayValue(definition.value, definition)));
+			item.append(text('small', '', humanizeText(definition.label || name)), text('strong', '', this.displayValue(definition.value, definition)));
 			if (definition.ui_message) item.append(text('p', '', definition.ui_message));
 			list.append(item);
 		}
@@ -546,7 +669,7 @@ export class ProseIDForm {
 		const copy = text('div', 'checklist-title');
 		copy.append(text('span', 'eyebrow', this.copy.checklistControls), text('h2', '', this.copy.checklistTitle), text('p', '', this.copy.checklistHelp));
 		this.checklistProgress = text('div', 'checklist-progress');
-		head.append(copy, this.checklistProgress);
+		head.append(copy);
 		const context = text('section', 'checklist-section');
 		const controls = text('section', 'checklist-section checklist-controls');
 		const contextFields = [];
@@ -567,7 +690,10 @@ export class ProseIDForm {
 		controls.append(list);
 		checklist.append(head);
 		if (contextFields.length) checklist.append(context);
-		checklist.append(controls, this.renderActions());
+		const completion = this.renderActions();
+		completion.classList.add('checklist-completion');
+		completion.prepend(this.checklistProgress);
+		checklist.append(controls, completion);
 		this.updateChecklistProgress();
 		return checklist;
 	}
@@ -595,13 +721,7 @@ export class ProseIDForm {
 
 	updateSubmitState() {
 		if (!this.submitButton) return;
-		let allowed = this.valid;
-		if (this.flowType === 'determination') allowed = allowed && this.calculated;
-		if (this.flowType === 'checklist') {
-			const controls = this.checklistControlNames();
-			allowed = allowed && controls.every((name) => this.reviewed.has(name));
-		}
-		this.submitButton.disabled = !allowed;
+		this.submitButton.disabled = this.submitting || this.guidedChecking || this.validationLocked;
 	}
 
 	renderDatePicker(id, definition, labelText) {
@@ -616,7 +736,7 @@ export class ProseIDForm {
 		input.placeholder = definition.placeholder || 'YYYY-MM-DD';
 		const trigger = text('button', 'date-trigger');
 		trigger.type = 'button';
-		trigger.setAttribute('aria-label', `Choose date for ${labelText}`);
+		trigger.setAttribute('aria-label', this.copy.chooseDateFor(labelText));
 		trigger.setAttribute('aria-haspopup', 'dialog');
 		trigger.setAttribute('aria-expanded', 'false');
 		trigger.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 9.5h17"/></svg>';
@@ -647,12 +767,12 @@ export class ProseIDForm {
 			if (definition.max && value > String(definition.max)) return false;
 			return true;
 		};
-		const monthTitle = () => new Intl.DateTimeFormat(this.options.locale || 'en', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+		const monthTitle = () => new Intl.DateTimeFormat(this.locale, { month: 'long', year: 'numeric', timeZone: 'UTC' })
 			.format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
 		const displayDate = (value) => {
 			const parsed = isoParts(value);
 			if (!parsed) return value;
-			return new Intl.DateTimeFormat(this.options.locale || 'en', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+			return new Intl.DateTimeFormat(this.locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 				.format(new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day)));
 		};
 
@@ -693,15 +813,15 @@ export class ProseIDForm {
 			panel.replaceChildren();
 			const header = text('header', 'date-panel-head');
 			const title = text('div', 'date-panel-title');
-			title.append(text('span', '', 'Select date'), text('strong', '', monthTitle()));
+			title.append(text('span', '', this.copy.selectDate), text('strong', '', monthTitle()));
 			const navigation = text('nav', 'date-navigation');
 			navigation.setAttribute('aria-label', 'Change month');
 			const previous = text('button', '', '‹');
 			previous.type = 'button';
-			previous.setAttribute('aria-label', 'Previous month');
+			previous.setAttribute('aria-label', this.copy.previousMonth);
 			const next = text('button', '', '›');
 			next.type = 'button';
-			next.setAttribute('aria-label', 'Next month');
+			next.setAttribute('aria-label', this.copy.nextMonth);
 			const move = (delta) => {
 				const date = new Date(Date.UTC(viewYear, viewMonth - 1 + delta, 1));
 				viewYear = date.getUTCFullYear();
@@ -715,7 +835,7 @@ export class ProseIDForm {
 			header.append(title, navigation);
 
 			const weekdays = text('div', 'date-weekdays');
-			for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) weekdays.append(text('span', '', day));
+			for (const day of this.copy.weekdays) weekdays.append(text('span', '', day));
 			const grid = text('div', 'date-grid');
 			grid.setAttribute('role', 'grid');
 			grid.setAttribute('aria-label', monthTitle());
@@ -737,11 +857,11 @@ export class ProseIDForm {
 			}
 
 			const footer = text('footer', 'date-panel-footer');
-			const clearButton = text('button', '', 'Clear');
+			const clearButton = text('button', '', this.copy.clear);
 			clearButton.type = 'button';
 			clearButton.disabled = !input.value;
 			clearButton.addEventListener('click', clear);
-			const todayButton = text('button', 'today-action', 'Today');
+			const todayButton = text('button', 'today-action', this.copy.today);
 			todayButton.type = 'button';
 			todayButton.disabled = !allowed(todayIso);
 			todayButton.addEventListener('click', () => choose(todayIso));
@@ -755,7 +875,7 @@ export class ProseIDForm {
 			viewMonth = anchor.month;
 			panel = text('section', 'date-panel');
 			panel.setAttribute('role', 'dialog');
-			panel.setAttribute('aria-label', `Choose date for ${labelText}`);
+			panel.setAttribute('aria-label', this.copy.chooseDateFor(labelText));
 			this.shadow.append(panel);
 			trigger.setAttribute('aria-expanded', 'true');
 			renderPanel();
@@ -790,10 +910,12 @@ export class ProseIDForm {
 	renderField(name, definition) {
 		const wrap = text('div', 'field');
 		wrap.dataset.fieldName = name;
+		if (['highlight', 'error', 'warning', 'success', 'muted'].includes(definition.ui_class)) wrap.classList.add(definition.ui_class);
 		wrap.hidden = definition.visible === false;
-		const labelText = definition.label || definition.statement || name.replaceAll('_', ' ');
-		const id = `proseid-${name.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+		const labelText = humanizeText(definition.label || definition.statement || name);
+		const id = `proseid-${this.recordId.slice(-10)}-${name.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 		let control;
+		let controls = [];
 
 		const required = text('span', 'required', this.copy.requiredLabel);
 		required.hidden = definition.required !== true;
@@ -816,7 +938,8 @@ export class ProseIDForm {
 		if (this.flowType === 'checklist' && definition.type === 'boolean') {
 			control = document.createElement('input');
 			control.type = 'hidden';
-			control.value = String(Boolean(this.values[name]));
+			control.value = this.values[name] === undefined ? '' : String(this.values[name]);
+			controls = [control];
 			const row = text('div', 'checklist-boolean');
 			const copy = text('div', 'checklist-boolean-copy');
 			const label = text('span', 'label', definition.statement || labelText);
@@ -837,12 +960,44 @@ export class ProseIDForm {
 			row.append(copy, choices);
 			wrap.append(row);
 			wrap.choiceButtons = { yes, no };
-		} else if (['boolean', 'attestation'].includes(definition.type)) {
+		} else if (definition.type === 'boolean') {
+			const group = document.createElement('fieldset');
+			group.className = 'boolean-field';
+			const legend = text('legend', 'sr-only', labelText);
+			const row = text('div', 'boolean-row');
+			const copy = text('div', 'boolean-copy', labelText);
+			copy.append(required);
+			if (info) copy.append(info);
+			const choices = text('div', 'boolean-choice');
+			choices.setAttribute('role', 'radiogroup');
+			const yesLabel = document.createElement('label');
+			const noLabel = document.createElement('label');
+			const yes = document.createElement('input');
+			const no = document.createElement('input');
+			yes.type = no.type = 'radio';
+			yes.name = no.name = name;
+			yes.value = 'true';
+			no.value = 'false';
+			yes.checked = this.values[name] === true;
+			no.checked = this.values[name] === false;
+			yesLabel.classList.toggle('selected', yes.checked);
+			noLabel.classList.toggle('selected', no.checked);
+			yesLabel.append(yes, text('span', '', this.copy.yes));
+			noLabel.append(no, text('span', '', this.copy.no));
+			choices.append(yesLabel, noLabel);
+			row.append(copy, choices);
+			group.append(legend, row);
+			wrap.append(group);
+			control = yes;
+			controls = [yes, no];
+			wrap.choiceLabels = { yes: yesLabel, no: noLabel };
+		} else if (definition.type === 'attestation') {
 			const label = text('label', 'check');
 			control = document.createElement('input');
 			control.type = 'checkbox';
-			control.checked = Boolean(this.values[name]);
+			control.checked = this.values[name] === true;
 			control.setAttribute('role', 'switch');
+			controls = [control];
 			const track = text('span', 'toggle-track');
 			track.setAttribute('aria-hidden', 'true');
 			const copy = text('span', 'check-copy', definition.statement || labelText);
@@ -864,10 +1019,11 @@ export class ProseIDForm {
 				control = document.createElement('select');
 				const empty = text('option', '', definition.placeholder || this.copy.select);
 				empty.value = '';
+				empty.disabled = true;
 				control.append(empty);
 				for (const option of definition.options || []) {
 					const value = typeof option === 'object' ? option.value : option;
-					const item = text('option', '', typeof option === 'object' ? (option.label || value) : value);
+					const item = text('option', '', humanizeChoice(typeof option === 'object' ? (option.label || value) : value));
 					item.value = value;
 					control.append(item);
 				}
@@ -877,11 +1033,14 @@ export class ProseIDForm {
 				wrap.append(datePicker.wrap);
 			} else if (definition.multiline) {
 				control = document.createElement('textarea');
+				control.rows = 5;
 			} else {
 				control = document.createElement('input');
 				control.type = ['number', 'currency'].includes(definition.type) ? 'number' : definition.format === 'email' ? 'email' : 'text';
-				if (definition.type === 'currency') control.step = '0.01';
+				if (definition.step != null) control.step = definition.step;
+				else if (definition.type === 'currency') control.step = '0.01';
 			}
+			controls = [control];
 			control.id = id;
 			control.className = definition.type === 'date' ? 'control date-input' : 'control';
 			control.value = this.values[name] ?? '';
@@ -899,28 +1058,33 @@ export class ProseIDForm {
 			}
 		}
 
-		control.name = name;
-		control.required = definition.required === true;
+		for (const item of controls) {
+			item.name = name;
+			item.required = definition.required === true;
+		}
 		const message = text('span', 'field-message', definition.ui_message || '');
 		message.id = messageId;
 		message.hidden = !definition.ui_message;
 		wrap.append(message);
 		const describedBy = [definition.info ? infoId : '', definition.description || definition.help ? hintId : '', messageId, `${id}-error`].filter(Boolean);
-		control.setAttribute('aria-describedby', describedBy.join(' '));
-		control.addEventListener('input', () => this.change(name, definition, control));
-		control.addEventListener('change', () => this.change(name, definition, control, true));
-		control.addEventListener('blur', () => {
-			this.blurred.add(name);
-			this.scheduleValidation(120);
-		});
+		for (const item of controls) {
+			item.setAttribute('aria-describedby', describedBy.join(' '));
+			item.addEventListener('input', () => this.change(name, definition, item));
+			item.addEventListener('change', () => this.change(name, definition, item, true));
+			item.addEventListener('blur', () => {
+				this.blurred.add(name);
+				this.scheduleValidation(120);
+			});
+		}
 		const error = text('span', 'error');
 		error.id = `${id}-error`;
 		error.setAttribute('aria-live', 'polite');
 		wrap.append(error);
 		this.fields.set(name, {
-			wrap, control, error, message, required, definition, label: labelText,
+			wrap, control, controls, error, message, required, definition, label: labelText,
 			engineVisible: definition.visible !== false,
-			choiceButtons: wrap.choiceButtons || null
+			choiceButtons: wrap.choiceButtons || null,
+			choiceLabels: wrap.choiceLabels || null
 		});
 		return wrap;
 	}
@@ -935,6 +1099,7 @@ export class ProseIDForm {
 		field.choiceButtons?.no.classList.toggle('selected', value === false);
 		field.choiceButtons?.yes.setAttribute('aria-pressed', String(value === true));
 		field.choiceButtons?.no.setAttribute('aria-pressed', String(value === false));
+		this.clearStaleFieldEvaluation(name);
 		this.updateChecklistProgress();
 		if (Object.is(this.values[name], value)) {
 			this.updateSubmitState();
@@ -953,8 +1118,10 @@ export class ProseIDForm {
 	}
 
 	change(name, definition, control, immediate = false) {
-		const value = ['boolean', 'attestation'].includes(definition.type)
-			? control.checked
+		const value = definition.type === 'boolean'
+			? (control.type === 'radio' ? control.value === 'true' : control.checked)
+			: definition.type === 'attestation'
+				? control.checked
 			: ['number', 'currency'].includes(definition.type) && control.value !== ''
 				? Number(control.value)
 				: control.value;
@@ -970,12 +1137,18 @@ export class ProseIDForm {
 			return;
 		}
 		this.values[name] = value;
-		this.valid = false;
-		if (this.flowType === 'determination') {
-			this.calculated = false;
-			if (this.calculateButton) this.calculateButton.textContent = this.copy.calculate;
-			this.renderDeterminationWaiting();
+		if (definition.type === 'boolean') {
+			const field = this.fields.get(name);
+			field?.choiceLabels?.yes.classList.toggle('selected', value === true);
+			field?.choiceLabels?.no.classList.toggle('selected', value === false);
 		}
+		this.valid = false;
+		if (this.flowType === 'checklist' && ['boolean', 'attestation'].includes(definition.type)) this.clearStaleFieldEvaluation(name);
+		if (this.flowType === 'determination' && this.determinationActivity) {
+			this.determinationActivity.classList.add('evaluating');
+			this.determinationActivity.querySelector('span').textContent = this.copy.determinationUpdating;
+		}
+		if (this.flowType === 'guided_assessment' && this.guidedPhase === 'questions') this.refreshGuided();
 		this.updateSubmitState();
 		this.setStatus('checking', this.copy.checking);
 		this.emit('change', { name, value: this.values[name], values: { ...this.values } });
@@ -989,33 +1162,46 @@ export class ProseIDForm {
 
 	async validate() {
 		if (this.destroyed || !this.manifest) return null;
+		const sequence = ++this.validationSequence;
 		this.validationAbort?.abort();
 		this.validationAbort = new AbortController();
 		this.setStatus('checking', this.copy.checking);
 		try {
+			const responses = normalizedResponses(this.manifest.schema?.definitions || {}, this.values);
 			const result = await this.api.validate(
 				this.manifest.flow.ref,
-				this.values,
+				responses,
 				this.manifest.flow.effectiveAt,
+				this.locale,
 				this.validationAbort.signal
 			);
+			if (sequence !== this.validationSequence) return null;
 			this.lastValidation = result;
 			this.valid = result.valid === true;
+			this.validationLocked = false;
 			this.applyDefinitions(result.definitions || {});
 			this.renderIssues(result.issues || []);
+			if (this.flowType === 'determination') {
+				this.determinationActivity?.classList.remove('evaluating');
+				if (this.determinationActivity) this.determinationActivity.querySelector('span').textContent = this.copy.determinationAuto;
+				this.refreshDetermination();
+			}
 			this.updateSubmitState();
 			this.setStatus(this.valid ? 'ready' : 'idle', this.valid ? this.copy.ready : this.copy.incomplete);
 			this.emit('validation', { valid: this.valid, status: result.status, issues: result.issues || [] });
 			return result;
 		} catch (error) {
 			if (error?.name === 'AbortError') return null;
+			if (sequence !== this.validationSequence) return null;
 			this.valid = false;
 			this.updateSubmitState();
 			const message = errorMessage(error.code, this.copy.checkFailed);
 			this.setStatus('error', message);
 			if (error?.code === 'flow_changed' && this.formError) {
+				this.validationLocked = true;
 				this.formError.hidden = false;
 				this.formError.textContent = message;
+				this.updateSubmitState();
 			}
 			this.emit('error', { error });
 			return null;
@@ -1030,13 +1216,31 @@ export class ProseIDForm {
 			field.definition = { ...field.definition, ...resolved };
 			field.wrap.hidden = !field.engineVisible;
 			const required = resolved?.required === true;
-			field.control.required = required;
+			for (const control of field.controls || [field.control]) control.required = required;
 			field.required.hidden = !required;
 			field.message.textContent = resolved?.ui_message || '';
 			field.message.hidden = !resolved?.ui_message;
 		}
 		if (this.flowType === 'guided_assessment' && this.guidedPhase === 'questions') this.refreshGuided();
 		if (this.flowType === 'checklist') this.updateChecklistProgress();
+	}
+
+	clearStaleFieldEvaluation(name) {
+		if (this.lastValidation?.issues) {
+			this.lastValidation = {
+				...this.lastValidation,
+				issues: this.lastValidation.issues.filter((issue) => issue?.field_id !== name),
+				definitions: {
+					...(this.lastValidation.definitions || {}),
+					[name]: this.manifest.schema?.definitions?.[name]
+				}
+			};
+		}
+		const field = this.fields.get(name);
+		if (!field) return;
+		field.error.textContent = '';
+		field.message.textContent = this.manifest.schema?.definitions?.[name]?.ui_message || '';
+		field.message.hidden = !field.message.textContent;
 	}
 
 	shouldShow(issue) {
@@ -1049,7 +1253,7 @@ export class ProseIDForm {
 	renderIssues(issues) {
 		for (const field of this.fields.values()) {
 			field.error.textContent = '';
-			field.control.setAttribute('aria-invalid', 'false');
+			for (const control of field.controls || [field.control]) control.setAttribute('aria-invalid', 'false');
 		}
 		const formIssues = [];
 		for (const issue of issues) {
@@ -1057,7 +1261,7 @@ export class ProseIDForm {
 			const field = this.fields.get(issue.field_id);
 			if (field) {
 				field.error.textContent = friendlyIssue(issue, field.label, this.copy);
-				field.control.setAttribute('aria-invalid', 'true');
+				for (const control of field.controls || [field.control]) control.setAttribute('aria-invalid', 'true');
 			} else formIssues.push(friendlyIssue(issue, 'This field', this.copy));
 		}
 		if (this.submittedAttempted && this.flowType === 'checklist') {
@@ -1066,7 +1270,7 @@ export class ProseIDForm {
 				const field = this.fields.get(name);
 				if (!field || field.error.textContent) continue;
 				field.error.textContent = this.copy.checklistChoose;
-				field.control.setAttribute('aria-invalid', 'true');
+				for (const control of field.controls || [field.control]) control.setAttribute('aria-invalid', 'true');
 			}
 		}
 		this.formError.textContent = formIssues.join(' ');
@@ -1107,7 +1311,9 @@ export class ProseIDForm {
 			const checkbox = document.createElement('input');
 			checkbox.type = 'checkbox';
 			checkbox.required = true;
-			acknowledgement.append(checkbox, text('span', '', this.copy.signatureAcknowledgement));
+			const acknowledgementTrack = text('span', 'signature-toggle');
+			acknowledgementTrack.setAttribute('aria-hidden', 'true');
+			acknowledgement.append(checkbox, acknowledgementTrack, text('span', '', this.copy.signatureAcknowledgement));
 			const error = text('p', 'signature-error');
 			error.setAttribute('role', 'alert');
 			const actions = text('div', 'signature-actions');
@@ -1149,18 +1355,52 @@ export class ProseIDForm {
 		});
 	}
 
+	async focusFirstInvalid(result = this.lastValidation) {
+		const issues = (result?.issues || []).filter((issue) => issue?.severity === 'error' && issue?.field_id);
+		let name = issues.find((issue) => this.fields.get(issue.field_id)?.engineVisible !== false)?.field_id;
+		if (!name) {
+			name = this.visibleFields().find(([fieldName, field]) =>
+				field.definition?.required === true && !answerProvided(field.definition, this.values[fieldName])
+			)?.[0];
+		}
+		if (!name) return;
+		if (this.flowType === 'guided_assessment') {
+			this.guidedPhase = 'questions';
+			this.guidedReview.hidden = true;
+			this.guidedQuestion.hidden = false;
+			this.guidedPath.hidden = false;
+			this.guidedIndex = Math.max(0, this.visibleFields().findIndex(([fieldName]) => fieldName === name));
+			this.refreshGuided();
+		}
+		await Promise.resolve();
+		const field = this.fields.get(name);
+		field?.wrap?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+		(field?.controls || [field?.control]).find((control) => control && control.type !== 'hidden')?.focus?.({ preventScroll: true });
+	}
+
 	async submit(event) {
 		event.preventDefault();
-		if (this.destroyed) return;
+		if (this.destroyed || this.submitting) return;
 		clearTimeout(this.validationTimer);
 		this.submittedAttempted = true;
-		this.renderIssues(this.lastValidation?.issues || []);
-		if (this.flowType === 'determination' && !this.calculated) return;
-		if (this.flowType === 'checklist' && !this.checklistControlNames().every((name) => this.reviewed.has(name))) return;
-		if (!this.valid) {
-			await this.validate();
-			if (!this.valid) return;
+		if (this.flowType === 'checklist') {
+			const firstUnreviewed = this.checklistControlNames().find((name) => !this.reviewed.has(name));
+			if (firstUnreviewed) {
+				this.renderIssues(this.lastValidation?.issues || []);
+				const field = this.fields.get(firstUnreviewed);
+				field?.wrap?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+				field?.choiceButtons?.yes?.focus?.({ preventScroll: true });
+				return;
+			}
 		}
+		const validation = this.valid && this.lastValidation ? this.lastValidation : await this.validate();
+		if (!validation?.valid) {
+			this.renderIssues(validation?.issues || []);
+			this.refreshDetermination();
+			await this.focusFirstInvalid(validation);
+			return;
+		}
+		this.submitting = true;
 		this.submitButton.disabled = true;
 		this.submitButton.textContent = this.copy.submitting;
 		this.setStatus('checking', this.copy.creating);
@@ -1173,6 +1413,7 @@ export class ProseIDForm {
 					this.setStatus('checking', this.copy.awaitingSignature);
 					signature = await this.collectBasicSignature();
 					if (!signature) {
+						this.submitting = false;
 						this.updateSubmitState();
 						this.submitButton.textContent = this.options.submitLabel || this.defaultSubmitLabel();
 						this.setStatus('ready', this.copy.ready);
@@ -1193,13 +1434,15 @@ export class ProseIDForm {
 			const result = await this.api.complete(
 				this.manifest.flow.ref,
 				this.recordId,
-				this.values,
+				normalizedResponses(this.manifest.schema?.definitions || {}, this.values),
 				this.manifest.flow.effectiveAt,
-				signature
+				signature,
+				this.locale
 			);
 			this.renderComplete(result);
 			this.emit('complete', result);
 		} catch (error) {
+			this.submitting = false;
 			this.updateSubmitState();
 			this.submitButton.textContent = this.options.submitLabel || this.defaultSubmitLabel();
 			this.formError.hidden = false;
@@ -1318,6 +1561,7 @@ export class ProseIDForm {
 
 	destroy() {
 		this.destroyed = true;
+		this.validationSequence += 1;
 		clearTimeout(this.validationTimer);
 		this.validationAbort?.abort();
 		this.signatureCancel?.();

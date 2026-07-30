@@ -1,9 +1,9 @@
-import { ProseIDForm } from './ProseIDForm.js';
+import { ProseIDFrame as ProseIDForm } from './FrameClient.js';
 import { ProseIDError } from './errors.js';
 import { VERSION } from './version.js';
-import { THEME_NAMES } from './themes.js';
+import { COLOR_TOKEN_NAMES, THEME_NAMES } from './themes.js';
 
-export { ProseIDError, ProseIDForm, THEME_NAMES, VERSION };
+export { COLOR_TOKEN_NAMES, ProseIDError, ProseIDForm, THEME_NAMES, VERSION };
 
 export function mount(target, options) {
 	return new ProseIDForm(target, options);

@@ -1,6 +1,6 @@
 {
 	"name": "@proseid/js-sdk",
-	"version": "0.7.0",
+	"version": "0.9.0",
 	"description": "Embeddable, server-validated ProseID compliance Flows.",
 	"type": "module",
 	"license": "Apache-2.0",

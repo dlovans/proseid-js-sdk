@@ -27,6 +27,39 @@ export const THEMES = Object.freeze({
 
 export const THEME_NAMES = Object.freeze(Object.keys(THEMES));
 
+export const COLOR_TOKEN_NAMES = Object.freeze([
+	'accent',
+	'accentInk',
+	'canvas',
+	'surface',
+	'ink',
+	'copy',
+	'muted',
+	'rule',
+	'success',
+	'successTint',
+	'submitInk',
+	'skeletonGlow'
+]);
+
+const COLOR_TOKEN_SET = new Set(COLOR_TOKEN_NAMES);
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
 export function normalizeTheme(value) {
 	return typeof value === 'string' && Object.hasOwn(THEMES, value) ? value : 'light';
+}
+
+/**
+ * Accept only named palette tokens containing a complete six-digit hex colour. Values never become
+ * CSS source text; the renderer assigns each accepted token through style.setProperty.
+ */
+export function normalizeColors(value) {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+	const normalized = {};
+	for (const [name, color] of Object.entries(value)) {
+		if (COLOR_TOKEN_SET.has(name) && typeof color === 'string' && HEX_COLOR.test(color)) {
+			normalized[name] = color.toLowerCase();
+		}
+	}
+	return normalized;
 }

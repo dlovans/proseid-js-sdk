@@ -1,10 +1,10 @@
 # ProseID JavaScript SDK
 
-Embed a published ProseID Flow inside a customer website without shipping the ProseID validation engine or trusting the host page. The SDK renders the Flow in an isolated Shadow DOM, sends respondent changes to ProseID for remote validation, and enables final completion only when the pinned schema is ready.
+Embed a published ProseID Flow inside a customer website without shipping the ProseID validation engine or trusting the host page. The SDK mounts a responsive, cross-origin ProseID frame, sends respondent changes to ProseID for remote validation, and enables final completion only when the pinned schema is ready.
 
-The renderer follows the Flow selected by its publisher: a Standard Form, one-question-at-a-time Guided Assessment, calculated Determination, or auditable Compliance Checklist. Required controls carry a visible text label as well as native accessibility semantics in every experience, and dates use the ProseID calendar instead of the browser's inconsistent native picker.
+The renderer follows the Flow selected by its publisher: a Standard Form, one-question-at-a-time Guided Assessment, live Determination, or auditable Compliance Checklist. Required controls carry a visible text label as well as native accessibility semantics in every experience, and dates use the ProseID calendar instead of the browser's inconsistent native picker.
 
-Final submission is not a client-side “success” flag. ProseID authoritatively re-runs the schema, debits the publisher once, encrypts the responses, creates the normal encrypted record and signed proof, then performs the Flow's email/webhook delivery.
+Final submission is not a client-side “success” flag. ProseID authoritatively re-runs the schema, debits the Flow owner once, encrypts the responses, creates the normal encrypted record and signed proof, then performs the Flow's email/webhook delivery.
 
 For time-aware schemas, the manifest also supplies the server's current UTC `effectiveAt` date and
 the legal period selected for it. The SDK sends that date on every validation and completion call;
@@ -12,10 +12,10 @@ the completed record and proof retain the date, rule-set name, and inclusive ran
 open across UTC midnight, the server returns `flow_changed` and the respondent must reload before
 continuing, so an old page cannot complete against stale legal logic.
 
-## Why use the SDK instead of an iframe?
+## Why use the ProseID-hosted frame?
 
-- The Flow feels native to the customer’s product and resizes with its content.
-- Customer CSS cannot break field layout, validation states, or ProseID branding.
+- The tiny public loader creates and resizes the iframe, so integration still feels like mounting a component.
+- Customer CSS and JavaScript cannot reach into the cross-origin renderer to change validation states or edit its attribution markup. The host still controls its own page around the frame; deliberately obscuring the trust mark is prohibited unless the Flow uses paid white-label mode.
 - The host receives lifecycle events without receiving the validation engine.
 - The completed record is identical to one created by a hosted Flow.
 - After completion, the respondent can request the same co-branded email and PDF receipt as the hosted flow.
@@ -32,7 +32,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/npm/@proseid/js-sdk@0.7.0/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@proseid/js-sdk@0.9.0/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -56,13 +56,18 @@ import { mount } from '@proseid/js-sdk';
 const form = mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
   flow: 'publisher-handle/flow-slug',
-	locale: 'en', // `sv` is also bundled; UI messages can be overridden
+	locale: 'en', // Optional. Otherwise the saved browser choice or schema recommendation is used.
   appearance: { shape: 'capsule', fields: 'outlined', shell: 'card' },
   branding: { logoUrl: 'https://example.com/logo.svg', logoAlt: 'Example' }
 });
 
 await form.ready;
 ```
+
+English and Swedish are bundled. The schema's language is the initial recommendation, while the
+respondent can switch language inside an active Flow. Their choice is saved in browser storage and
+sent with the completed record. Schema-authored labels, help text and choices are not translated by
+the SDK; publish those in the language intended for respondents.
 
 ## Appearance and branding
 
@@ -80,6 +85,12 @@ mount('#compliance-form', {
     shell: 'flat',        // card | flat
     density: 'compact'    // comfortable | compact
   },
+  colors: {
+    accent: '#e23d19',
+    canvas: '#f7f5f1',
+    surface: '#ffffff',
+    ink: '#171918'
+  },
   branding: {
     logoUrl: 'https://example.com/brand.svg',
     logoAlt: 'Example'
@@ -88,16 +99,20 @@ mount('#compliance-form', {
 ```
 
 `logoUrl` accepts HTTPS images (plus HTTP on localhost) and falls back to the organization logo in
-ProseID. Raw HTML, raw SVG markup, arbitrary CSS, and custom color values are not accepted.
+ProseID. Raw HTML, raw SVG markup, and arbitrary CSS are not accepted.
 
-Themes are selected on the Flow in ProseID so the hosted and embedded renderers cannot drift. They
-are curated and WCAG AA contrast-tested across body copy, muted/status copy, errors, success states,
-and button labels. `light` is the default. `charcoal` is neutral and architectural;
-`midnight` uses a restrained ink-blue field; `forest` uses a deep institutional green. All four keep
-vermillion as the ProseID signal. Unknown values—including objects containing color strings—fall
-back to `light` without being applied. The `theme` mount option remains a loading and `mountTest`
-preview fallback; a production manifest replaces it with the Flow's saved theme. `THEME_NAMES`
-exposes the supported names for configuration UIs.
+Themes are selected on the Flow in ProseID so the hosted and embedded renderers begin from the same
+palette. `light` is the default. `charcoal` is neutral and architectural; `midnight` uses a restrained
+ink-blue field; `forest` uses a deep institutional green. The `theme` mount option remains a loading
+and `mountTest` preview fallback; a production manifest supplies the Flow's saved theme.
+
+Use `colors` to override the complete renderer palette. Supported tokens are `accent`, `accentInk`,
+`canvas`, `surface`, `ink`, `copy`, `muted`, `rule`, `success`, `successTint`, `submitInk`, and
+`skeletonGlow`. Every value must exactly match `#RRGGBB`. Three-digit hex, alpha hex, CSS functions,
+variables, declarations, and unknown tokens are ignored. Accepted values are assigned only through
+`style.setProperty`; they are never inserted as CSS source text. `COLOR_TOKEN_NAMES` and `THEME_NAMES`
+expose the accepted names for configuration UIs. ProseID attribution uses a fixed readable badge so
+a poor customer palette does not make the trust mark disappear.
 
 `full` and `compact` attribution have the standard completion price. `hidden` is the supported
 white-label mode. The publisher selects it on the Flow; the authenticated server returns that
@@ -108,10 +123,11 @@ the embed source, publishable key,
 origin, SDK version, attribution mode, and pricing components. Test completions are always free.
 The legacy `branding.proseid` mount preference cannot override a production Flow or its billing.
 
-The customer controls their browser and can technically modify any open-source browser bundle or
-cover any DOM element. ProseID therefore meters the supported `hidden` mode server-side; it does not
-claim that browser attribution is cryptographically enforceable. Building a separate UI against the
-server API remains a distinct, supported integration path.
+The renderer and attribution live on `proseid.com`, behind the iframe's cross-origin boundary and a
+Flow-specific `frame-ancestors` policy. The public loader verifies the exact frame origin before it
+sends the publishable key. ProseID does not expose an arbitrary secret-key endpoint for submitting
+completed answers: use the hosted Flow or this SDK so server-authoritative attribution and pricing
+cannot be bypassed.
 
 ## Respondent receipt
 
@@ -154,18 +170,21 @@ The target element dispatches bubbling custom events:
 - `proseid:submit`
 - `proseid:complete`
 - `proseid:receipt`
+- `proseid:language`
 - `proseid:error`
 - `proseid:signing` (reserved for a future signing action)
 
-Matching callbacks can be passed as `onReady`, `onChange`, `onValidation`, `onSubmit`, `onComplete`, `onReceipt`, and `onError`.
+Matching callbacks can be passed as `onReady`, `onChange`, `onValidation`, `onSubmit`, `onComplete`, `onReceipt`, `onLanguage`, and `onError`.
 
 ## Content Security Policy
 
-Allow the ProseID origin in `connect-src` and `img-src`. Modern browsers receive styles through a constructable stylesheet. For the fallback `<style>` path, pass the page’s CSP nonce as `nonce`.
+Allow the ProseID origin in `frame-src`. If the browser bundle is loaded from jsDelivr, allow that
+exact CDN in `script-src` too. The iframe makes its API calls to its own ProseID origin, so the host
+page does not need to add ProseID to `connect-src` or relax its style policy.
 
 ```text
-connect-src 'self' https://proseid.com;
-img-src 'self' https://proseid.com https://your-publisher-logo-host.example;
+frame-src 'self' https://proseid.com;
+script-src 'self' https://cdn.jsdelivr.net;
 ```
 
 ## Local development
@@ -187,7 +206,7 @@ The JavaScript SDK embeds all four current Flow experiences:
 
 - **Standard Form** shows the visible questions in one responsive document.
 - **Guided Assessment** validates each current question before moving to a final answer review.
-- **Determination** calculates and displays the schema's read-only outcomes before the respondent confirms; calculation alone never creates or bills a record.
+- **Determination** recalculates the schema's read-only outcomes as answers change; evaluation alone never creates or bills a record.
 - **Compliance Checklist** separates context from explicit controls and requires every yes/no or confirmation control to be reviewed.
 
 Unsigned and basic-signature Flows are supported. For a basic signature, the SDK collects

@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount, mountTest, THEME_NAMES, VERSION } from '../src/index.js';
+import { ProseIDForm } from '../src/ProseIDForm.js';
+import { THEME_NAMES } from '../src/themes.js';
+import { VERSION } from '../src/version.js';
+
+const mount = (target, options) => new ProseIDForm(target, options);
+const mountTest = (target, options) => new ProseIDForm(target, { ...options, testMode: true });
 
 const manifest = {
 	ok: true,
@@ -17,6 +22,7 @@ const API_KEY = `proseid_pk_${'a'.repeat(40)}`;
 
 beforeEach(() => {
 	document.body.innerHTML = '<div id="form"></div>';
+	localStorage.clear();
 });
 
 describe('ProseID SDK', () => {
@@ -25,7 +31,7 @@ describe('ProseID SDK', () => {
 		expect(() => mount('#form', { apiKey: `proseid_sk_${'a'.repeat(48)}`, flow: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
 	});
 
-	it('renders the co-branded manifest and begins with submit gated', async () => {
+	it('renders the co-branded manifest and leaves submit available to reveal missing answers', async () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(manifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
@@ -37,7 +43,7 @@ describe('ProseID SDK', () => {
 		expect(root.querySelector('h1').textContent).toBe('Client intake');
 		expect(root.textContent).toContain('Acme Legal');
 		expect(root.textContent).toContain('Verified by');
-		expect(root.querySelector('button[type="submit"]').disabled).toBe(true);
+		expect(root.querySelector('button[type="submit"]').disabled).toBe(false);
 	});
 
 	it('tells a respondent to reload when the server rejects a stale legal date', async () => {
@@ -81,7 +87,7 @@ describe('ProseID SDK', () => {
 						type: 'string', label: 'Full name', placeholder: 'Ada Lovelace', info: 'Use your legal name.',
 						min_length: 2, max_length: 160, pattern: '.+'
 					},
-					country: { type: 'select', label: 'Country', placeholder: 'Choose a country', options: ['Sweden'] }
+					country: { type: 'select', label: 'Country', placeholder: 'Choose a country', options: ['eu_member_state'] }
 				}
 			}
 		};
@@ -105,9 +111,57 @@ describe('ProseID SDK', () => {
 		expect(root.querySelector('.info-popover').textContent).toBe('Use your legal name.');
 		expect(root.querySelector('.field-message').textContent).toContain('identification');
 		expect(root.querySelector('select[name="country"] option').textContent).toBe('Choose a country');
+		expect(root.querySelector('select[name="country"] option:last-child').textContent).toBe('EU member state');
 		expect(root.querySelector('.schema-details').textContent).toContain('Example Act');
 		expect(root.querySelector('.schema-details').textContent).toContain('Sweden');
 		expect(root.querySelector('.schema-details').textContent).toContain('SE');
+	});
+
+	it('keeps factual yes/no questions unanswered unless the schema supplies a default', async () => {
+		const booleanManifest = {
+			...manifest,
+			schema: { definitions: {
+				in_scope: { type: 'boolean', label: 'The organisation is in scope', required: true }
+			} }
+		};
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(booleanManifest))
+			.mockImplementationOnce(() => response({
+				ok: true, valid: false, status: 'INCOMPLETE', definitions: booleanManifest.schema.definitions,
+				issues: [{ field_id: 'in_scope', severity: 'error', kind: 'missing_required', trigger: 'completion' }]
+			}));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/scope', fetch });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		const choices = [...root.querySelectorAll('input[type="radio"][name="in_scope"]')];
+		expect(choices).toHaveLength(2);
+		expect(choices.every((choice) => choice.checked === false)).toBe(true);
+		const request = JSON.parse(fetch.mock.calls[1][1].body);
+		expect(request.responses).not.toHaveProperty('in_scope');
+	});
+
+	it('uses the schema language by default, lets the respondent switch, and records that choice', async () => {
+		const swedishManifest = {
+			...manifest,
+			flow: { ...manifest.flow, language: 'sv' }
+		};
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(swedishManifest))
+			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: swedishManifest.schema.definitions, issues: [] }))
+			.mockImplementationOnce(() => response({ ok: true, status: 'completed', recordId: 'language_record', duplicate: false, delivered: { email: false, webhook: false }, nextAction: null }));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		await instance.ready;
+		let root = document.querySelector('#form').shadowRoot;
+		expect(root.querySelector('.language-selector button.active').textContent).toBe('SV');
+		expect(root.querySelector('.submit').textContent).toBe('Skicka');
+		root.querySelector('.language-selector button:first-child').click();
+		root = document.querySelector('#form').shadowRoot;
+		expect(root.querySelector('.language-selector button.active').textContent).toBe('EN');
+		expect(localStorage.getItem('proseid_flow_language')).toBe('en');
+		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+		await vi.waitFor(() => expect(root.textContent).toContain('Audit record language_record'));
+		const completion = JSON.parse(fetch.mock.calls[2][1].body);
+		expect(completion.language).toBe('en');
 	});
 
 	it('applies bounded appearance, theme and branding overrides', async () => {
@@ -155,6 +209,29 @@ describe('ProseID SDK', () => {
 		expect(target.dataset.proseidTheme).toBe('light');
 		expect(target.style.getPropertyValue('--proseid-accent')).toBe('#ff4d1f');
 		expect(target.getAttribute('style')).not.toContain('evil.example');
+	});
+
+	it('accepts only named six-digit hex colour overrides', async () => {
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(manifest))
+			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
+		const instance = mount('#form', {
+			apiKey: API_KEY,
+			flow: 'acme/intake',
+			fetch,
+			colors: {
+				canvas: '#112233',
+				accent: '#AABBCC',
+				ink: '#fff; background:url(https://evil.example)',
+				unknown: '#000000'
+			}
+		});
+		await instance.ready;
+		const target = document.querySelector('#form');
+		expect(target.style.getPropertyValue('--proseid-canvas')).toBe('#112233');
+		expect(target.style.getPropertyValue('--proseid-accent')).toBe('#aabbcc');
+		expect(target.style.getPropertyValue('--proseid-ink')).toBe('#171918');
+		expect(target.style.getPropertyValue('--proseid-unknown')).toBe('');
 	});
 
 	it('uses the published Flow theme instead of a client-side production override', async () => {
@@ -282,7 +359,8 @@ describe('ProseID SDK', () => {
 		root.querySelector('.guided-navigation .primary-action').click();
 		await vi.waitFor(() => {
 			expect(instance.guidedIndex).toBe(1);
-			expect(root.querySelector('.guided-navigation .primary-action').disabled).toBe(false);
+			expect(root.querySelector('.guided-navigation .primary-action').disabled).toBe(true);
+			expect(root.querySelector('.guided-requirement').hidden).toBe(false);
 		});
 		const country = root.querySelector('select[name="country"]');
 		country.value = 'Sweden';
@@ -296,7 +374,7 @@ describe('ProseID SDK', () => {
 		expect(fetch.mock.calls.filter(([, init]) => init.method === 'POST' && JSON.parse(init.body).action === 'complete')).toHaveLength(1);
 	});
 
-	it('calculates and confirms a Determination without creating a record during calculation', async () => {
+	it('updates and confirms a Determination live without creating a record during evaluation', async () => {
 		const determination = {
 			...manifest,
 			flow: { ...manifest.flow, flowType: 'determination', title: 'Deadline determination' },
@@ -320,13 +398,12 @@ describe('ProseID SDK', () => {
 				issues: valid ? [] : [{ field_id: 'hours', severity: 'error', kind: 'missing_required', trigger: 'correction' }]
 			});
 		});
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/determination', fetch, validateDelay: 100000 });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/determination', fetch, validateDelay: 0 });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		const hours = root.querySelector('input[name="hours"]');
 		hours.value = '24';
 		hours.dispatchEvent(new Event('input', { bubbles: true }));
-		root.querySelector('.determination-facts .primary-action').click();
 		await vi.waitFor(() => expect(root.querySelector('.outcome-list')?.textContent).toContain('Within 72 hours'));
 		expect(completions).toBe(0);
 		expect(root.querySelector('.actions .submit').disabled).toBe(false);
