@@ -32,7 +32,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/npm/@proseid/js-sdk@0.9.0/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@alentra/proseid-js-sdk@0.9.0/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -47,11 +47,11 @@ website—the embed API rejects secret keys.
 For an ES module build:
 
 ```bash
-npm install @proseid/js-sdk
+npm install @alentra/proseid-js-sdk
 ```
 
 ```js
-import { mount } from '@proseid/js-sdk';
+import { mount } from '@alentra/proseid-js-sdk';
 
 const form = mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -149,7 +149,7 @@ conditional UI messages. Validation reaches the real ProseID engine, but complet
 nothing is stored, delivered, or billed.
 
 ```js
-import { mountTest } from '@proseid/js-sdk';
+import { mountTest } from '@alentra/proseid-js-sdk';
 
 const test = mountTest('#compliance-form', {
   apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',

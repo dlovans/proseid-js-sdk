@@ -1,5 +1,5 @@
 {
-	"name": "@proseid/js-sdk",
+	"name": "@alentra/proseid-js-sdk",
 	"version": "0.9.0",
 	"description": "Embeddable, server-validated ProseID compliance Flows.",
 	"type": "module",
