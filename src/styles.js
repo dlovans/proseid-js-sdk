@@ -34,7 +34,7 @@ export const styles = `
 * { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; }
 .shell { overflow: visible; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); box-shadow: 0 18px 55px rgba(22, 25, 23, .08); }
-.ledger { height: 4px; overflow: hidden; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; background: var(--proseid-rule); }
+.ledger { position: sticky; z-index: 45; top: var(--proseid-sticky-offset, 0px); height: 4px; overflow: hidden; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; background: var(--proseid-rule); box-shadow: 0 1px 0 color-mix(in srgb, var(--proseid-rule) 72%, transparent); }
 .ledger-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--proseid-accent); transition: width .22s ease; }
 .ledger.loading .ledger-fill { width: 34%; animation: ledger-loading 1.15s ease-in-out infinite alternate; }
 .ledger.complete .ledger-fill { width: 100%; }

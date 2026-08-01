@@ -68,6 +68,12 @@ After a successful completion, the SDK brings the receipt and optional email con
 Set `autoFocusCompletion: false` only when the host application provides its own equivalent focus
 or scroll behavior.
 
+The answer-progress rail remains visible while the respondent moves through a long Flow. It sticks
+to the top of the viewport by default. If the host website has its own fixed header, set an inherited
+CSS offset on the mount target, for example `#compliance-form { --proseid-sticky-offset: 72px; }`.
+Avoid placing the mount target inside an ancestor with `overflow: hidden` or `overflow: auto`, because
+that ancestor becomes the browser's sticky-position boundary.
+
 English and Swedish are bundled. The schema's language is the initial recommendation, while the
 respondent can switch language inside an active Flow. Their choice is saved in browser storage and
 sent with the completed record. Schema-authored labels, help text and choices are not translated by
