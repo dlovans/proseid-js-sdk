@@ -37,6 +37,7 @@ button, input, select, textarea { font: inherit; }
 .ledger { position: sticky; z-index: 45; top: var(--proseid-sticky-offset, 0px); height: 4px; overflow: hidden; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; background: var(--proseid-rule); box-shadow: 0 1px 0 color-mix(in srgb, var(--proseid-rule) 72%, transparent); }
 .ledger-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--proseid-accent); transition: width .22s ease; }
 .ledger.loading .ledger-fill { width: 34%; animation: ledger-loading 1.15s ease-in-out infinite alternate; }
+.ledger.complete { position: static; }
 .ledger.complete .ledger-fill { width: 100%; }
 .head { padding: var(--proseid-head-pad-y) var(--proseid-head-pad-x) calc(var(--proseid-head-pad-y) - 2px); border-bottom: 1px solid var(--proseid-rule); }
 .brands { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 25px; }
@@ -259,20 +260,20 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .skeleton-line { height: 12px; margin: 10px 0; border-radius: 8px; background: linear-gradient(90deg, var(--proseid-canvas), var(--proseid-skeleton-glow), var(--proseid-canvas)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 .skeleton-line:nth-child(2) { width: 62%; height: 30px; margin-top: 28px; }
 .skeleton-line:nth-child(3) { width: 82%; }
-.complete { padding: 42px 30px; text-align: center; }
+.completion-view { padding: 42px 30px; text-align: center; }
 .seal { display: grid; width: 54px; height: 54px; margin: 0 auto 20px; place-items: center; border: 1px solid color-mix(in srgb, var(--proseid-success) 25%, var(--proseid-rule)); border-radius: 50%; background: var(--proseid-success-tint); color: var(--proseid-success); font-size: 25px; }
-.complete h2 { margin: 0; font: 500 30px/1.1 Georgia, serif; }
-.complete p { max-width: 46ch; margin: 12px auto 0; color: var(--proseid-copy); font-size: 13px; line-height: 1.6; }
+.completion-view h2 { margin: 0; font: 500 30px/1.1 Georgia, serif; }
+.completion-view p { max-width: 46ch; margin: 12px auto 0; color: var(--proseid-copy); font-size: 13px; line-height: 1.6; }
 .recorded-result { max-width: 600px; margin: 28px auto 0; overflow: hidden; border: 1px solid var(--proseid-rule); border-left: 3px solid var(--proseid-accent); border-radius: var(--proseid-radius); background: color-mix(in srgb, var(--proseid-accent) 5%, var(--proseid-surface)); text-align: left; }
 .recorded-result-head { padding: 20px 22px 17px; border-bottom: 1px solid var(--proseid-rule); }
 .recorded-result-head h3 { margin: 6px 0 0; color: var(--proseid-ink); font: 500 24px/1.12 Georgia, serif; letter-spacing: -.02em; }
-.complete .recorded-result-head p { max-width: none; margin: 6px 0 0; font-size: 11px; }
+.completion-view .recorded-result-head p { max-width: none; margin: 6px 0 0; font-size: 11px; }
 .recorded-outcomes { display: grid; padding: 0 22px; }
 .recorded-outcome { padding: 17px 0; border-bottom: 1px solid var(--proseid-rule); }
 .recorded-outcome:last-child { border-bottom: 0; }
 .recorded-outcome small { display: block; color: var(--proseid-muted); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
 .recorded-outcome strong { display: block; margin-top: 5px; color: var(--proseid-ink); font: 500 20px/1.2 Georgia, serif; overflow-wrap: anywhere; }
-.complete .recorded-outcome p { max-width: none; margin: 6px 0 0; font-size: 11px; }
+.completion-view .recorded-outcome p { max-width: none; margin: 6px 0 0; font-size: 11px; }
 .recorded-notices { margin: 0 22px 20px; padding-top: 16px; border-top: 1px solid var(--proseid-rule); }
 .recorded-notices ul { display: grid; gap: 7px; margin: 9px 0 0; padding: 0; list-style: none; }
 .recorded-notices li { position: relative; padding-left: 14px; color: var(--proseid-copy); font-size: 11px; line-height: 1.5; }
@@ -280,7 +281,7 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .receipt { width: fit-content; max-width: 100%; margin: 22px auto 0; border: 1px solid var(--proseid-rule); border-radius: 10px; background: var(--proseid-canvas); padding: 9px 12px; color: var(--proseid-muted); font: 10px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
 .receipt-copy { max-width: 520px; margin: 28px auto 0; border-top: 1px solid var(--proseid-rule); padding-top: 24px; text-align: left; }
 .receipt-copy h3 { margin: 0; color: var(--proseid-ink); font: 650 14px/1.35 var(--proseid-font); }
-.complete .receipt-help { max-width: none; margin: 5px 0 0; color: var(--proseid-muted); font-size: 11px; line-height: 1.55; }
+.completion-view .receipt-help { max-width: none; margin: 5px 0 0; color: var(--proseid-muted); font-size: 11px; line-height: 1.55; }
 .receipt-form { margin-top: 15px; }
 .receipt-field { display: grid; gap: 7px; }
 .receipt-label { color: var(--proseid-ink); font-size: 11px; font-weight: 650; }
@@ -292,10 +293,10 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .receipt-button:hover:not(:disabled) { transform: translateY(-1px); }
 .receipt-button:focus-visible { outline: 2px solid var(--proseid-accent); outline-offset: 3px; }
 .receipt-button:disabled { cursor: not-allowed; opacity: .42; }
-.complete .receipt-status { min-height: 17px; max-width: none; margin: 0; color: var(--proseid-muted); font-size: 11px; line-height: 1.5; }
-.complete .receipt-status[data-state="sent"] { color: var(--proseid-success); }
-.complete .receipt-status[data-state="error"] { color: var(--proseid-accent-ink); }
-.complete .receipt-test { margin-top: 18px; color: var(--proseid-muted); font-size: 11px; }
+.completion-view .receipt-status { min-height: 17px; max-width: none; margin: 0; color: var(--proseid-muted); font-size: 11px; line-height: 1.5; }
+.completion-view .receipt-status[data-state="sent"] { color: var(--proseid-success); }
+.completion-view .receipt-status[data-state="error"] { color: var(--proseid-accent-ink); }
+.completion-view .receipt-test { margin-top: 18px; color: var(--proseid-muted); font-size: 11px; }
 :host([data-proseid-shell="flat"]) .shell { border-color: transparent; box-shadow: none; }
 :host([data-proseid-shell="flat"]) .ledger { height: 2px; }
 :host([data-proseid-fields="underline"]) .control { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }

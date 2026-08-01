@@ -1444,7 +1444,7 @@ export class ProseIDForm {
 	renderComplete(result) {
 		for (const cleanup of this.cleanupFns.splice(0)) cleanup();
 		const shell = this.shadow.querySelector('.shell');
-		const complete = text('div', 'complete');
+		const complete = text('div', 'completion-view');
 		complete.append(text('div', 'seal', '✓'), text('h2', '', result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
 		complete.append(text('p', '', result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)));
 		complete.append(text('div', 'receipt', result.test ? this.copy.testRecord(result.recordId) : this.copy.auditRecord(result.recordId)));
@@ -1586,7 +1586,7 @@ export class ProseIDForm {
 		this.shadow.replaceChildren();
 		this.installStyles();
 		const shell = text('section', 'shell');
-		const complete = text('div', 'complete');
+		const complete = text('div', 'completion-view');
 		complete.append(text('div', 'seal', '!'), text('h2', '', this.copy.formUnavailable));
 		complete.append(text('p', '', errorMessage(error?.code, error?.message)));
 		const ledger = text('div', 'ledger');

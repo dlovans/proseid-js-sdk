@@ -383,6 +383,9 @@ describe('ProseID SDK', () => {
 		expect(root.querySelector('button[type="submit"]').disabled).toBe(false);
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(complete).toHaveBeenCalledWith(expect.objectContaining({ recordId: 'audit_123' })));
+		expect(root.querySelector('.completion-view')).not.toBeNull();
+		expect(root.querySelector('.ledger.complete')).not.toBeNull();
+		expect(root.querySelector('.ledger.complete.completion-view')).toBeNull();
 		expect(root.textContent).toContain('Audit record audit_123');
 		expect(root.textContent).toContain('Want a copy for your records?');
 		const email = root.querySelector('.receipt-input');
