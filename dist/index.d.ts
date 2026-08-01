@@ -45,15 +45,19 @@ export interface MountOptions {
 	colors?: FlowColors;
 	appearance?: AppearancePreset | Appearance;
 	branding?: Branding;
+	/** CSP nonce applied to the SDK's Shadow DOM style fallback. */
+	nonce?: string;
 	validateDelay?: number;
 	locale?: 'en' | 'sv' | string;
 	messages?: Record<string, unknown>;
 	submitLabel?: string;
 	signingAdapter?: SigningAdapter;
-	/** Browser loading policy for the ProseID-controlled iframe. Defaults to eager. */
+	/** Deprecated compatibility option. Direct rendering does not use an iframe loading policy. */
 	loading?: 'eager' | 'lazy';
-	/** Accessible title applied to the iframe. */
+	/** Deprecated compatibility option. The Flow title comes from its published manifest. */
 	title?: string;
+	/** Bring the completion and optional receipt-email panel into view. Defaults to true. */
+	autoFocusCompletion?: boolean;
 	onReady?: (detail: { manifest: EmbedManifest }) => void;
 	onChange?: (detail: { name: string; value: unknown; values: Record<string, unknown> }) => void;
 	onValidation?: (detail: { valid: boolean; status: string; issues: unknown[] }) => void;

@@ -1,6 +1,6 @@
 # ProseID JavaScript SDK
 
-Embed a published ProseID Flow inside a customer website without shipping the ProseID validation engine or trusting the host page. The SDK mounts a responsive, cross-origin ProseID frame, sends respondent changes to ProseID for remote validation, and enables final completion only when the pinned schema is ready.
+Embed a published ProseID Flow inside a customer website without shipping the ProseID validation engine. The SDK renders a responsive Flow directly inside an isolated Shadow DOM, sends respondent changes to ProseID for remote validation, and enables final completion only when the pinned schema is ready.
 
 The renderer follows the Flow selected by its publisher: a Standard Form, one-question-at-a-time Guided Assessment, live Determination, or auditable Compliance Checklist. Required controls carry a visible text label as well as native accessibility semantics in every experience, and dates use the ProseID calendar instead of the browser's inconsistent native picker.
 
@@ -12,11 +12,11 @@ the completed record and proof retain the date, rule-set name, and inclusive ran
 open across UTC midnight, the server returns `flow_changed` and the respondent must reload before
 continuing, so an old page cannot complete against stale legal logic.
 
-## Why use the ProseID-hosted frame?
+## Why use the ProseID SDK?
 
-- The tiny public loader creates and resizes the iframe, so integration still feels like mounting a component.
-- Customer CSS and JavaScript cannot reach into the cross-origin renderer to change validation states or edit its attribution markup. The host still controls its own page around the frame; deliberately obscuring the trust mark is prohibited unless the Flow uses paid white-label mode.
-- The host receives lifecycle events without receiving the validation engine.
+- It renders directly in the host page, so sticky panels, completion focus, responsive sizing, and accessibility follow the surrounding page naturally.
+- Shadow DOM isolates the Flow from ordinary host-page CSS collisions while the server remains authoritative for validation, pricing, attribution mode, and record creation.
+- The host receives lifecycle events without receiving the validation engine or any secret credential.
 - The completed record is identical to one created by a hosted Flow.
 - After completion, the respondent can request the same co-branded email and PDF receipt as the hosted flow.
 - A provider-neutral signing adapter is already part of the composition boundary for future UIP signing.
@@ -32,7 +32,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/npm/@alentra/proseid-js-sdk@0.9.0/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@alentra/proseid-js-sdk@0.10.0/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -63,6 +63,10 @@ const form = mount('#compliance-form', {
 
 await form.ready;
 ```
+
+After a successful completion, the SDK brings the receipt and optional email controls into view.
+Set `autoFocusCompletion: false` only when the host application provides its own equivalent focus
+or scroll behavior.
 
 English and Swedish are bundled. The schema's language is the initial recommendation, while the
 respondent can switch language inside an active Flow. Their choice is saved in browser storage and
@@ -123,11 +127,11 @@ the embed source, publishable key,
 origin, SDK version, attribution mode, and pricing components. Test completions are always free.
 The legacy `branding.proseid` mount preference cannot override a production Flow or its billing.
 
-The renderer and attribution live on `proseid.com`, behind the iframe's cross-origin boundary and a
-Flow-specific `frame-ancestors` policy. The public loader verifies the exact frame origin before it
-sends the publishable key. ProseID does not expose an arbitrary secret-key endpoint for submitting
-completed answers: use the hosted Flow or this SDK so server-authoritative attribution and pricing
-cannot be bypassed.
+The renderer runs locally, but the Flow's allowed website origins, validation, attribution mode,
+price, completion debit, encryption, proof, and delivery are enforced by ProseID's server. Changing
+the browser markup or request headers cannot change the server-owned price or create a valid record
+without passing the published schema. ProseID does not expose an arbitrary secret-key endpoint for
+submitting completed answers: use the hosted Flow or this SDK.
 
 ## Respondent receipt
 
@@ -178,12 +182,12 @@ Matching callbacks can be passed as `onReady`, `onChange`, `onValidation`, `onSu
 
 ## Content Security Policy
 
-Allow the ProseID origin in `frame-src`. If the browser bundle is loaded from jsDelivr, allow that
-exact CDN in `script-src` too. The iframe makes its API calls to its own ProseID origin, so the host
-page does not need to add ProseID to `connect-src` or relax its style policy.
+Allow the ProseID API in `connect-src`. If the browser bundle is loaded from jsDelivr, allow that
+exact CDN in `script-src` too. Styles are installed inside the component's Shadow DOM; hosts with a
+strict `style-src` policy can pass their CSP nonce as the `nonce` mount option.
 
 ```text
-frame-src 'self' https://proseid.com;
+connect-src 'self' https://proseid.com;
 script-src 'self' https://cdn.jsdelivr.net;
 ```
 

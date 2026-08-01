@@ -8,6 +8,19 @@ export function parseFlowCoordinate(value) {
 	return { publisher: parts[0], slug: parts[1] };
 }
 
+function normalizedApiBase(value) {
+	try {
+		const url = new URL(value || 'https://proseid.com');
+		const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+		if ((url.protocol !== 'https:' && !(local && url.protocol === 'http:')) || url.username || url.password) {
+			throw new Error('unsafe');
+		}
+		return url.origin;
+	} catch {
+		throw new ProseIDError('invalid_api_base', 'Use a valid HTTPS ProseID address.');
+	}
+}
+
 export class EmbedApi {
 	constructor({ apiBase = 'https://proseid.com', apiKey, flow, testMode = false, attribution = 'full', parentOrigin = '', fetchImpl = globalThis.fetch }) {
 		if (typeof fetchImpl !== 'function') throw new ProseIDError('fetch_unavailable', 'This browser cannot load the Flow.');
@@ -20,11 +33,12 @@ export class EmbedApi {
 		this.apiKey = apiKey;
 		this.attribution = normalizeAttribution(attribution);
 		this.parentOrigin = parentOrigin;
+		const base = normalizedApiBase(apiBase);
 		if (testMode) {
-			this.endpoint = `${String(apiBase).replace(/\/$/, '')}/api/embed/v1/test`;
+			this.endpoint = `${base}/api/embed/v1/test`;
 		} else {
 			const { publisher, slug } = parseFlowCoordinate(flow);
-			this.endpoint = `${String(apiBase).replace(/\/$/, '')}/api/embed/v1/flows/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
+			this.endpoint = `${base}/api/embed/v1/flows/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
 		}
 	}
 
@@ -32,7 +46,7 @@ export class EmbedApi {
 		this.attribution = normalizeAttribution(value);
 	}
 
-	async request(body, signal) {
+	async request(body, signal, extraHeaders = {}) {
 		const response = await this.fetch(this.endpoint, {
 			method: body ? 'POST' : 'GET',
 			mode: 'cors',
@@ -43,7 +57,8 @@ export class EmbedApi {
 				'x-proseid-sdk-version': VERSION,
 				'x-proseid-attribution': this.attribution,
 				...(this.parentOrigin ? { 'x-proseid-embed-origin': this.parentOrigin } : {}),
-				...(body ? { 'content-type': 'application/json' } : {})
+				...(body ? { 'content-type': 'application/json' } : {}),
+				...extraHeaders
 			},
 			...(body ? { body: JSON.stringify(body) } : {}),
 			...(signal ? { signal } : {})
@@ -56,8 +71,10 @@ export class EmbedApi {
 		return payload;
 	}
 
-	manifest(signal) {
-		return this.request(null, signal);
+	manifest(attemptId, signal) {
+		return this.request(null, signal, {
+			...(attemptId ? { 'x-proseid-attempt-id': attemptId } : {})
+		});
 	}
 
 	validate(flowRef, responses, effectiveAt, language, signal) {

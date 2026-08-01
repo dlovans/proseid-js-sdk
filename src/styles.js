@@ -178,7 +178,8 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .guided-path-copy strong, .guided-path-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .guided-path-copy strong { color: var(--proseid-copy); font-size: 11px; }
 .guided-path-copy small { color: var(--proseid-muted); font-size: 9px; }
-.guided-index { margin-bottom: 18px; color: var(--proseid-accent-ink); font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.guided-index { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; color: var(--proseid-accent-ink); font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.guided-index small { max-width: 240px; color: var(--proseid-muted); font-size: 10px; font-weight: 500; letter-spacing: 0; line-height: 1.45; text-align: right; text-transform: none; }
 .guided-question { display: flex; min-height: clamp(360px, 48dvh, 480px); flex-direction: column; border: 1px solid var(--proseid-rule); border-radius: calc(var(--proseid-radius) + 2px); background: var(--proseid-surface); padding: clamp(20px, 3.4vw, 31px); }
 .guided-field-slot { min-height: 0; }
 .guided-field-slot .label, .guided-field-slot .check-copy { font: 500 clamp(20px, 4vw, 27px)/1.2 Georgia, serif; letter-spacing: -.02em; }
@@ -207,6 +208,10 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .determination-result.blocked { background: color-mix(in srgb, var(--proseid-accent) 5%, var(--proseid-surface)); }
 .determination-issues { display: grid; gap: 9px; margin: 18px 0 0; padding: 16px 0 0 18px; border-top: 1px solid var(--proseid-rule); color: var(--proseid-copy); font-size: 11px; line-height: 1.5; }
 .determination-waiting { margin: 18px 0 0; color: var(--proseid-copy); font-size: 12px; line-height: 1.6; }
+.determination-subheading { display: block; margin-top: 20px; color: var(--proseid-muted); font-size: 9px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+.determination-notes, .determination-authority { margin-top: 20px; border-top: 1px solid var(--proseid-rule); padding-top: 17px; }
+.determination-notes ul, .determination-reference-list { display: grid; gap: 8px; margin: 10px 0 0; padding-left: 17px; color: var(--proseid-copy); font-size: 11px; line-height: 1.5; }
+.determination-reference-list a { color: var(--proseid-accent-ink); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--proseid-accent) 35%, transparent); text-underline-offset: 3px; overflow-wrap: anywhere; }
 .determination > .actions { grid-template-columns: minmax(0, 1.08fr) minmax(260px, .92fr); gap: clamp(28px, 5vw, 52px); }
 .determination > .actions .privacy { grid-column: 1; }
 .determination > .actions .submit { grid-column: 2; width: 100%; }
@@ -225,6 +230,10 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .checklist-completion { position: sticky; bottom: 12px; z-index: 30; grid-template-columns: auto minmax(0, 1fr) auto; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: color-mix(in srgb, var(--proseid-surface) 92%, transparent); padding: 11px 12px; box-shadow: 0 18px 45px -28px rgba(18, 20, 19, .72); backdrop-filter: blur(16px); }
 .checklist-section { display: grid; grid-template-columns: 145px minmax(0, 1fr); gap: 24px; }
 .checklist-section h3 { margin: 0; font: 500 18px/1.2 Georgia, serif; }
+.checklist-section-head p { margin: 7px 0 0; color: var(--proseid-copy); font-size: 11px; line-height: 1.55; }
+.checklist-outcomes { display: grid; grid-template-columns: 145px minmax(0, 1fr); gap: 24px; }
+.checklist-outcomes[hidden] { display: none; }
+.checklist-outcomes .outcome-list { margin-top: 0; }
 .checklist-context-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--proseid-field-gap); }
 .checklist-context-grid .field:has(textarea) { grid-column: 1 / -1; }
 .checklist-control-list { display: grid; gap: 10px; }
@@ -298,13 +307,15 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
 @container (max-width: 720px) {
-	.guided-layout, .determination-layout, .checklist-section { grid-template-columns: 1fr; }
+	.guided-layout, .determination-layout, .checklist-section, .checklist-outcomes { grid-template-columns: 1fr; }
 	.determination-result { position: static; max-height: none; }
 	.determination > .actions { grid-template-columns: 1fr; }
 	.determination > .actions .privacy, .determination > .actions .submit { grid-column: 1; }
 	.guided-path { position: static; }
 	.guided-path ol { display: none; }
 	.guided-question { min-height: 0; }
+	.guided-index { align-items: flex-start; flex-direction: column; gap: 5px; }
+	.guided-index small { max-width: none; text-align: left; }
 	.checklist-context-grid { grid-template-columns: 1fr; }
 	.checklist-completion { grid-template-columns: 1fr; }
 	.checklist-completion .privacy { display: none; }
@@ -326,10 +337,12 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 	.head, .body { padding-right: 18px; padding-left: 18px; }
 	.actions { grid-template-columns: 1fr; }
 	.submit { width: 100%; }
-	.guided-layout, .determination-layout, .checklist-section { grid-template-columns: 1fr; }
+	.guided-layout, .determination-layout, .checklist-section, .checklist-outcomes { grid-template-columns: 1fr; }
 	.guided-path { position: static; }
 	.guided-path ol { display: none; }
 	.guided-question { min-height: 0; }
+	.guided-index { align-items: flex-start; flex-direction: column; gap: 5px; }
+	.guided-index small { max-width: none; text-align: left; }
 	.guided-navigation .primary-action, .guided-navigation .secondary-action { flex: 1; }
 	.checklist-completion { grid-template-columns: 1fr; }
 	.checklist-completion .privacy { display: none; }

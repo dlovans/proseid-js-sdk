@@ -1,4 +1,4 @@
-import { ProseIDFrame as ProseIDForm } from './FrameClient.js';
+import { ProseIDForm } from './ProseIDForm.js';
 import { ProseIDError } from './errors.js';
 import { VERSION } from './version.js';
 import { COLOR_TOKEN_NAMES, THEME_NAMES } from './themes.js';

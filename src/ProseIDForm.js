@@ -102,7 +102,7 @@ export class ProseIDForm {
 			flow: options.flow,
 			testMode: options.testMode === true,
 			attribution: this.attribution,
-			parentOrigin: options.parentOrigin,
+			parentOrigin: options.parentOrigin || globalThis.location?.origin || '',
 			fetchImpl: options.fetch
 		});
 		this.signing = new SigningCoordinator(options.signingAdapter);
@@ -173,7 +173,7 @@ export class ProseIDForm {
 
 	async load() {
 		try {
-			this.manifest = await this.api.manifest();
+			this.manifest = await this.api.manifest(this.recordId);
 			if (this.destroyed) return this;
 			this.flowType = this.manifest.flow?.flowType || 'form';
 			if (!FLOW_TYPES.has(this.flowType)) {
@@ -463,7 +463,10 @@ export class ProseIDForm {
 		}
 		field.wrap.hidden = false;
 		this.guidedFieldSlot.replaceChildren(field.wrap);
-		this.guidedIndexNode.textContent = this.copy.guidedProgress(this.guidedIndex + 1, entries.length);
+		this.guidedIndexNode.replaceChildren(
+			text('span', '', this.copy.guidedProgress(this.guidedIndex + 1, entries.length)),
+			text('small', '', this.guidedIndex === entries.length - 1 ? this.copy.guidedReviewCue : this.copy.guidedContinueCue)
+		);
 		this.guidedBack.disabled = this.guidedIndex === 0;
 		const needsAnswer = field.definition?.required === true && !answerProvided(field.definition, this.values[currentName]);
 		this.guidedNext.disabled = this.guidedChecking || needsAnswer;
@@ -478,25 +481,37 @@ export class ProseIDForm {
 		fill.style.width = `${Math.round(((this.guidedIndex + 1) / entries.length) * 100)}%`;
 		rail.append(fill);
 		const list = document.createElement('ol');
-		entries.forEach(([entryName, entryField], index) => {
-			const item = text('li', index < this.guidedIndex ? 'answered' : index === this.guidedIndex ? 'active' : 'remaining');
+		entries.slice(0, this.guidedIndex).forEach(([entryName, entryField]) => {
+			const item = text('li', 'answered');
 			const button = text('button', 'guided-path-button');
 			button.type = 'button';
-			button.disabled = index > this.guidedIndex;
 			const copy = text('span', 'guided-path-copy');
 			copy.append(
 				text('strong', '', entryField.label),
-				text('small', '', index < this.guidedIndex ? this.displayValue(this.values[entryName], entryField.definition) : index === this.guidedIndex ? this.copy.guidedCurrent : this.copy.guidedUpdated)
+				text('small', '', this.displayValue(this.values[entryName], entryField.definition))
 			);
-			button.append(text('span', 'guided-marker', index < this.guidedIndex ? '✓' : ''), copy);
+			button.append(text('span', 'guided-marker', '✓'), copy);
 			button.addEventListener('click', () => {
-				this.guidedIndex = index;
+				this.guidedIndex = entries.findIndex(([name]) => name === entryName);
 				this.guidedPhase = 'questions';
 				this.refreshGuided();
 			});
 			item.append(button);
 			list.append(item);
 		});
+		const active = text('li', 'active');
+		const activeCopy = text('span', 'guided-path-copy');
+		activeCopy.append(text('strong', '', field.label), text('small', '', this.copy.guidedCurrent));
+		active.append(text('span', 'guided-marker'), activeCopy);
+		list.append(active);
+		const remaining = entries.length - this.guidedIndex - 1;
+		if (remaining > 0) {
+			const future = text('li', 'remaining');
+			const futureCopy = text('span', 'guided-path-copy');
+			futureCopy.append(text('strong', '', this.copy.guidedRemaining(remaining)), text('small', '', this.copy.guidedUpdated));
+			future.append(text('span', 'guided-marker'), futureCopy);
+			list.append(future);
+		}
 		this.guidedPath.append(heading, rail, list);
 		requestAnimationFrame(() => {
 			const active = list.querySelector('.active');
@@ -618,6 +633,44 @@ export class ProseIDForm {
 		);
 	}
 
+	renderDeterminationReferences() {
+		const references = Array.isArray(this.manifest.schema?.metadata?.legal_references)
+			? this.manifest.schema.metadata.legal_references.filter(Boolean)
+			: [];
+		if (!references.length) return null;
+		const authority = text('section', 'determination-authority');
+		authority.append(text('span', 'eyebrow', this.copy.determinationAuthority));
+		const list = text('ul', 'determination-reference-list');
+		for (const reference of references) {
+			const item = document.createElement('li');
+			const label = [reference.instrument, reference.provision].filter(Boolean).join(' · ') || this.copy.legalReference;
+			const source = safeLogoUrl(reference.source_url);
+			if (source) {
+				const link = text('a', '', label);
+				link.href = source;
+				link.target = '_blank';
+				link.rel = 'noopener noreferrer';
+				item.append(link);
+			} else item.textContent = label;
+			list.append(item);
+		}
+		authority.append(list);
+		return authority;
+	}
+
+	renderDeterminationNotes(issues) {
+		const notes = (issues || []).filter((issue) =>
+			(!issue?.field_id || !this.fields.has(issue.field_id)) && issue?.severity !== 'error'
+		);
+		if (!notes.length) return null;
+		const wrap = text('section', 'determination-notes');
+		wrap.append(text('span', 'eyebrow', this.copy.determinationNotes));
+		const list = document.createElement('ul');
+		for (const issue of notes) list.append(text('li', '', friendlyIssue(issue, this.copy.thisField, this.copy)));
+		wrap.append(list);
+		return wrap;
+	}
+
 	refreshDetermination() {
 		if (!this.determinationResult) return;
 		const result = this.lastValidation;
@@ -628,6 +681,11 @@ export class ProseIDForm {
 		if (blocking) {
 			this.determinationResult.classList.add('blocked');
 			this.determinationResult.append(text('h2', '', this.copy.reviewAnswersTitle), text('p', 'determination-waiting', this.copy.noRecordCreated));
+			const outcomes = this.renderOutcomeList(result.definitions || {});
+			const fieldErrors = issues.filter((issue) => issue?.severity === 'error' && issue?.field_id && this.fields.has(issue.field_id));
+			if (outcomes && fieldErrors.length === 0) {
+				this.determinationResult.append(text('span', 'determination-subheading', this.copy.determinationCurrentIndication), outcomes);
+			}
 			if (issues.length) {
 				const list = text('ul', 'determination-issues');
 				for (const issue of issues) {
@@ -636,6 +694,8 @@ export class ProseIDForm {
 				}
 				this.determinationResult.append(list);
 			}
+			const references = this.renderDeterminationReferences();
+			if (references) this.determinationResult.append(references);
 			return;
 		}
 		this.determinationResult.classList.remove('blocked');
@@ -643,6 +703,10 @@ export class ProseIDForm {
 		const outcomes = this.renderOutcomeList(result.definitions || {});
 		if (outcomes) this.determinationResult.append(outcomes);
 		else this.determinationResult.append(text('p', 'determination-waiting', this.copy.determinationWaiting));
+		const notes = this.renderDeterminationNotes(issues);
+		if (notes) this.determinationResult.append(notes);
+		const references = this.renderDeterminationReferences();
+		if (references) this.determinationResult.append(references);
 	}
 
 	renderOutcomeList(definitions) {
@@ -667,7 +731,7 @@ export class ProseIDForm {
 		const checklist = text('div', 'checklist');
 		const head = text('header', 'checklist-head');
 		const copy = text('div', 'checklist-title');
-		copy.append(text('span', 'eyebrow', this.copy.checklistControls), text('h2', '', this.copy.checklistTitle), text('p', '', this.copy.checklistHelp));
+		copy.append(text('span', 'eyebrow', this.copy.checklistEyebrow), text('h2', '', this.copy.checklistTitle), text('p', '', this.copy.checklistHelp));
 		this.checklistProgress = text('div', 'checklist-progress');
 		head.append(copy);
 		const context = text('section', 'checklist-section');
@@ -679,12 +743,16 @@ export class ProseIDForm {
 			else contextFields.push(field.wrap);
 		}
 		if (contextFields.length) {
-			context.append(text('h3', '', this.copy.checklistContext));
+			const contextHead = text('header', 'checklist-section-head');
+			contextHead.append(text('span', 'eyebrow', this.copy.checklistContext), text('h3', '', this.copy.checklistContextTitle), text('p', '', this.copy.checklistContextHelp));
+			context.append(contextHead);
 			const grid = text('div', 'checklist-context-grid');
 			grid.append(...contextFields);
 			context.append(grid);
 		}
-		controls.append(text('h3', '', this.copy.checklistControls));
+		const controlsHead = text('header', 'checklist-section-head');
+		controlsHead.append(text('span', 'eyebrow', this.copy.checklistControlsLabel), text('h3', '', this.copy.checklistControls), text('p', '', this.copy.checklistControlsHelp));
+		controls.append(controlsHead);
 		const list = text('div', 'checklist-control-list');
 		list.append(...controlFields);
 		controls.append(list);
@@ -693,9 +761,22 @@ export class ProseIDForm {
 		const completion = this.renderActions();
 		completion.classList.add('checklist-completion');
 		completion.prepend(this.checklistProgress);
-		checklist.append(controls, completion);
+		this.checklistOutcomes = text('section', 'checklist-outcomes');
+		checklist.append(controls, this.checklistOutcomes, completion);
 		this.updateChecklistProgress();
+		this.refreshChecklistOutcomes();
 		return checklist;
+	}
+
+	refreshChecklistOutcomes() {
+		if (!this.checklistOutcomes) return;
+		const outcomes = this.renderOutcomeList(this.lastValidation?.definitions || this.manifest.schema?.definitions || {});
+		this.checklistOutcomes.replaceChildren();
+		this.checklistOutcomes.hidden = !outcomes;
+		if (!outcomes) return;
+		const head = text('header', 'checklist-section-head');
+		head.append(text('span', 'eyebrow', this.copy.checklistRecordedOutcome), text('h3', '', this.copy.checklistConclusion));
+		this.checklistOutcomes.append(head, outcomes);
 	}
 
 	checklistControlNames() {
@@ -1222,7 +1303,10 @@ export class ProseIDForm {
 			field.message.hidden = !resolved?.ui_message;
 		}
 		if (this.flowType === 'guided_assessment' && this.guidedPhase === 'questions') this.refreshGuided();
-		if (this.flowType === 'checklist') this.updateChecklistProgress();
+		if (this.flowType === 'checklist') {
+			this.updateChecklistProgress();
+			this.refreshChecklistOutcomes();
+		}
 	}
 
 	clearStaleFieldEvaluation(name) {
@@ -1465,6 +1549,13 @@ export class ProseIDForm {
 			complete.append(this.renderReceiptEmail(result));
 		}
 		shell.replaceChildren(text('div', 'ledger'), complete);
+		if (this.options.autoFocusCompletion !== false) {
+			requestAnimationFrame(() => {
+				if (this.destroyed) return;
+				const reduceMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+				this.target.scrollIntoView?.({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+			});
+		}
 	}
 
 	renderReceiptEmail(result) {

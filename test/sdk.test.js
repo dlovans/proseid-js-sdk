@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ProseIDForm } from '../src/ProseIDForm.js';
+import { mount, mountTest } from '../src/index.js';
+import { EmbedApi } from '../src/api.js';
 import { THEME_NAMES } from '../src/themes.js';
 import { VERSION } from '../src/version.js';
-
-const mount = (target, options) => new ProseIDForm(target, options);
-const mountTest = (target, options) => new ProseIDForm(target, { ...options, testMode: true });
 
 const manifest = {
 	ok: true,
@@ -26,9 +24,26 @@ beforeEach(() => {
 });
 
 describe('ProseID SDK', () => {
+	it('renders directly into an isolated shadow root without an iframe', async () => {
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(manifest))
+			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		await instance.ready;
+		expect(document.querySelector('iframe')).toBeNull();
+		expect(document.querySelector('#form').shadowRoot.querySelector('h1').textContent).toBe('Client intake');
+	});
+
 	it('requires a browser-safe publishable key', () => {
 		expect(() => mount('#form', { flow: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
 		expect(() => mount('#form', { apiKey: `proseid_sk_${'a'.repeat(48)}`, flow: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
+	});
+
+	it('accepts HTTPS and localhost API origins but rejects unsafe transport', () => {
+		expect(() => new EmbedApi({ apiKey: API_KEY, flow: 'acme/intake', apiBase: 'http://proseid.example', fetchImpl: vi.fn() }))
+			.toThrow(/valid HTTPS/i);
+		expect(() => new EmbedApi({ apiKey: API_KEY, flow: 'acme/intake', apiBase: 'http://localhost:4173', fetchImpl: vi.fn() }))
+			.not.toThrow();
 	});
 
 	it('renders the co-branded manifest and leaves submit available to reveal missing answers', async () => {
@@ -38,6 +53,8 @@ describe('ProseID SDK', () => {
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
 		await instance.ready;
 		expect(fetch.mock.calls[0][1].headers['x-proseid-key']).toBe(API_KEY);
+		expect(fetch.mock.calls[0][1].headers['x-proseid-embed-origin']).toBe(location.origin);
+		expect(fetch.mock.calls[0][1].headers['x-proseid-attempt-id']).toMatch(/^embed_[A-Za-z0-9_-]{16,}$/);
 		expect(JSON.parse(fetch.mock.calls[1][1].body).effectiveAt).toBe('2026-07-16');
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('h1').textContent).toBe('Client intake');
@@ -71,6 +88,7 @@ describe('ProseID SDK', () => {
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('.guided')).not.toBeNull();
 		expect(root.textContent).toContain('Question 1 of 1');
+		expect(root.querySelector('.guided-index small').textContent).toContain('Review this final answer');
 		expect(root.textContent).toContain('Review answers');
 	});
 
@@ -138,6 +156,30 @@ describe('ProseID SDK', () => {
 		expect(choices.every((choice) => choice.checked === false)).toBe(true);
 		const request = JSON.parse(fetch.mock.calls[1][1].body);
 		expect(request.responses).not.toHaveProperty('in_scope');
+	});
+
+	it('moves a Standard Form respondent to the first required answer on submit', async () => {
+		const incomplete = {
+			ok: true,
+			valid: false,
+			status: 'INCOMPLETE',
+			definitions: manifest.schema.definitions,
+			issues: [{ field_id: 'full_name', severity: 'error', kind: 'missing_required', trigger: 'completion' }]
+		};
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(manifest))
+			.mockImplementationOnce(() => response(incomplete))
+			.mockImplementationOnce(() => response(incomplete));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		const input = root.querySelector('input[name="full_name"]');
+		const wrapper = input.closest('.field');
+		wrapper.scrollIntoView = vi.fn();
+		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+		await vi.waitFor(() => expect(input.getAttribute('aria-invalid')).toBe('true'));
+		expect(wrapper.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+		expect(root.activeElement).toBe(input);
 	});
 
 	it('uses the schema language by default, lets the respondent switch, and records that choice', async () => {
@@ -353,6 +395,9 @@ describe('ProseID SDK', () => {
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/guided', fetch, validateDelay: 100000 });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
+		expect(root.querySelectorAll('.guided-path ol > li')).toHaveLength(2);
+		expect(root.querySelector('.guided-path .remaining').textContent).toContain('1 remaining');
+		expect(root.querySelector('.guided-index small').textContent).toContain('Continue when this answer looks right');
 		const name = root.querySelector('input[name="name"]');
 		name.value = 'Ada Lovelace';
 		name.dispatchEvent(new Event('input', { bubbles: true }));
@@ -378,10 +423,13 @@ describe('ProseID SDK', () => {
 		const determination = {
 			...manifest,
 			flow: { ...manifest.flow, flowType: 'determination', title: 'Deadline determination' },
-			schema: { definitions: {
+			schema: {
+				metadata: { legal_references: [{ instrument: 'Deadline Act', provision: 'Section 72', source_url: 'https://example.com/deadline' }] },
+				definitions: {
 				hours: { type: 'number', label: 'Hours elapsed', required: true },
 				deadline: { type: 'string', label: 'Deadline status', readonly: true, visible: true }
-			} }
+				}
+			}
 		};
 		let completions = 0;
 		const fetch = vi.fn(async (_url, init) => {
@@ -395,16 +443,23 @@ describe('ProseID SDK', () => {
 			return response({
 				ok: true, valid, status: valid ? 'READY' : 'INCOMPLETE',
 				definitions: { ...determination.schema.definitions, deadline: { ...determination.schema.definitions.deadline, value: Number(payload.responses.hours) <= 72 ? 'Within 72 hours' : 'Late' } },
-				issues: valid ? [] : [{ field_id: 'hours', severity: 'error', kind: 'missing_required', trigger: 'correction' }]
+				issues: valid
+					? [{ severity: 'notice', kind: 'advisory', message: 'Confirm the official deadline source.' }]
+					: [{ field_id: 'hours', severity: 'error', kind: 'missing_required', trigger: 'correction' }]
 			});
 		});
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/determination', fetch, validateDelay: 0 });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
+		const determinationResult = root.querySelector('.determination-result');
+		expect(determinationResult.style.transform).toBe('');
 		const hours = root.querySelector('input[name="hours"]');
 		hours.value = '24';
 		hours.dispatchEvent(new Event('input', { bubbles: true }));
 		await vi.waitFor(() => expect(root.querySelector('.outcome-list')?.textContent).toContain('Within 72 hours'));
+		expect(root.querySelector('.determination-notes').textContent).toContain('Confirm the official deadline source.');
+		expect(root.querySelector('.determination-authority').textContent).toContain('Deadline Act · Section 72');
+		expect(root.querySelector('.determination-authority a').href).toBe('https://example.com/deadline');
 		expect(completions).toBe(0);
 		expect(root.querySelector('.actions .submit').disabled).toBe(false);
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -419,7 +474,8 @@ describe('ProseID SDK', () => {
 			schema: { definitions: {
 				reviewer: { type: 'string', label: 'Reviewer', required: true },
 				control_met: { type: 'boolean', label: 'Control is met', required: true },
-				confirmed: { type: 'attestation', statement: 'I reviewed the evidence', required: true }
+				confirmed: { type: 'attestation', statement: 'I reviewed the evidence', required: true },
+				conclusion: { type: 'string', label: 'Review conclusion', readonly: true, visible: true, value: 'Controls current' }
 			} }
 		};
 		const fetch = vi.fn(async (_url, init) => {
@@ -433,6 +489,10 @@ describe('ProseID SDK', () => {
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('.checklist-progress').textContent).toContain('0/2');
+		expect(root.querySelector('.checklist-title').textContent).toContain('Auditable compliance completion');
+		expect(root.querySelector('.checklist-section-head').textContent).toContain('Identify this review');
+		expect(root.querySelector('.checklist-outcomes').hidden).toBe(false);
+		expect(root.querySelector('.checklist-outcomes').textContent).toContain('Controls current');
 		root.querySelector('input[name="reviewer"]').value = 'Ada Lovelace';
 		root.querySelector('input[name="reviewer"]').dispatchEvent(new Event('input', { bubbles: true }));
 		root.querySelector('.boolean-choice button:last-child').click();

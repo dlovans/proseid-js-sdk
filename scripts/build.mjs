@@ -25,17 +25,7 @@ await Promise.all([
 		sourcemap: true,
 		legalComments: 'none'
 	}),
-	build({
-		entryPoints: ['src/frame.js'],
-		outfile: 'dist/proseid-frame.js',
-		bundle: true,
-		format: 'iife',
-		target: ['es2020'],
-		minify: true,
-		sourcemap: true,
-		legalComments: 'none'
-	}),
 	cp('src/index.d.ts', 'dist/index.d.ts')
 ]);
 
-console.log('Built public loader, browser bundle, and hosted frame runtime.');
+console.log('Built the direct ESM and browser Flow renderers.');
