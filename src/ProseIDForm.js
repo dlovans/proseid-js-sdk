@@ -167,7 +167,9 @@ export class ProseIDForm {
 		const shell = text('div', 'shell');
 		const skeleton = text('div', 'skeleton');
 		for (let i = 0; i < 6; i++) skeleton.append(text('div', 'skeleton-line'));
-		shell.append(text('div', 'ledger'), skeleton);
+		const ledger = text('div', 'ledger loading');
+		ledger.append(text('span', 'ledger-fill'));
+		shell.append(ledger, skeleton);
 		this.shadow.append(shell);
 	}
 
@@ -382,8 +384,16 @@ export class ProseIDForm {
 		else if (this.flowType === 'checklist') this.formNode.append(this.renderChecklist());
 		else this.formNode.append(this.fieldList, this.renderActions());
 		body.append(this.formError, this.formNode);
-		shell.append(text('div', 'ledger'), head, body);
+		this.progressNode = text('div', 'ledger');
+		this.progressNode.setAttribute('role', 'progressbar');
+		this.progressNode.setAttribute('aria-label', this.copy.answerProgress);
+		this.progressNode.setAttribute('aria-valuemin', '0');
+		this.progressNode.setAttribute('aria-valuemax', '100');
+		this.progressFill = text('span', 'ledger-fill');
+		this.progressNode.append(this.progressFill);
+		shell.append(this.progressNode, head, body);
 		this.shadow.append(shell);
+		this.updateAnswerProgress();
 	}
 
 	defaultSubmitLabel() {
@@ -408,6 +418,16 @@ export class ProseIDForm {
 
 	visibleFields() {
 		return [...this.fields.entries()].filter(([, field]) => field.engineVisible !== false);
+	}
+
+	updateAnswerProgress() {
+		if (!this.progressNode || !this.progressFill) return;
+		const fields = this.visibleFields();
+		const answered = fields.filter(([name, field]) => answerProvided(field.definition, this.values[name])).length;
+		const percent = fields.length ? Math.round((answered / fields.length) * 100) : 100;
+		this.progressFill.style.width = `${percent}%`;
+		this.progressNode.setAttribute('aria-valuenow', String(percent));
+		this.progressNode.setAttribute('aria-valuetext', `${answered} of ${fields.length}`);
 	}
 
 	displayValue(value, definition) {
@@ -1191,6 +1211,7 @@ export class ProseIDForm {
 			return;
 		}
 		this.values[name] = value;
+		this.updateAnswerProgress();
 		this.valid = false;
 		this.updateSubmitState();
 		this.setStatus('checking', this.copy.checking);
@@ -1218,6 +1239,7 @@ export class ProseIDForm {
 			return;
 		}
 		this.values[name] = value;
+		this.updateAnswerProgress();
 		if (definition.type === 'boolean') {
 			const field = this.fields.get(name);
 			field?.choiceLabels?.yes.classList.toggle('selected', value === true);
@@ -1307,6 +1329,7 @@ export class ProseIDForm {
 			this.updateChecklistProgress();
 			this.refreshChecklistOutcomes();
 		}
+		this.updateAnswerProgress();
 	}
 
 	clearStaleFieldEvaluation(name) {
@@ -1548,7 +1571,9 @@ export class ProseIDForm {
 		} else if (this.manifest.capabilities?.receiptEmail !== false) {
 			complete.append(this.renderReceiptEmail(result));
 		}
-		shell.replaceChildren(text('div', 'ledger'), complete);
+		const ledger = text('div', 'ledger complete');
+		ledger.append(text('span', 'ledger-fill'));
+		shell.replaceChildren(ledger, complete);
 		if (this.options.autoFocusCompletion !== false) {
 			requestAnimationFrame(() => {
 				if (this.destroyed) return;
@@ -1640,7 +1665,9 @@ export class ProseIDForm {
 		const complete = text('div', 'complete');
 		complete.append(text('div', 'seal', '!'), text('h2', '', this.copy.formUnavailable));
 		complete.append(text('p', '', errorMessage(error?.code, error?.message)));
-		shell.append(text('div', 'ledger'), complete);
+		const ledger = text('div', 'ledger');
+		ledger.append(text('span', 'ledger-fill'));
+		shell.append(ledger, complete);
 		this.shadow.append(shell);
 	}
 

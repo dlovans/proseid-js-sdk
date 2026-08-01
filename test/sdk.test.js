@@ -34,6 +34,35 @@ describe('ProseID SDK', () => {
 		expect(document.querySelector('#form').shadowRoot.querySelector('h1').textContent).toBe('Client intake');
 	});
 
+	it('turns the top rail into real answer progress', async () => {
+		const twoFieldManifest = {
+			...manifest,
+			schema: { definitions: {
+				full_name: { type: 'string', label: 'Full name', required: true },
+				country: { type: 'select', label: 'Country', required: true, options: ['sweden'] }
+			} }
+		};
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(twoFieldManifest))
+			.mockImplementation(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: twoFieldManifest.schema.definitions, issues: [] }));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch, validateDelay: 0 });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		const progress = root.querySelector('.ledger[role="progressbar"]');
+		expect(progress.getAttribute('aria-valuenow')).toBe('0');
+		expect(root.querySelector('.ledger-fill').style.width).toBe('0%');
+		const name = root.querySelector('input[name="full_name"]');
+		name.value = 'Dana Lee';
+		name.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(progress.getAttribute('aria-valuenow')).toBe('50');
+		expect(root.querySelector('.ledger-fill').style.width).toBe('50%');
+		const country = root.querySelector('select[name="country"]');
+		country.value = 'sweden';
+		country.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(progress.getAttribute('aria-valuenow')).toBe('100');
+		expect(root.querySelector('.ledger-fill').style.width).toBe('100%');
+	});
+
 	it('requires a browser-safe publishable key', () => {
 		expect(() => mount('#form', { flow: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
 		expect(() => mount('#form', { apiKey: `proseid_sk_${'a'.repeat(48)}`, flow: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);

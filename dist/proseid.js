@@ -34,7 +34,7 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.10.0";
+var VERSION = "0.10.1";
 
 // src/presentation.js
 var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
@@ -206,7 +206,10 @@ var styles = `
 * { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; }
 .shell { overflow: visible; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); box-shadow: 0 18px 55px rgba(22, 25, 23, .08); }
-.ledger { height: 4px; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; background: linear-gradient(90deg, var(--proseid-accent) 0 18%, var(--proseid-rule) 18% 100%); }
+.ledger { height: 4px; overflow: hidden; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; background: var(--proseid-rule); }
+.ledger-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--proseid-accent); transition: width .22s ease; }
+.ledger.loading .ledger-fill { width: 34%; animation: ledger-loading 1.15s ease-in-out infinite alternate; }
+.ledger.complete .ledger-fill { width: 100%; }
 .head { padding: var(--proseid-head-pad-y) var(--proseid-head-pad-x) calc(var(--proseid-head-pad-y) - 2px); border-bottom: 1px solid var(--proseid-rule); }
 .brands { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 25px; }
 .respondent-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
@@ -478,6 +481,7 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 :host([data-proseid-density="compact"]) .actions { margin-top: 18px; padding-top: 16px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+@keyframes ledger-loading { from { transform: translateX(-105%); } to { transform: translateX(295%); } }
 @container (max-width: 720px) {
 	.guided-layout, .determination-layout, .checklist-section, .checklist-outcomes { grid-template-columns: 1fr; }
 	.determination-result { position: static; max-height: none; }
@@ -533,7 +537,7 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 	.boolean-row .boolean-choice label { flex: 1; }
 	.respondent-tools { gap: 8px; }
 }
-@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button, .info-popover, .guided-progress span, .checklist-progress-rail i, .toggle-track, .toggle-track::after { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button, .info-popover, .ledger-fill, .guided-progress span, .checklist-progress-rail i, .toggle-track, .toggle-track::after { animation: none; transition: none; } }
 `;
 
 // src/i18n.js
@@ -552,6 +556,7 @@ var dictionaries = {
     appliesOn: (date) => `Rules applied on ${date}`,
     interpretation: (version) => `Interpretation ${version}`,
     moreInformation: (label) => `More information about ${label}`,
+    answerProgress: "Answer progress",
     requiredLabel: "Required",
     idle: "Enter your details to check this Flow",
     checking: "Checking your answers\u2026",
@@ -675,6 +680,7 @@ var dictionaries = {
     appliesOn: (date) => `Regler till\xE4mpade ${date}`,
     interpretation: (version) => `Tolkning ${version}`,
     moreInformation: (label) => `Mer information om ${label}`,
+    answerProgress: "Svarsstatus",
     requiredLabel: "Obligatoriskt",
     idle: "Fyll i uppgifterna f\xF6r att kontrollera fl\xF6det",
     checking: "Kontrollerar dina svar\u2026",
@@ -1058,7 +1064,9 @@ var ProseIDForm = class {
     const shell = text("div", "shell");
     const skeleton = text("div", "skeleton");
     for (let i = 0; i < 6; i++) skeleton.append(text("div", "skeleton-line"));
-    shell.append(text("div", "ledger"), skeleton);
+    const ledger = text("div", "ledger loading");
+    ledger.append(text("span", "ledger-fill"));
+    shell.append(ledger, skeleton);
     this.shadow.append(shell);
   }
   async load() {
@@ -1261,8 +1269,16 @@ var ProseIDForm = class {
     else if (this.flowType === "checklist") this.formNode.append(this.renderChecklist());
     else this.formNode.append(this.fieldList, this.renderActions());
     body.append(this.formError, this.formNode);
-    shell.append(text("div", "ledger"), head, body);
+    this.progressNode = text("div", "ledger");
+    this.progressNode.setAttribute("role", "progressbar");
+    this.progressNode.setAttribute("aria-label", this.copy.answerProgress);
+    this.progressNode.setAttribute("aria-valuemin", "0");
+    this.progressNode.setAttribute("aria-valuemax", "100");
+    this.progressFill = text("span", "ledger-fill");
+    this.progressNode.append(this.progressFill);
+    shell.append(this.progressNode, head, body);
     this.shadow.append(shell);
+    this.updateAnswerProgress();
   }
   defaultSubmitLabel() {
     if (this.flowType === "guided_assessment") return this.copy.completeAssessment;
@@ -1283,6 +1299,15 @@ var ProseIDForm = class {
   }
   visibleFields() {
     return [...this.fields.entries()].filter(([, field]) => field.engineVisible !== false);
+  }
+  updateAnswerProgress() {
+    if (!this.progressNode || !this.progressFill) return;
+    const fields = this.visibleFields();
+    const answered = fields.filter(([name, field]) => answerProvided(field.definition, this.values[name])).length;
+    const percent = fields.length ? Math.round(answered / fields.length * 100) : 100;
+    this.progressFill.style.width = `${percent}%`;
+    this.progressNode.setAttribute("aria-valuenow", String(percent));
+    this.progressNode.setAttribute("aria-valuetext", `${answered} of ${fields.length}`);
   }
   displayValue(value, definition) {
     if (isEmptyValue(definition, value)) return this.copy.notAnswered;
@@ -2033,6 +2058,7 @@ var ProseIDForm = class {
       return;
     }
     this.values[name] = value;
+    this.updateAnswerProgress();
     this.valid = false;
     this.updateSubmitState();
     this.setStatus("checking", this.copy.checking);
@@ -2050,6 +2076,7 @@ var ProseIDForm = class {
       return;
     }
     this.values[name] = value;
+    this.updateAnswerProgress();
     if (definition.type === "boolean") {
       const field = this.fields.get(name);
       field?.choiceLabels?.yes.classList.toggle("selected", value === true);
@@ -2136,6 +2163,7 @@ var ProseIDForm = class {
       this.updateChecklistProgress();
       this.refreshChecklistOutcomes();
     }
+    this.updateAnswerProgress();
   }
   clearStaleFieldEvaluation(name) {
     if (this.lastValidation?.issues) {
@@ -2368,7 +2396,9 @@ var ProseIDForm = class {
     } else if (this.manifest.capabilities?.receiptEmail !== false) {
       complete.append(this.renderReceiptEmail(result));
     }
-    shell.replaceChildren(text("div", "ledger"), complete);
+    const ledger = text("div", "ledger complete");
+    ledger.append(text("span", "ledger-fill"));
+    shell.replaceChildren(ledger, complete);
     if (this.options.autoFocusCompletion !== false) {
       requestAnimationFrame(() => {
         if (this.destroyed) return;
@@ -2456,7 +2486,9 @@ var ProseIDForm = class {
     const complete = text("div", "complete");
     complete.append(text("div", "seal", "!"), text("h2", "", this.copy.formUnavailable));
     complete.append(text("p", "", errorMessage(error?.code, error?.message)));
-    shell.append(text("div", "ledger"), complete);
+    const ledger = text("div", "ledger");
+    ledger.append(text("span", "ledger-fill"));
+    shell.append(ledger, complete);
     this.shadow.append(shell);
   }
   emit(name, detail) {

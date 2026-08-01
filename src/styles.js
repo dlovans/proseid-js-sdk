@@ -34,7 +34,10 @@ export const styles = `
 * { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; }
 .shell { overflow: visible; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); box-shadow: 0 18px 55px rgba(22, 25, 23, .08); }
-.ledger { height: 4px; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; background: linear-gradient(90deg, var(--proseid-accent) 0 18%, var(--proseid-rule) 18% 100%); }
+.ledger { height: 4px; overflow: hidden; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; background: var(--proseid-rule); }
+.ledger-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--proseid-accent); transition: width .22s ease; }
+.ledger.loading .ledger-fill { width: 34%; animation: ledger-loading 1.15s ease-in-out infinite alternate; }
+.ledger.complete .ledger-fill { width: 100%; }
 .head { padding: var(--proseid-head-pad-y) var(--proseid-head-pad-x) calc(var(--proseid-head-pad-y) - 2px); border-bottom: 1px solid var(--proseid-rule); }
 .brands { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 25px; }
 .respondent-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
@@ -306,6 +309,7 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 :host([data-proseid-density="compact"]) .actions { margin-top: 18px; padding-top: 16px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+@keyframes ledger-loading { from { transform: translateX(-105%); } to { transform: translateX(295%); } }
 @container (max-width: 720px) {
 	.guided-layout, .determination-layout, .checklist-section, .checklist-outcomes { grid-template-columns: 1fr; }
 	.determination-result { position: static; max-height: none; }
@@ -361,5 +365,5 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 	.boolean-row .boolean-choice label { flex: 1; }
 	.respondent-tools { gap: 8px; }
 }
-@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button, .info-popover, .guided-progress span, .checklist-progress-rail i, .toggle-track, .toggle-track::after { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button, .info-popover, .ledger-fill, .guided-progress span, .checklist-progress-rail i, .toggle-track, .toggle-track::after { animation: none; transition: none; } }
 `;

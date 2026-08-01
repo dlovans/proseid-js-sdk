@@ -1,6 +1,6 @@
 {
 	"name": "@alentra/proseid-js-sdk",
-	"version": "0.10.0",
+	"version": "0.10.1",
 	"description": "Embeddable, server-validated ProseID compliance Flows.",
 	"type": "module",
 	"license": "Apache-2.0",
