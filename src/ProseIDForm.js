@@ -615,14 +615,12 @@ export class ProseIDForm {
 			row.append(answer, change);
 			list.append(row);
 		});
-		const outcomes = this.renderOutcomeList(this.lastValidation?.definitions || {});
 		const actions = text('div', 'guided-review-actions');
 		const back = text('button', 'secondary-action', this.copy.back);
 		back.type = 'button';
 		back.addEventListener('click', () => this.guidedPrevious());
 		actions.append(back, this.submitButton);
 		this.guidedReview.append(head);
-		if (outcomes) this.guidedReview.append(outcomes);
 		this.guidedReview.append(list);
 		this.guidedReview.append(this.renderPrivacy(), actions);
 		this.updateSubmitState();
@@ -636,115 +634,15 @@ export class ProseIDForm {
 		this.determinationActivity = text('div', 'determination-activity');
 		this.determinationActivity.append(text('i', ''), text('span', '', this.copy.determinationPreparing));
 		facts.append(head, this.fieldList, this.determinationActivity);
-		this.determinationResult = text('aside', 'determination-result');
-		this.renderDeterminationWaiting();
-		layout.append(facts, this.determinationResult);
+		layout.append(facts);
 		const wrap = text('div', 'determination');
 		wrap.append(layout, this.renderActions());
 		return wrap;
 	}
 
-	renderDeterminationWaiting() {
-		if (!this.determinationResult) return;
-		this.determinationResult.replaceChildren(
-			text('span', 'eyebrow', this.copy.determinationResult),
-			text('h2', '', this.copy.determinationLive),
-			text('p', 'determination-waiting', this.copy.determinationWaiting)
-		);
-	}
-
-	renderDeterminationReferences() {
-		const references = Array.isArray(this.manifest.schema?.metadata?.legal_references)
-			? this.manifest.schema.metadata.legal_references.filter(Boolean)
-			: [];
-		if (!references.length) return null;
-		const authority = text('section', 'determination-authority');
-		authority.append(text('span', 'eyebrow', this.copy.determinationAuthority));
-		const list = text('ul', 'determination-reference-list');
-		for (const reference of references) {
-			const item = document.createElement('li');
-			const label = [reference.instrument, reference.provision].filter(Boolean).join(' · ') || this.copy.legalReference;
-			const source = safeLogoUrl(reference.source_url);
-			if (source) {
-				const link = text('a', '', label);
-				link.href = source;
-				link.target = '_blank';
-				link.rel = 'noopener noreferrer';
-				item.append(link);
-			} else item.textContent = label;
-			list.append(item);
-		}
-		authority.append(list);
-		return authority;
-	}
-
-	renderDeterminationNotes(issues) {
-		const notes = (issues || []).filter((issue) =>
-			(!issue?.field_id || !this.fields.has(issue.field_id)) && issue?.severity !== 'error'
-		);
-		if (!notes.length) return null;
-		const wrap = text('section', 'determination-notes');
-		wrap.append(text('span', 'eyebrow', this.copy.determinationNotes));
-		const list = document.createElement('ul');
-		for (const issue of notes) list.append(text('li', '', friendlyIssue(issue, this.copy.thisField, this.copy)));
-		wrap.append(list);
-		return wrap;
-	}
-
 	refreshDetermination() {
-		if (!this.determinationResult) return;
-		const result = this.lastValidation;
-		if (!result) return this.renderDeterminationWaiting();
-		const issues = (result.issues || []).filter((issue) => this.shouldShow(issue));
-		const blocking = this.submittedAttempted && result.valid !== true;
-		this.determinationResult.replaceChildren(text('span', 'eyebrow', blocking ? this.copy.needsAttention : this.copy.determinationResult));
-		if (blocking) {
-			this.determinationResult.classList.add('blocked');
-			this.determinationResult.append(text('h2', '', this.copy.reviewAnswersTitle), text('p', 'determination-waiting', this.copy.noRecordCreated));
-			const outcomes = this.renderOutcomeList(result.definitions || {});
-			const fieldErrors = issues.filter((issue) => issue?.severity === 'error' && issue?.field_id && this.fields.has(issue.field_id));
-			if (outcomes && fieldErrors.length === 0) {
-				this.determinationResult.append(text('span', 'determination-subheading', this.copy.determinationCurrentIndication), outcomes);
-			}
-			if (issues.length) {
-				const list = text('ul', 'determination-issues');
-				for (const issue of issues) {
-					const field = this.fields.get(issue.field_id);
-					list.append(text('li', '', friendlyIssue(issue, field?.label || this.copy.thisField, this.copy)));
-				}
-				this.determinationResult.append(list);
-			}
-			const references = this.renderDeterminationReferences();
-			if (references) this.determinationResult.append(references);
-			return;
-		}
-		this.determinationResult.classList.remove('blocked');
-		this.determinationResult.append(text('h2', '', this.copy.calculatedOutcome));
-		const outcomes = this.renderOutcomeList(result.definitions || {});
-		if (outcomes) this.determinationResult.append(outcomes);
-		else this.determinationResult.append(text('p', 'determination-waiting', this.copy.determinationWaiting));
-		const notes = this.renderDeterminationNotes(issues);
-		if (notes) this.determinationResult.append(notes);
-		const references = this.renderDeterminationReferences();
-		if (references) this.determinationResult.append(references);
-	}
-
-	renderOutcomeList(definitions) {
-		const derivedNames = new Set(Object.keys(this.manifest.schema?.state_model?.derived || {}));
-		const entries = Object.entries(definitions).filter(([name, definition]) =>
-			definition?.readonly === true && definition?.visible !== false &&
-			(this.flowType !== 'determination' || derivedNames.size === 0 || derivedNames.has(name))
-		);
-		if (!entries.length) return null;
-		if (this.flowType === 'determination' && !entries.some(([, definition]) => !isEmptyValue(definition, definition?.value))) return null;
-		const list = text('div', 'outcome-list');
-		for (const [name, definition] of entries) {
-			const item = text('article', 'outcome');
-			item.append(text('small', '', humanizeText(definition.label || name)), text('strong', '', this.displayValue(definition.value, definition)));
-			if (definition.ui_message) item.append(text('p', '', definition.ui_message));
-			list.append(item);
-		}
-		return list;
+		// The server may return calculated definitions during validation, but the SDK deliberately does
+		// not reveal them here. The recorded result is rendered only from the completion response.
 	}
 
 	renderChecklist() {
@@ -781,22 +679,9 @@ export class ProseIDForm {
 		const completion = this.renderActions();
 		completion.classList.add('checklist-completion');
 		completion.prepend(this.checklistProgress);
-		this.checklistOutcomes = text('section', 'checklist-outcomes');
-		checklist.append(controls, this.checklistOutcomes, completion);
+		checklist.append(controls, completion);
 		this.updateChecklistProgress();
-		this.refreshChecklistOutcomes();
 		return checklist;
-	}
-
-	refreshChecklistOutcomes() {
-		if (!this.checklistOutcomes) return;
-		const outcomes = this.renderOutcomeList(this.lastValidation?.definitions || this.manifest.schema?.definitions || {});
-		this.checklistOutcomes.replaceChildren();
-		this.checklistOutcomes.hidden = !outcomes;
-		if (!outcomes) return;
-		const head = text('header', 'checklist-section-head');
-		head.append(text('span', 'eyebrow', this.copy.checklistRecordedOutcome), text('h3', '', this.copy.checklistConclusion));
-		this.checklistOutcomes.append(head, outcomes);
 	}
 
 	checklistControlNames() {
@@ -1325,10 +1210,7 @@ export class ProseIDForm {
 			field.message.hidden = !resolved?.ui_message;
 		}
 		if (this.flowType === 'guided_assessment' && this.guidedPhase === 'questions') this.refreshGuided();
-		if (this.flowType === 'checklist') {
-			this.updateChecklistProgress();
-			this.refreshChecklistOutcomes();
-		}
+		if (this.flowType === 'checklist') this.updateChecklistProgress();
 		this.updateAnswerProgress();
 	}
 
@@ -1566,6 +1448,8 @@ export class ProseIDForm {
 		complete.append(text('div', 'seal', '✓'), text('h2', '', result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
 		complete.append(text('p', '', result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)));
 		complete.append(text('div', 'receipt', result.test ? this.copy.testRecord(result.recordId) : this.copy.auditRecord(result.recordId)));
+		const recordedResult = this.renderRecordedResult(result.result);
+		if (recordedResult) complete.append(recordedResult);
 		if (result.test) {
 			complete.append(text('p', 'receipt-test', this.copy.receiptTest));
 		} else if (this.manifest.capabilities?.receiptEmail !== false) {
@@ -1581,6 +1465,46 @@ export class ProseIDForm {
 				this.target.scrollIntoView?.({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
 			});
 		}
+	}
+
+	renderRecordedResult(result) {
+		const outcomes = Array.isArray(result?.outcomes) ? result.outcomes : [];
+		const notices = Array.isArray(result?.notices) ? result.notices : [];
+		if (!outcomes.length && !notices.length) return null;
+		const section = text('section', 'recorded-result');
+		const title = this.flowType === 'determination'
+			? this.copy.resultDetermination
+			: this.flowType === 'guided_assessment'
+				? this.copy.resultAssessment
+				: this.flowType === 'checklist'
+					? this.copy.resultChecklist
+					: this.copy.resultForm;
+		const head = text('header', 'recorded-result-head');
+		head.append(text('span', 'eyebrow', this.copy.resultEyebrow), text('h3', '', title), text('p', '', this.copy.resultHelp));
+		section.append(head);
+		if (outcomes.length) {
+			const list = text('div', 'recorded-outcomes');
+			for (const outcome of outcomes) {
+				if (!outcome || !String(outcome.fieldId || '').trim()) continue;
+				const item = text('article', 'recorded-outcome');
+				item.append(
+					text('small', '', humanizeText(outcome.label || outcome.fieldId)),
+					text('strong', '', this.displayValue(outcome.value, { type: outcome.type }))
+				);
+				if (outcome.message) item.append(text('p', '', String(outcome.message)));
+				list.append(item);
+			}
+			if (list.childElementCount) section.append(list);
+		}
+		if (notices.length) {
+			const notes = text('div', 'recorded-notices');
+			notes.append(text('span', 'eyebrow', this.copy.resultNotes));
+			const list = document.createElement('ul');
+			for (const notice of notices) if (notice?.message) list.append(text('li', '', String(notice.message)));
+			if (list.childElementCount) notes.append(list);
+			section.append(notes);
+		}
+		return section;
 	}
 
 	renderReceiptEmail(result) {

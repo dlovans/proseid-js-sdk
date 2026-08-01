@@ -409,17 +409,25 @@ describe('ProseID SDK', () => {
 			flow: { ...manifest.flow, flowType: 'guided_assessment', title: 'Guided intake' },
 			schema: { definitions: {
 				name: { type: 'string', label: 'Your name', required: true },
-				country: { type: 'select', label: 'Country', required: true, options: ['Sweden', 'Norway'] }
+				country: { type: 'select', label: 'Country', required: true, options: ['Sweden', 'Norway'] },
+				assessment: { type: 'string', label: 'Assessment outcome', readonly: true, visible: true }
 			} }
 		};
 		const fetch = vi.fn(async (_url, init) => {
 			if (init.method === 'GET') return response(guided);
 			const payload = JSON.parse(init.body);
-			if (payload.action === 'complete') return response({ ok: true, status: 'completed', recordId: 'guided_record', duplicate: false, delivered: { email: false, webhook: false }, nextAction: null });
+			if (payload.action === 'complete') return response({
+				ok: true, status: 'completed', recordId: 'guided_record', duplicate: false,
+				delivered: { email: false, webhook: false }, nextAction: null,
+				result: { status: 'READY', outcomes: [{ fieldId: 'assessment', label: 'Assessment outcome', type: 'string', value: 'Eligible', message: 'Proceed with the next step.' }], notices: [] }
+			});
 			const issues = [];
 			if (!payload.responses.name) issues.push({ field_id: 'name', severity: 'error', kind: 'missing_required', trigger: 'correction' });
 			if (!payload.responses.country) issues.push({ field_id: 'country', severity: 'error', kind: 'missing_required', trigger: 'correction' });
-			return response({ ok: true, valid: issues.length === 0, status: issues.length ? 'INCOMPLETE' : 'READY', definitions: guided.schema.definitions, issues });
+			return response({
+				ok: true, valid: issues.length === 0, status: issues.length ? 'INCOMPLETE' : 'READY',
+				definitions: { ...guided.schema.definitions, assessment: { ...guided.schema.definitions.assessment, value: 'Eligible' } }, issues
+			});
 		});
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/guided', fetch, validateDelay: 100000 });
 		await instance.ready;
@@ -442,13 +450,15 @@ describe('ProseID SDK', () => {
 		root.querySelector('.guided-navigation .primary-action').click();
 		await vi.waitFor(() => expect(root.querySelector('.guided-review').hidden).toBe(false));
 		expect(root.querySelector('.review-list').textContent).toContain('Ada Lovelace');
+		expect(root.textContent).not.toContain('Eligible');
 		expect(root.querySelector('.guided-review .submit').disabled).toBe(false);
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(root.textContent).toContain('Audit record guided_record'));
+		expect(root.querySelector('.recorded-result').textContent).toContain('Eligible');
 		expect(fetch.mock.calls.filter(([, init]) => init.method === 'POST' && JSON.parse(init.body).action === 'complete')).toHaveLength(1);
 	});
 
-	it('updates and confirms a Determination live without creating a record during evaluation', async () => {
+	it('checks a Determination live but reveals only the authoritative recorded result after submission', async () => {
 		const determination = {
 			...manifest,
 			flow: { ...manifest.flow, flowType: 'determination', title: 'Deadline determination' },
@@ -466,7 +476,15 @@ describe('ProseID SDK', () => {
 			const payload = JSON.parse(init.body);
 			if (payload.action === 'complete') {
 				completions += 1;
-				return response({ ok: true, status: 'completed', recordId: 'determination_record', duplicate: false, delivered: { email: false, webhook: false }, nextAction: null });
+				return response({
+					ok: true, status: 'completed', recordId: 'determination_record', duplicate: false,
+					delivered: { email: false, webhook: false }, nextAction: null,
+					result: {
+						status: 'READY',
+						outcomes: [{ fieldId: 'deadline', label: 'Deadline status', type: 'string', value: 'Within 72 hours', message: '' }],
+						notices: [{ kind: 'advisory', severity: 'notice', message: 'Confirm the official deadline source.' }]
+					}
+				});
 			}
 			const valid = payload.responses.hours !== '' && payload.responses.hours != null;
 			return response({
@@ -480,19 +498,18 @@ describe('ProseID SDK', () => {
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/determination', fetch, validateDelay: 0 });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
-		const determinationResult = root.querySelector('.determination-result');
-		expect(determinationResult.style.transform).toBe('');
+		expect(root.querySelector('.determination-result')).toBeNull();
 		const hours = root.querySelector('input[name="hours"]');
 		hours.value = '24';
 		hours.dispatchEvent(new Event('input', { bubbles: true }));
-		await vi.waitFor(() => expect(root.querySelector('.outcome-list')?.textContent).toContain('Within 72 hours'));
-		expect(root.querySelector('.determination-notes').textContent).toContain('Confirm the official deadline source.');
-		expect(root.querySelector('.determination-authority').textContent).toContain('Deadline Act · Section 72');
-		expect(root.querySelector('.determination-authority a').href).toBe('https://example.com/deadline');
+		await vi.waitFor(() => expect(root.querySelector('.actions .submit').disabled).toBe(false));
+		expect(root.textContent).not.toContain('Within 72 hours');
+		expect(root.textContent).not.toContain('Confirm the official deadline source.');
 		expect(completions).toBe(0);
-		expect(root.querySelector('.actions .submit').disabled).toBe(false);
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(root.textContent).toContain('Audit record determination_record'));
+		expect(root.querySelector('.recorded-result').textContent).toContain('Within 72 hours');
+		expect(root.querySelector('.recorded-notices').textContent).toContain('Confirm the official deadline source.');
 		expect(completions).toBe(1);
 	});
 
@@ -510,7 +527,11 @@ describe('ProseID SDK', () => {
 		const fetch = vi.fn(async (_url, init) => {
 			if (init.method === 'GET') return response(checklist);
 			const payload = JSON.parse(init.body);
-			if (payload.action === 'complete') return response({ ok: true, status: 'completed', recordId: 'checklist_record', duplicate: false, delivered: { email: false, webhook: false }, nextAction: null });
+			if (payload.action === 'complete') return response({
+				ok: true, status: 'completed', recordId: 'checklist_record', duplicate: false,
+				delivered: { email: false, webhook: false }, nextAction: null,
+				result: { status: 'READY', outcomes: [{ fieldId: 'conclusion', label: 'Review conclusion', type: 'string', value: 'Controls current', message: '' }], notices: [] }
+			});
 			const valid = Boolean(payload.responses.reviewer) && payload.responses.confirmed === true;
 			return response({ ok: true, valid, status: valid ? 'READY' : 'INCOMPLETE', definitions: checklist.schema.definitions, issues: [] });
 		});
@@ -520,8 +541,8 @@ describe('ProseID SDK', () => {
 		expect(root.querySelector('.checklist-progress').textContent).toContain('0/2');
 		expect(root.querySelector('.checklist-title').textContent).toContain('Auditable compliance completion');
 		expect(root.querySelector('.checklist-section-head').textContent).toContain('Identify this review');
-		expect(root.querySelector('.checklist-outcomes').hidden).toBe(false);
-		expect(root.querySelector('.checklist-outcomes').textContent).toContain('Controls current');
+		expect(root.querySelector('.checklist-outcomes')).toBeNull();
+		expect(root.textContent).not.toContain('Controls current');
 		root.querySelector('input[name="reviewer"]').value = 'Ada Lovelace';
 		root.querySelector('input[name="reviewer"]').dispatchEvent(new Event('input', { bubbles: true }));
 		root.querySelector('.boolean-choice button:last-child').click();
@@ -533,6 +554,7 @@ describe('ProseID SDK', () => {
 		expect(root.querySelector('.actions .submit').disabled).toBe(false);
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(root.textContent).toContain('Audit record checklist_record'));
+		expect(root.querySelector('.recorded-result').textContent).toContain('Controls current');
 	});
 
 	it('collects basic signature evidence without requesting a provider signing action', async () => {

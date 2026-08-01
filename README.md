@@ -2,9 +2,9 @@
 
 Embed a published ProseID Flow inside a customer website without shipping the ProseID validation engine. The SDK renders a responsive Flow directly inside an isolated Shadow DOM, sends respondent changes to ProseID for remote validation, and enables final completion only when the pinned schema is ready.
 
-The renderer follows the Flow selected by its publisher: a Standard Form, one-question-at-a-time Guided Assessment, live Determination, or auditable Compliance Checklist. Required controls carry a visible text label as well as native accessibility semantics in every experience, and dates use the ProseID calendar instead of the browser's inconsistent native picker.
+The renderer follows the Flow selected by its publisher: a Standard Form, one-question-at-a-time Guided Assessment, Determination, or auditable Compliance Checklist. Required controls carry a visible text label as well as native accessibility semantics in every experience, and dates use the ProseID calendar instead of the browser's inconsistent native picker.
 
-Final submission is not a client-side “success” flag. ProseID authoritatively re-runs the schema, debits the Flow owner once, encrypts the responses, creates the normal encrypted record and signed proof, then performs the Flow's email/webhook delivery.
+Final submission is not a client-side “success” flag. ProseID authoritatively re-runs the schema, debits the Flow owner once, encrypts the responses, creates the normal encrypted record and signed proof, then performs the Flow's email/webhook delivery. Calculated outcomes are revealed from that completion response, never from a provisional browser-side preview.
 
 For time-aware schemas, the manifest also supplies the server's current UTC `effectiveAt` date and
 the legal period selected for it. The SDK sends that date on every validation and completion call;
@@ -32,7 +32,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/npm/@alentra/proseid-js-sdk@0.10.1/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@alentra/proseid-js-sdk@0.10.2/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -216,7 +216,7 @@ The JavaScript SDK embeds all four current Flow experiences:
 
 - **Standard Form** shows the visible questions in one responsive document.
 - **Guided Assessment** validates each current question before moving to a final answer review.
-- **Determination** recalculates the schema's read-only outcomes as answers change; evaluation alone never creates or bills a record.
+- **Determination** checks answers as they change, then reveals the authoritative calculated outcome after successful submission.
 - **Compliance Checklist** separates context from explicit controls and requires every yes/no or confirmation control to be reviewed.
 
 Unsigned and basic-signature Flows are supported. For a basic signature, the SDK collects

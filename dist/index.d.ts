@@ -109,6 +109,20 @@ export interface ReceiptResult {
 	error?: Error;
 }
 
+export interface RecordedOutcome {
+	fieldId: string;
+	label: string;
+	type: string;
+	value: unknown;
+	message?: string;
+}
+
+export interface RecordedResult {
+	status: string;
+	outcomes: RecordedOutcome[];
+	notices: Array<{ kind: string; severity: string; message: string }>;
+}
+
 export interface CompletionResult {
 	ok: true;
 	status: 'completed';
@@ -119,6 +133,8 @@ export interface CompletionResult {
 	duplicate: boolean;
 	delivered: { email: boolean; webhook: boolean };
 	nextAction: Record<string, unknown> | null;
+	/** Authoritative calculated output returned by the server after the Record is created. */
+	result: RecordedResult;
 	test?: boolean;
 }
 
