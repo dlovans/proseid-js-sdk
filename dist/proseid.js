@@ -34,7 +34,7 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.10.3";
+var VERSION = "0.10.4";
 
 // src/presentation.js
 var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
@@ -325,6 +325,8 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .error { min-height: 0; color: var(--proseid-accent-ink); font-size: 11px; line-height: 1.45; }
 .form-error { margin-bottom: 16px; border: 1px solid color-mix(in srgb, var(--proseid-accent) 28%, var(--proseid-rule)); border-radius: 11px; background: color-mix(in srgb, var(--proseid-accent) 6%, var(--proseid-surface)); padding: 11px 12px; color: var(--proseid-accent-ink); font-size: 12px; line-height: 1.5; }
 .actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--proseid-rule); }
+.standard-form-actions { grid-template-columns: minmax(0, 1fr); }
+.standard-form-actions .submit { display: flex; width: 100%; align-items: center; justify-content: center; text-align: center; }
 .privacy { display: flex; align-items: flex-start; gap: 7px; color: var(--proseid-muted); font-size: 10px; line-height: 1.5; }
 .privacy svg { width: 13px; height: 13px; flex: 0 0 13px; margin-top: 1px; }
 .submit { min-width: 128px; min-height: 42px; border: 0; border-radius: var(--proseid-button-radius); background: var(--proseid-accent); padding: 10px 17px; color: var(--proseid-submit-ink); font-size: 12px; font-weight: 720; cursor: pointer; transition: transform .15s ease, filter .15s ease; }
@@ -1280,7 +1282,7 @@ var ProseIDForm = class {
     if (this.flowType === "guided_assessment") this.formNode.append(this.renderGuided());
     else if (this.flowType === "determination") this.formNode.append(this.renderDetermination());
     else if (this.flowType === "checklist") this.formNode.append(this.renderChecklist());
-    else this.formNode.append(this.fieldList, this.renderActions());
+    else this.formNode.append(this.fieldList, this.renderActions({ standardForm: true }));
     body.append(this.formError, this.formNode);
     this.progressNode = text("div", "ledger");
     this.progressNode.setAttribute("role", "progressbar");
@@ -1305,8 +1307,8 @@ var ProseIDForm = class {
     privacy.append(text("span", "", this.attribution === "hidden" ? this.copy.privacyWhiteLabel : this.copy.privacy));
     return privacy;
   }
-  renderActions() {
-    const actions = text("div", "actions");
+  renderActions({ standardForm = false } = {}) {
+    const actions = text("div", standardForm ? "actions standard-form-actions" : "actions");
     actions.append(this.renderPrivacy(), this.submitButton);
     return actions;
   }

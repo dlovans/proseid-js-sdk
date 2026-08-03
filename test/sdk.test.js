@@ -31,7 +31,9 @@ describe('ProseID SDK', () => {
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
 		await instance.ready;
 		expect(document.querySelector('iframe')).toBeNull();
-		expect(document.querySelector('#form').shadowRoot.querySelector('h1').textContent).toBe('Client intake');
+		const root = document.querySelector('#form').shadowRoot;
+		expect(root.querySelector('h1').textContent).toBe('Client intake');
+		expect(root.querySelector('.standard-form-actions > .submit')).not.toBeNull();
 	});
 
 	it('turns the top rail into real answer progress', async () => {
@@ -501,6 +503,7 @@ describe('ProseID SDK', () => {
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/determination', fetch, validateDelay: 0 });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
+		expect(root.querySelector('.standard-form-actions')).toBeNull();
 		expect(root.querySelector('.determination-result')).toBeNull();
 		const hours = root.querySelector('input[name="hours"]');
 		hours.value = '24';

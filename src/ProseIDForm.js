@@ -382,7 +382,7 @@ export class ProseIDForm {
 		if (this.flowType === 'guided_assessment') this.formNode.append(this.renderGuided());
 		else if (this.flowType === 'determination') this.formNode.append(this.renderDetermination());
 		else if (this.flowType === 'checklist') this.formNode.append(this.renderChecklist());
-		else this.formNode.append(this.fieldList, this.renderActions());
+		else this.formNode.append(this.fieldList, this.renderActions({ standardForm: true }));
 		body.append(this.formError, this.formNode);
 		this.progressNode = text('div', 'ledger');
 		this.progressNode.setAttribute('role', 'progressbar');
@@ -410,8 +410,8 @@ export class ProseIDForm {
 		return privacy;
 	}
 
-	renderActions() {
-		const actions = text('div', 'actions');
+	renderActions({ standardForm = false } = {}) {
+		const actions = text('div', standardForm ? 'actions standard-form-actions' : 'actions');
 		actions.append(this.renderPrivacy(), this.submitButton);
 		return actions;
 	}
