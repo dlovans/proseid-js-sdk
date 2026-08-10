@@ -2,10 +2,12 @@ import { ProseIDError, errorMessage } from './errors.js';
 import { VERSION } from './version.js';
 import { normalizeAttribution } from './presentation.js';
 
-export function parseFlowCoordinate(value) {
-	const parts = String(value ?? '').split('/').filter(Boolean);
-	if (parts.length !== 2) throw new ProseIDError('invalid_flow', 'Flow must be "publisher/slug".');
-	return { publisher: parts[0], slug: parts[1] };
+export function parseFlowReference(value) {
+	const reference = String(value ?? '').trim();
+	if (!/^[A-Za-z0-9_-]{1,128}$/.test(reference)) {
+		throw new ProseIDError('invalid_flow', 'A valid Flow ID is required.');
+	}
+	return reference;
 }
 
 function normalizedApiBase(value) {
@@ -37,8 +39,8 @@ export class EmbedApi {
 		if (testMode) {
 			this.endpoint = `${base}/api/embed/v1/test`;
 		} else {
-			const { publisher, slug } = parseFlowCoordinate(flow);
-			this.endpoint = `${base}/api/embed/v1/flows/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
+			const flowId = parseFlowReference(flow);
+			this.endpoint = `${base}/api/embed/v1/flow-ids/${encodeURIComponent(flowId)}`;
 		}
 	}
 

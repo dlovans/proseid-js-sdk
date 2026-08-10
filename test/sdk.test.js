@@ -28,7 +28,7 @@ describe('ProseID SDK', () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(manifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
 		await instance.ready;
 		expect(document.querySelector('iframe')).toBeNull();
 		const root = document.querySelector('#form').shadowRoot;
@@ -47,7 +47,7 @@ describe('ProseID SDK', () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(twoFieldManifest))
 			.mockImplementation(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: twoFieldManifest.schema.definitions, issues: [] }));
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch, validateDelay: 0 });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch, validateDelay: 0 });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		const progress = root.querySelector('.ledger[role="progressbar"]');
@@ -66,22 +66,32 @@ describe('ProseID SDK', () => {
 	});
 
 	it('requires a browser-safe publishable key', () => {
-		expect(() => mount('#form', { flow: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
-		expect(() => mount('#form', { apiKey: `proseid_sk_${'a'.repeat(48)}`, flow: 'acme/intake', fetch: vi.fn() })).toThrow(/publishable key/i);
+		expect(() => mount('#form', { flow: 'flow_12345678', fetch: vi.fn() })).toThrow(/publishable key/i);
+		expect(() => mount('#form', { apiKey: `proseid_sk_${'a'.repeat(48)}`, flow: 'flow_12345678', fetch: vi.fn() })).toThrow(/publishable key/i);
 	});
 
 	it('accepts HTTPS and localhost API origins but rejects unsafe transport', () => {
-		expect(() => new EmbedApi({ apiKey: API_KEY, flow: 'acme/intake', apiBase: 'http://proseid.example', fetchImpl: vi.fn() }))
+		expect(() => new EmbedApi({ apiKey: API_KEY, flow: 'flow_12345678', apiBase: 'http://proseid.example', fetchImpl: vi.fn() }))
 			.toThrow(/valid HTTPS/i);
-		expect(() => new EmbedApi({ apiKey: API_KEY, flow: 'acme/intake', apiBase: 'http://localhost:4173', fetchImpl: vi.fn() }))
+		expect(() => new EmbedApi({ apiKey: API_KEY, flow: 'flow_12345678', apiBase: 'http://localhost:4173', fetchImpl: vi.fn() }))
 			.not.toThrow();
+	});
+
+	it('loads only by canonical Flow ID', async () => {
+		const byId = vi.fn().mockImplementation(() => response(manifest));
+		const idApi = new EmbedApi({ apiKey: API_KEY, flow: 'flow_12345678', fetchImpl: byId });
+		await idApi.manifest();
+		expect(byId.mock.calls[0][0]).toBe('https://proseid.com/api/embed/v1/flow-ids/flow_12345678');
+
+		expect(() => new EmbedApi({ apiKey: API_KEY, flow: 'acme/intake', fetchImpl: vi.fn() }))
+			.toThrow(/valid Flow ID/);
 	});
 
 	it('renders the co-branded manifest and leaves submit available to reveal missing answers', async () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(manifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
 		await instance.ready;
 		expect(fetch.mock.calls[0][1].headers['x-proseid-key']).toBe(API_KEY);
 		expect(fetch.mock.calls[0][1].headers['x-proseid-embed-origin']).toBe(location.origin);
@@ -98,7 +108,7 @@ describe('ProseID SDK', () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(manifest))
 			.mockImplementationOnce(() => response({ ok: false, error: 'flow_changed' }, 409));
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('.form-error').hidden).toBe(false);
@@ -114,7 +124,7 @@ describe('ProseID SDK', () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(guided))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: guided.schema.definitions, issues: [] }));
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('.guided')).not.toBeNull();
@@ -147,7 +157,7 @@ describe('ProseID SDK', () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(richManifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: resolved, issues: [] }));
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		const name = root.querySelector('input[name="full_name"]');
@@ -179,7 +189,7 @@ describe('ProseID SDK', () => {
 				ok: true, valid: false, status: 'INCOMPLETE', definitions: booleanManifest.schema.definitions,
 				issues: [{ field_id: 'in_scope', severity: 'error', kind: 'missing_required', trigger: 'completion' }]
 			}));
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/scope', fetch });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_scope_12345678', fetch });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		const choices = [...root.querySelectorAll('input[type="radio"][name="in_scope"]')];
@@ -201,7 +211,7 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response(manifest))
 			.mockImplementationOnce(() => response(incomplete))
 			.mockImplementationOnce(() => response(incomplete));
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		const input = root.querySelector('input[name="full_name"]');
@@ -222,7 +232,7 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response(swedishManifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: swedishManifest.schema.definitions, issues: [] }))
 			.mockImplementationOnce(() => response({ ok: true, status: 'completed', recordId: 'language_record', duplicate: false, delivered: { email: false, webhook: false }, nextAction: null }));
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
 		await instance.ready;
 		let root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('.language-selector button.active').textContent).toBe('SV');
@@ -247,7 +257,7 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
 		const instance = mount('#form', {
 			apiKey: API_KEY,
-			flow: 'acme/intake',
+			flow: 'flow_12345678',
 			fetch,
 			appearance: { preset: 'underline', density: 'compact' },
 			theme: 'midnight',
@@ -273,7 +283,7 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
 		const instance = mount('#form', {
 			apiKey: API_KEY,
-			flow: 'acme/intake',
+			flow: 'flow_12345678',
 			fetch,
 			theme: { accent: '#000000; background:url(https://evil.example)' }
 		});
@@ -290,7 +300,7 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
 		const instance = mount('#form', {
 			apiKey: API_KEY,
-			flow: 'acme/intake',
+			flow: 'flow_12345678',
 			fetch,
 			colors: {
 				canvas: '#112233',
@@ -315,14 +325,14 @@ describe('ProseID SDK', () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(styledManifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch, theme: 'midnight' });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch, theme: 'midnight' });
 		await instance.ready;
 		const target = document.querySelector('#form');
 		expect(target.dataset.proseidTheme).toBe('forest');
 		expect(target.style.getPropertyValue('--proseid-canvas')).toBe('#151c1a');
 	});
 
-	it('mounts the built-in remote test form without a Flow coordinate', async () => {
+	it('mounts the built-in remote test form without a Flow ID', async () => {
 		const testManifest = {
 			...manifest,
 			flow: { ...manifest.flow, ref: '__proseid_sdk_test__', title: 'SDK integration test' },
@@ -355,6 +365,11 @@ describe('ProseID SDK', () => {
 		expect(date.type).toBe('text');
 		root.querySelector('.date-trigger').click();
 		expect(root.querySelector('.date-panel')).not.toBeNull();
+		const yearSelect = root.querySelector('.date-year-select');
+		const previousYear = String(Number(yearSelect.value) - 1);
+		yearSelect.value = previousYear;
+		yearSelect.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(root.querySelector('.date-year-select').value).toBe(previousYear);
 		root.querySelector('.date-panel .today-action').click();
 		expect(date.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 		expect(root.querySelector('.date-panel')).toBeNull();
@@ -370,7 +385,7 @@ describe('ProseID SDK', () => {
 			.mockImplementationOnce(() => response({ ok: true, status: 'sent' }));
 		const complete = vi.fn();
 		const receipt = vi.fn();
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/intake', fetch, validateDelay: 1, onComplete: complete, onReceipt: receipt });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch, validateDelay: 1, onComplete: complete, onReceipt: receipt });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		const input = root.querySelector('input[name="full_name"]');
@@ -434,7 +449,7 @@ describe('ProseID SDK', () => {
 				definitions: { ...guided.schema.definitions, assessment: { ...guided.schema.definitions.assessment, value: 'Eligible' } }, issues
 			});
 		});
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/guided', fetch, validateDelay: 100000 });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_guided_12345678', fetch, validateDelay: 100000 });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelectorAll('.guided-path ol > li')).toHaveLength(2);
@@ -500,7 +515,7 @@ describe('ProseID SDK', () => {
 					: [{ field_id: 'hours', severity: 'error', kind: 'missing_required', trigger: 'correction' }]
 			});
 		});
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/determination', fetch, validateDelay: 0 });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_determination_12345678', fetch, validateDelay: 0 });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('.standard-form-actions')).toBeNull();
@@ -541,7 +556,7 @@ describe('ProseID SDK', () => {
 			const valid = Boolean(payload.responses.reviewer) && payload.responses.confirmed === true;
 			return response({ ok: true, valid, status: valid ? 'READY' : 'INCOMPLETE', definitions: checklist.schema.definitions, issues: [] });
 		});
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'acme/checklist', fetch, validateDelay: 100000 });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_checklist_12345678', fetch, validateDelay: 100000 });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('.checklist-progress').textContent).toContain('0/2');
@@ -578,7 +593,7 @@ describe('ProseID SDK', () => {
 		const complete = vi.fn();
 		const signing = vi.fn();
 		const instance = mount('#form', {
-			apiKey: API_KEY, flow: 'acme/intake', fetch, onComplete: complete, onSigning: signing
+			apiKey: API_KEY, flow: 'flow_12345678', fetch, onComplete: complete, onSigning: signing
 		});
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;

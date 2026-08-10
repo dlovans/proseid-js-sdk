@@ -89,7 +89,7 @@ export class ProseIDForm {
 	constructor(target, options) {
 		this.target = typeof target === 'string' ? document.querySelector(target) : target;
 		if (!(this.target instanceof Element)) throw new ProseIDError('invalid_target', 'Choose an element to contain the ProseID form.');
-		if (!options?.flow && !options?.testMode) throw new ProseIDError('invalid_flow', 'The Flow coordinate is required.');
+		if (!options?.flow && !options?.testMode) throw new ProseIDError('invalid_flow', 'The Flow ID is required.');
 		if (!options?.apiKey) throw new ProseIDError('invalid_api_key', 'A ProseID publishable key is required.');
 		this.options = options;
 		this.explicitLocale = options.locale ? normalizeLocale(options.locale) : '';
@@ -755,6 +755,15 @@ export class ProseIDForm {
 		};
 		const monthTitle = () => new Intl.DateTimeFormat(this.locale, { month: 'long', year: 'numeric', timeZone: 'UTC' })
 			.format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
+		const monthName = () => new Intl.DateTimeFormat(this.locale, { month: 'long', timeZone: 'UTC' })
+			.format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
+		const yearOptions = () => {
+			const minimumYear = isoParts(String(definition.min || ''))?.year ?? today.getFullYear() - 100;
+			const maximumYear = isoParts(String(definition.max || ''))?.year ?? today.getFullYear() + 25;
+			const firstYear = Math.min(minimumYear, viewYear);
+			const lastYear = Math.max(maximumYear, viewYear);
+			return Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index);
+		};
 		const displayDate = (value) => {
 			const parsed = isoParts(value);
 			if (!parsed) return value;
@@ -799,7 +808,24 @@ export class ProseIDForm {
 			panel.replaceChildren();
 			const header = text('header', 'date-panel-head');
 			const title = text('div', 'date-panel-title');
-			title.append(text('span', '', this.copy.selectDate), text('strong', '', monthTitle()));
+			const period = text('div', 'date-panel-period');
+			const yearSelect = document.createElement('select');
+			yearSelect.className = 'date-year-select';
+			yearSelect.setAttribute('aria-label', this.copy.year);
+			for (const year of yearOptions()) {
+				const option = document.createElement('option');
+				option.value = String(year);
+				option.textContent = String(year);
+				yearSelect.append(option);
+			}
+			yearSelect.value = String(viewYear);
+			yearSelect.addEventListener('change', () => {
+				viewYear = Number(yearSelect.value);
+				renderPanel();
+				place();
+			});
+			period.append(text('strong', '', monthName()), yearSelect);
+			title.append(text('span', '', this.copy.selectDate), period);
 			const navigation = text('nav', 'date-navigation');
 			navigation.setAttribute('aria-label', 'Change month');
 			const previous = text('button', '', '‹');

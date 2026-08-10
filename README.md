@@ -32,11 +32,11 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/npm/@alentra/proseid-js-sdk@0.10.3/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@alentra/proseid-js-sdk@0.10.6/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
-    flow: 'publisher-handle/flow-slug',
+    flow: 'flow_01ABCDEF23456789',
     onComplete(result) {
       console.log('ProseID audit record', result.recordId);
     }
@@ -55,7 +55,7 @@ import { mount } from '@alentra/proseid-js-sdk';
 
 const form = mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
-  flow: 'publisher-handle/flow-slug',
+  flow: 'flow_01ABCDEF23456789',
 	locale: 'en', // Optional. Otherwise the saved browser choice or schema recommendation is used.
   appearance: { shape: 'capsule', fields: 'outlined', shell: 'card' },
   branding: { logoUrl: 'https://example.com/logo.svg', logoAlt: 'Example' }
@@ -63,6 +63,10 @@ const form = mount('#compliance-form', {
 
 await form.ready;
 ```
+
+Use the canonical Flow ID shown in the ProseID workspace. Human-readable publisher and Flow slugs
+are presentation addresses and are not accepted by the SDK, so renaming either cannot break an
+embedded integration.
 
 After a successful completion, the SDK brings the receipt and optional email controls into view.
 Set `autoFocusCompletion: false` only when the host application provides its own equivalent focus
@@ -88,7 +92,7 @@ semantics, and ProseID attribution retain a dependable visual floor. Use one geo
 ```js
 mount('#compliance-form', {
   apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
-  flow: 'publisher-handle/flow-slug',
+  flow: 'flow_01ABCDEF23456789',
   appearance: {
     shape: 'rigid',       // soft | capsule | rigid
     fields: 'underline',  // outlined | underline
@@ -206,7 +210,7 @@ npm run build
 ```
 
 Serve `examples/basic` over HTTP and add its exact localhost origin to the selected ProseID Flow.
-Change `YOUR_PROSEID_PUBLISHABLE_KEY` and `YOUR_PUBLISHER/YOUR_FLOW` in the example before loading it.
+Change `YOUR_PROSEID_PUBLISHABLE_KEY` and `YOUR_FLOW_ID` in the example before loading it.
 `examples/test` needs only a publishable key because the built-in field gallery does not require a published
 schema or a Flow origin allow-list.
 

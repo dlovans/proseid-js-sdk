@@ -34,7 +34,7 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.10.4";
+var VERSION = "0.10.6";
 
 // src/presentation.js
 var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
@@ -74,10 +74,12 @@ function safeLogoUrl(value) {
 }
 
 // src/api.js
-function parseFlowCoordinate(value) {
-  const parts = String(value ?? "").split("/").filter(Boolean);
-  if (parts.length !== 2) throw new ProseIDError("invalid_flow", 'Flow must be "publisher/slug".');
-  return { publisher: parts[0], slug: parts[1] };
+function parseFlowReference(value) {
+  const reference = String(value ?? "").trim();
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(reference)) {
+    throw new ProseIDError("invalid_flow", "A valid Flow ID is required.");
+  }
+  return reference;
 }
 function normalizedApiBase(value) {
   try {
@@ -105,8 +107,8 @@ var EmbedApi = class {
     if (testMode) {
       this.endpoint = `${base}/api/embed/v1/test`;
     } else {
-      const { publisher, slug } = parseFlowCoordinate(flow);
-      this.endpoint = `${base}/api/embed/v1/flows/${encodeURIComponent(publisher)}/${encodeURIComponent(slug)}`;
+      const flowId = parseFlowReference(flow);
+      this.endpoint = `${base}/api/embed/v1/flow-ids/${encodeURIComponent(flowId)}`;
     }
   }
   setAttribution(value) {
@@ -294,6 +296,9 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .date-panel-title { display: grid; min-width: 0; gap: 2px; }
 .date-panel-title span { color: var(--proseid-accent-ink); font-size: 8px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
 .date-panel-title strong { overflow: hidden; font: 500 21px/1.15 Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
+.date-panel-period { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.date-year-select { height: 30px; border: 1px solid var(--proseid-rule); border-radius: 9px; outline: none; appearance: none; background-color: var(--proseid-surface); background-image: linear-gradient(45deg, transparent 50%, var(--proseid-muted) 50%), linear-gradient(135deg, var(--proseid-muted) 50%, transparent 50%); background-position: calc(100% - 13px) 50%, calc(100% - 9px) 50%; background-size: 4px 4px; background-repeat: no-repeat; padding: 0 25px 0 9px; color: var(--proseid-ink); font: 650 10px var(--font-mono, ui-monospace, monospace); cursor: pointer; }
+.date-year-select:focus-visible { border-color: var(--proseid-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--proseid-accent) 13%, transparent); }
 .date-navigation { display: flex; gap: 5px; }
 .date-navigation button { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--proseid-rule); border-radius: 9px; background: var(--proseid-surface); color: var(--proseid-copy); font: 400 22px/1 Georgia, serif; cursor: pointer; }
 .date-navigation button:hover { border-color: var(--proseid-accent); color: var(--proseid-accent-ink); }
@@ -660,6 +665,7 @@ var dictionaries = {
     no: "No",
     completeChecklist: "Complete checklist",
     selectDate: "Select date",
+    year: "Year",
     chooseDateFor: (label) => `Choose date for ${label}`,
     previousMonth: "Previous month",
     nextMonth: "Next month",
@@ -791,6 +797,7 @@ var dictionaries = {
     no: "Nej",
     completeChecklist: "Slutf\xF6r checklistan",
     selectDate: "V\xE4lj datum",
+    year: "\xC5r",
     chooseDateFor: (label) => `V\xE4lj datum f\xF6r ${label}`,
     previousMonth: "F\xF6reg\xE5ende m\xE5nad",
     nextMonth: "N\xE4sta m\xE5nad",
@@ -1005,7 +1012,7 @@ var ProseIDForm = class {
   constructor(target, options) {
     this.target = typeof target === "string" ? document.querySelector(target) : target;
     if (!(this.target instanceof Element)) throw new ProseIDError("invalid_target", "Choose an element to contain the ProseID form.");
-    if (!options?.flow && !options?.testMode) throw new ProseIDError("invalid_flow", "The Flow coordinate is required.");
+    if (!options?.flow && !options?.testMode) throw new ProseIDError("invalid_flow", "The Flow ID is required.");
     if (!options?.apiKey) throw new ProseIDError("invalid_api_key", "A ProseID publishable key is required.");
     this.options = options;
     this.explicitLocale = options.locale ? normalizeLocale(options.locale) : "";
@@ -1626,6 +1633,14 @@ var ProseIDForm = class {
       return true;
     };
     const monthTitle = () => new Intl.DateTimeFormat(this.locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
+    const monthName = () => new Intl.DateTimeFormat(this.locale, { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
+    const yearOptions = () => {
+      const minimumYear = isoParts(String(definition.min || ""))?.year ?? today.getFullYear() - 100;
+      const maximumYear = isoParts(String(definition.max || ""))?.year ?? today.getFullYear() + 25;
+      const firstYear = Math.min(minimumYear, viewYear);
+      const lastYear = Math.max(maximumYear, viewYear);
+      return Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index);
+    };
     const displayDate = (value) => {
       const parsed = isoParts(value);
       if (!parsed) return value;
@@ -1667,7 +1682,24 @@ var ProseIDForm = class {
       panel.replaceChildren();
       const header = text("header", "date-panel-head");
       const title = text("div", "date-panel-title");
-      title.append(text("span", "", this.copy.selectDate), text("strong", "", monthTitle()));
+      const period = text("div", "date-panel-period");
+      const yearSelect = document.createElement("select");
+      yearSelect.className = "date-year-select";
+      yearSelect.setAttribute("aria-label", this.copy.year);
+      for (const year of yearOptions()) {
+        const option = document.createElement("option");
+        option.value = String(year);
+        option.textContent = String(year);
+        yearSelect.append(option);
+      }
+      yearSelect.value = String(viewYear);
+      yearSelect.addEventListener("change", () => {
+        viewYear = Number(yearSelect.value);
+        renderPanel();
+        place();
+      });
+      period.append(text("strong", "", monthName()), yearSelect);
+      title.append(text("span", "", this.copy.selectDate), period);
       const navigation = text("nav", "date-navigation");
       navigation.setAttribute("aria-label", "Change month");
       const previous = text("button", "", "\u2039");

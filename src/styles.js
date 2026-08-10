@@ -122,6 +122,9 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .date-panel-title { display: grid; min-width: 0; gap: 2px; }
 .date-panel-title span { color: var(--proseid-accent-ink); font-size: 8px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
 .date-panel-title strong { overflow: hidden; font: 500 21px/1.15 Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
+.date-panel-period { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.date-year-select { height: 30px; border: 1px solid var(--proseid-rule); border-radius: 9px; outline: none; appearance: none; background-color: var(--proseid-surface); background-image: linear-gradient(45deg, transparent 50%, var(--proseid-muted) 50%), linear-gradient(135deg, var(--proseid-muted) 50%, transparent 50%); background-position: calc(100% - 13px) 50%, calc(100% - 9px) 50%; background-size: 4px 4px; background-repeat: no-repeat; padding: 0 25px 0 9px; color: var(--proseid-ink); font: 650 10px var(--font-mono, ui-monospace, monospace); cursor: pointer; }
+.date-year-select:focus-visible { border-color: var(--proseid-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--proseid-accent) 13%, transparent); }
 .date-navigation { display: flex; gap: 5px; }
 .date-navigation button { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--proseid-rule); border-radius: 9px; background: var(--proseid-surface); color: var(--proseid-copy); font: 400 22px/1 Georgia, serif; cursor: pointer; }
 .date-navigation button:hover { border-color: var(--proseid-accent); color: var(--proseid-accent-ink); }

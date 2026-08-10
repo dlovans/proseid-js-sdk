@@ -35,7 +35,8 @@ export interface SigningAdapter {
 }
 
 export interface MountOptions {
-	flow: `${string}/${string}`;
+	/** Canonical Flow ID shown in the ProseID workspace. */
+	flow: string;
 	/** Browser-safe `proseid_pk_…` key identifying the organization that owns the Flow. */
 	apiKey: string;
 	apiBase?: string;

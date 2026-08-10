@@ -73,10 +73,10 @@
 				return new Response(JSON.stringify({ ok: true, valid: missing.length === 0, status: missing.length ? 'INCOMPLETE' : 'READY', definitions, issues: missing.map(([name]) => ({ field_id: name, severity: 'error', kind: 'missing_required', trigger: 'correction' })) }), { status: 200 });
 			};
 			const base = { apiKey: `proseid_pk_${'a'.repeat(40)}`, fetch: mockFetch };
-			ProseID.mount('#soft', { ...base, flow: 'acme/form', appearance: 'soft', theme: 'light' });
-			ProseID.mount('#capsule', { ...base, flow: 'acme/guided', appearance: 'capsule', theme: 'charcoal', branding: { proseid: 'compact' } });
-			ProseID.mount('#rigid', { ...base, flow: 'acme/determination', appearance: { shape: 'rigid', density: 'compact' }, theme: 'midnight', branding: { logoUrl: 'http://127.0.0.1:8091/examples/preview/icon-placeholder.svg', logoAlt: 'Northstar symbol' } });
-			ProseID.mount('#underline', { ...base, flow: 'acme/checklist', appearance: 'underline', theme: 'forest', branding: { proseid: 'hidden' } });
+			ProseID.mount('#soft', { ...base, flow: 'flow_form_preview', appearance: 'soft', theme: 'light' });
+			ProseID.mount('#capsule', { ...base, flow: 'flow_guided_preview', appearance: 'capsule', theme: 'charcoal', branding: { proseid: 'compact' } });
+			ProseID.mount('#rigid', { ...base, flow: 'flow_determination_preview', appearance: { shape: 'rigid', density: 'compact' }, theme: 'midnight', branding: { logoUrl: 'http://127.0.0.1:8091/examples/preview/icon-placeholder.svg', logoAlt: 'Northstar symbol' } });
+			ProseID.mount('#underline', { ...base, flow: 'flow_checklist_preview', appearance: 'underline', theme: 'forest', branding: { proseid: 'hidden' } });
 		</script>
 	</body>
 </html>
