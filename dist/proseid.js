@@ -960,6 +960,7 @@ var saveLocalePreference = (value) => {
   }
 };
 var CHOICE_ACRONYMS = /* @__PURE__ */ new Map([
+  ["ai", "AI"],
   ["api", "API"],
   ["ccpa", "CCPA"],
   ["dns", "DNS"],
@@ -968,8 +969,23 @@ var CHOICE_ACRONYMS = /* @__PURE__ */ new Map([
   ["eu", "EU"],
   ["ftc", "FTC"],
   ["gdpr", "GDPR"],
+  ["gpai", "GPAI"],
   ["hipaa", "HIPAA"],
   ["ict", "ICT"],
+  ["it", "IT"],
+  ["i", "I"],
+  ["ii", "II"],
+  ["iii", "III"],
+  ["iv", "IV"],
+  ["v", "V"],
+  ["vi", "VI"],
+  ["vii", "VII"],
+  ["viii", "VIII"],
+  ["ix", "IX"],
+  ["x", "X"],
+  ["xi", "XI"],
+  ["xii", "XII"],
+  ["xiii", "XIII"],
   ["nis2", "NIS2"],
   ["osha", "OSHA"],
   ["pdf", "PDF"],
@@ -1335,7 +1351,7 @@ var ProseIDForm = class {
     if (isEmptyValue(definition, value)) return this.copy.notAnswered;
     if (["boolean", "attestation"].includes(definition?.type)) return value === true ? this.copy.yes : this.copy.no;
     if (typeof value === "object") return JSON.stringify(value);
-    return String(value).includes("_") ? humanizeChoice(value) : humanizeText(value);
+    return humanizeChoice(value);
   }
   renderGuided() {
     const guided = text("div", "guided");

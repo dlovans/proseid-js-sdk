@@ -146,7 +146,7 @@ describe('ProseID SDK', () => {
 						type: 'string', label: 'Full name', placeholder: 'Ada Lovelace', info: 'Use your legal name.',
 						min_length: 2, max_length: 160, pattern: '.+'
 					},
-					country: { type: 'select', label: 'Country', placeholder: 'Choose a country', options: ['eu_member_state'] }
+					country: { type: 'select', label: 'Country', placeholder: 'Choose a country', options: ['eu_member_state', 'gpai', 'gpai_model', 'direct_ai_interaction', 'annex_iii_large_scale_it_system'] }
 				}
 			}
 		};
@@ -170,7 +170,14 @@ describe('ProseID SDK', () => {
 		expect(root.querySelector('.info-popover').textContent).toBe('Use your legal name.');
 		expect(root.querySelector('.field-message').textContent).toContain('identification');
 		expect(root.querySelector('select[name="country"] option').textContent).toBe('Choose a country');
-		expect(root.querySelector('select[name="country"] option:last-child').textContent).toBe('EU member state');
+		expect([...root.querySelectorAll('select[name="country"] option')].map((option) => option.textContent)).toEqual([
+			'Choose a country',
+			'EU member state',
+			'GPAI',
+			'GPAI model',
+			'Direct AI interaction',
+			'Annex III large scale IT system'
+		]);
 		expect(root.querySelector('.schema-details').textContent).toContain('Example Act');
 		expect(root.querySelector('.schema-details').textContent).toContain('Sweden');
 		expect(root.querySelector('.schema-details').textContent).toContain('SE');

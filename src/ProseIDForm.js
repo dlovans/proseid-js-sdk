@@ -47,8 +47,10 @@ const saveLocalePreference = (value) => {
 	catch { /* Storage can be unavailable in strict privacy modes. */ }
 };
 const CHOICE_ACRONYMS = new Map([
-	['api', 'API'], ['ccpa', 'CCPA'], ['dns', 'DNS'], ['dora', 'DORA'], ['eea', 'EEA'],
-	['eu', 'EU'], ['ftc', 'FTC'], ['gdpr', 'GDPR'], ['hipaa', 'HIPAA'], ['ict', 'ICT'],
+	['ai', 'AI'], ['api', 'API'], ['ccpa', 'CCPA'], ['dns', 'DNS'], ['dora', 'DORA'], ['eea', 'EEA'],
+	['eu', 'EU'], ['ftc', 'FTC'], ['gdpr', 'GDPR'], ['gpai', 'GPAI'], ['hipaa', 'HIPAA'], ['ict', 'ICT'],
+	['it', 'IT'], ['i', 'I'], ['ii', 'II'], ['iii', 'III'], ['iv', 'IV'], ['v', 'V'], ['vi', 'VI'],
+	['vii', 'VII'], ['viii', 'VIII'], ['ix', 'IX'], ['x', 'X'], ['xi', 'XI'], ['xii', 'XII'], ['xiii', 'XIII'],
 	['nis2', 'NIS2'], ['osha', 'OSHA'], ['pdf', 'PDF'], ['sec', 'SEC'], ['tld', 'TLD'],
 	['uk', 'UK'], ['us', 'US']
 ]);
@@ -434,7 +436,7 @@ export class ProseIDForm {
 		if (isEmptyValue(definition, value)) return this.copy.notAnswered;
 		if (['boolean', 'attestation'].includes(definition?.type)) return value === true ? this.copy.yes : this.copy.no;
 		if (typeof value === 'object') return JSON.stringify(value);
-		return String(value).includes('_') ? humanizeChoice(value) : humanizeText(value);
+		return humanizeChoice(value);
 	}
 
 	renderGuided() {
