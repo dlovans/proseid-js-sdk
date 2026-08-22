@@ -42,10 +42,11 @@ button, input, select, textarea { font: inherit; }
 .head { padding: var(--proseid-head-pad-y) var(--proseid-head-pad-x) calc(var(--proseid-head-pad-y) - 2px); border-bottom: 1px solid var(--proseid-rule); }
 .brands { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 25px; }
 .respondent-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
-.language-selector { display: inline-flex; padding: 3px; border: 1px solid var(--proseid-rule); border-radius: 10px; background: var(--proseid-canvas); }
-.language-selector button { min-width: 34px; min-height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--proseid-muted); font-size: 9px; font-weight: 750; cursor: pointer; }
-.language-selector button.active { background: var(--proseid-surface); color: var(--proseid-ink); box-shadow: 0 2px 8px rgba(18, 20, 19, .09); }
-.language-selector button:focus-visible { outline: 2px solid var(--proseid-accent); outline-offset: 2px; }
+.language-selector { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; }
+.language-selector select { min-height: 36px; appearance: none; border: 1px solid var(--proseid-rule); border-radius: 9px; background: var(--proseid-canvas); padding: 7px 29px 7px 10px; color: var(--proseid-ink); font-size: 10px; font-weight: 700; cursor: pointer; }
+.language-selector select:hover { border-color: color-mix(in srgb, var(--proseid-ink) 26%, var(--proseid-rule)); background: var(--proseid-surface); }
+.language-selector select:focus-visible { outline: 2px solid var(--proseid-accent); outline-offset: 2px; }
+.language-chevron { position: absolute; right: 11px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid var(--proseid-muted); border-bottom: 1.5px solid var(--proseid-muted); pointer-events: none; transform: translateY(-68%) rotate(45deg); }
 .brand { display: flex; min-width: 0; align-items: center; gap: 10px; }
 .brand img, .brand-fallback { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 10px; object-fit: contain; }
 .brand-fallback { display: grid; place-items: center; background: var(--proseid-canvas); color: var(--proseid-ink); font: 650 13px/1 Georgia, serif; }

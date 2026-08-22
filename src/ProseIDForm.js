@@ -235,17 +235,19 @@ export class ProseIDForm {
 	}
 
 	renderLanguageSelector() {
-		const selector = text('div', 'language-selector');
-		selector.setAttribute('role', 'group');
-		selector.setAttribute('aria-label', this.copy.languageLabel);
+		const selector = text('label', 'language-selector');
+		const control = document.createElement('select');
+		control.setAttribute('aria-label', this.copy.languageLabel);
 		for (const language of ['en', 'sv']) {
-			const button = text('button', language === this.locale ? 'active' : '', language.toUpperCase());
-			button.type = 'button';
-			button.setAttribute('aria-pressed', String(language === this.locale));
-			button.setAttribute('title', language === 'sv' ? this.copy.swedish : this.copy.english);
-			button.addEventListener('click', () => this.setLocale(language));
-			selector.append(button);
+			const option = text('option', '', language === 'sv' ? this.copy.swedish : this.copy.english);
+			option.value = language;
+			control.append(option);
 		}
+		control.value = this.locale;
+		control.addEventListener('change', () => this.setLocale(control.value));
+		const chevron = text('span', 'language-chevron');
+		chevron.setAttribute('aria-hidden', 'true');
+		selector.append(control, chevron);
 		return selector;
 	}
 

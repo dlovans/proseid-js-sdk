@@ -242,16 +242,38 @@ describe('ProseID SDK', () => {
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
 		await instance.ready;
 		let root = document.querySelector('#form').shadowRoot;
-		expect(root.querySelector('.language-selector button.active').textContent).toBe('SV');
+		expect(root.querySelector('.language-selector select').value).toBe('sv');
+		expect(root.querySelector('.language-selector select').getAttribute('aria-label')).toBe('Språk');
 		expect(root.querySelector('.submit').textContent).toBe('Skicka');
-		root.querySelector('.language-selector button:first-child').click();
+		const languagePicker = root.querySelector('.language-selector select');
+		languagePicker.value = 'en';
+		languagePicker.dispatchEvent(new Event('change', { bubbles: true }));
 		root = document.querySelector('#form').shadowRoot;
-		expect(root.querySelector('.language-selector button.active').textContent).toBe('EN');
+		expect(root.querySelector('.language-selector select').value).toBe('en');
+		expect(root.querySelector('.language-selector select').getAttribute('aria-label')).toBe('Language');
 		expect(localStorage.getItem('proseid_flow_language')).toBe('en');
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(root.textContent).toContain('Audit record language_record'));
 		const completion = JSON.parse(fetch.mock.calls[2][1].body);
 		expect(completion.language).toBe('en');
+	});
+
+	it('labels the server-issued effective date as an assessment date', async () => {
+		const temporalManifest = {
+			...manifest,
+			flow: {
+				...manifest.flow,
+				temporalContext: { effective_at: manifest.flow.effectiveAt, logic_version: 'current' }
+			}
+		};
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(temporalManifest))
+			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: temporalManifest.schema.definitions, issues: [] }));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		expect(root.textContent).toContain(`Assessment date: ${manifest.flow.effectiveAt}`);
+		expect(root.textContent).not.toContain(`Rules applied on ${manifest.flow.effectiveAt}`);
 	});
 
 	it('applies bounded appearance, theme and branding overrides', async () => {
