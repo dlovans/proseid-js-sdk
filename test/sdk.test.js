@@ -277,6 +277,74 @@ describe('ProseID SDK', () => {
 		expect(root.textContent).toContain('Review answers');
 	});
 
+	it('shows public field-constraint errors locally and reuses the matching live result on Continue', async () => {
+		const guided = {
+			...manifest,
+			flow: { ...manifest.flow, flowType: 'guided_assessment' },
+			schema: { definitions: { name: { type: 'string', label: 'Your name', required: true, min_length: 2 } } }
+		};
+		const transport = {
+			manifest: vi.fn().mockResolvedValue(guided),
+			validate: vi.fn(async (_flow, responses) => ({
+				ok: true,
+				valid: String(responses.name || '').length >= 2,
+				status: String(responses.name || '').length >= 2 ? 'READY' : 'INCOMPLETE',
+				definitions: guided.schema.definitions,
+				issues: []
+			})),
+			complete: vi.fn(),
+			emailReceipt: vi.fn()
+		};
+		const instance = mount('#form', { flow: 'flow_guided_12345678', transport, validateDelay: 5 });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		const input = root.querySelector('input[name="name"]');
+		input.value = 'x';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		await vi.waitFor(() => expect(root.querySelector('.field .error').textContent).toContain('too short'));
+		expect(transport.validate).toHaveBeenCalledTimes(1);
+		root.querySelector('.guided-navigation .primary-action').click();
+		expect(transport.validate).toHaveBeenCalledTimes(1);
+		expect(instance.guidedPhase).toBe('questions');
+
+		input.value = 'Ada';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		await vi.waitFor(() => expect(transport.validate).toHaveBeenCalledTimes(2));
+		root.querySelector('.guided-navigation .primary-action').click();
+		await vi.waitFor(() => expect(instance.guidedPhase).toBe('review'));
+		expect(transport.validate).toHaveBeenCalledTimes(2);
+	});
+
+	it('reuses an in-flight live validation when Guided Continue is clicked', async () => {
+		const guided = {
+			...manifest,
+			flow: { ...manifest.flow, flowType: 'guided_assessment' },
+			schema: { definitions: { name: { type: 'string', label: 'Your name', required: true } } }
+		};
+		let resolveLive;
+		const liveResult = new Promise((resolve) => { resolveLive = resolve; });
+		const transport = {
+			manifest: vi.fn().mockResolvedValue(guided),
+			validate: vi.fn()
+				.mockResolvedValueOnce({ ok: true, valid: false, status: 'INCOMPLETE', definitions: guided.schema.definitions, issues: [] })
+				.mockImplementationOnce(() => liveResult),
+			complete: vi.fn(),
+			emailReceipt: vi.fn()
+		};
+		const instance = mount('#form', { flow: 'flow_guided_12345678', transport, validateDelay: 0 });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		const input = root.querySelector('input[name="name"]');
+		input.value = 'Ada';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		await vi.waitFor(() => expect(transport.validate).toHaveBeenCalledTimes(2));
+		root.querySelector('.guided-navigation .primary-action').click();
+		expect(transport.validate).toHaveBeenCalledTimes(2);
+		resolveLive({ ok: true, valid: true, status: 'READY', definitions: guided.schema.definitions, issues: [] });
+		await vi.waitFor(() => expect(instance.guidedPhase).toBe('review'));
+		expect(transport.validate).toHaveBeenCalledTimes(2);
+	});
+
 	it('renders metadata, field information, placeholders, constraints and resolved UI state', async () => {
 		const richManifest = {
 			...manifest,

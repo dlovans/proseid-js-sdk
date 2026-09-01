@@ -69,6 +69,86 @@ const answerProvided = (definition, value) => {
 	if (definition?.type === 'attestation' && definition?.required === true) return value === true;
 	return !isEmptyValue(definition, value);
 };
+const validIsoDate = (value) => {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+	if (!match) return false;
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	const date = new Date(Date.UTC(year, month - 1, day));
+	return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+};
+const optionValues = (definition) => new Set((definition?.options || []).map((option) =>
+	typeof option === 'object' ? option.value : option
+));
+const localConstraintIssue = (name, definition, value, { includeRequired = false } = {}) => {
+	const empty = isEmptyValue(definition, value);
+	if (empty) {
+		if (includeRequired && definition?.required === true) {
+			return {
+				field_id: name,
+				severity: 'error',
+				kind: definition.type === 'attestation' ? 'attestation_incomplete' : 'missing_required',
+				trigger: 'correction',
+				local: true
+			};
+		}
+		return null;
+	}
+	if (definition?.type === 'attestation' && definition.required === true && value !== true) {
+		return { field_id: name, severity: 'error', kind: 'attestation_incomplete', trigger: 'correction', local: true };
+	}
+	if (definition?.type === 'boolean' && typeof value !== 'boolean') {
+		return { field_id: name, severity: 'error', kind: 'type_mismatch', trigger: 'correction', local: true };
+	}
+	if (definition?.type === 'select' && !optionValues(definition).has(value)) {
+		return { field_id: name, severity: 'error', kind: 'constraint_violation', trigger: 'correction', local: true };
+	}
+	if (['number', 'currency'].includes(definition?.type)) {
+		if (typeof value !== 'number' || !Number.isFinite(value)) {
+			return { field_id: name, severity: 'error', kind: 'type_mismatch', trigger: 'correction', local: true };
+		}
+		if (definition.min != null && value < Number(definition.min)) {
+			return { field_id: name, severity: 'error', kind: 'constraint_violation', trigger: 'correction', local: true };
+		}
+		if (definition.max != null && value > Number(definition.max)) {
+			return { field_id: name, severity: 'error', kind: 'constraint_violation', trigger: 'correction', local: true };
+		}
+	}
+	if (definition?.type === 'date') {
+		if (!validIsoDate(value)) {
+			return { field_id: name, severity: 'error', kind: 'type_mismatch', trigger: 'correction', local: true };
+		}
+		if (definition.min && String(value) < String(definition.min)) {
+			return { field_id: name, severity: 'error', kind: 'constraint_violation', trigger: 'correction', local: true };
+		}
+		if (definition.max && String(value) > String(definition.max)) {
+			return { field_id: name, severity: 'error', kind: 'constraint_violation', trigger: 'correction', local: true };
+		}
+	}
+	if (definition?.type === 'string') {
+		if (typeof value !== 'string') {
+			return { field_id: name, severity: 'error', kind: 'type_mismatch', trigger: 'correction', local: true };
+		}
+		if (definition.min_length != null && value.length < Number(definition.min_length)) {
+			return { field_id: name, severity: 'error', kind: 'constraint_violation', trigger: 'correction', message: 'Too short.', local: true };
+		}
+		if (definition.max_length != null && value.length > Number(definition.max_length)) {
+			return { field_id: name, severity: 'error', kind: 'constraint_violation', trigger: 'correction', message: 'Too long.', local: true };
+		}
+		if (definition.format === 'email' && !EMAIL_RE.test(value)) {
+			return { field_id: name, severity: 'error', kind: 'type_mismatch', trigger: 'correction', local: true };
+		}
+		if (definition.pattern) {
+			try {
+				if (!new RegExp(definition.pattern).test(value)) {
+					return { field_id: name, severity: 'error', kind: 'constraint_violation', trigger: 'correction', message: 'Pattern mismatch.', local: true };
+				}
+			} catch { /* The server remains authoritative for malformed publisher patterns. */ }
+		}
+	}
+	return null;
+};
 const normalizedResponses = (definitions, values) => Object.fromEntries(
 	Object.entries(values).map(([name, value]) => {
 		const definition = definitions?.[name];
@@ -127,6 +207,9 @@ export class ProseIDForm {
 		this.validationTimer = null;
 		this.validationAbort = null;
 		this.validationSequence = 0;
+		this.validationPromise = null;
+		this.validationPromiseFingerprint = '';
+		this.lastValidationFingerprint = '';
 		this.submitting = false;
 		this.validationLocked = false;
 		this.cleanupFns = [];
@@ -597,9 +680,6 @@ export class ProseIDForm {
 
 	goToGuidedQuestion(name) {
 		clearTimeout(this.validationTimer);
-		this.validationSequence += 1;
-		this.validationAbort?.abort();
-		this.validationAbort = null;
 		const entries = this.visibleFields();
 		const index = entries.findIndex(([entryName]) => entryName === name);
 		if (index < 0) return;
@@ -624,13 +704,15 @@ export class ProseIDForm {
 		const entries = this.visibleFields();
 		const current = entries[this.guidedIndex];
 		if (!current) return;
-		if (current[1].definition?.required === true && !answerProvided(current[1].definition, this.values[current[0]])) {
-			this.blurred.add(current[0]);
+		const [currentName, currentField] = current;
+		this.blurred.add(currentName);
+		const localIssues = this.localValidationIssues([currentName], { includeRequired: true });
+		this.renderLocalIssues([currentName], localIssues);
+		if (localIssues.some((issue) => issue.severity === 'error')) {
 			this.refreshGuided();
-			current[1].control?.focus?.();
+			currentField.control?.focus?.();
 			return;
 		}
-		this.blurred.add(current[0]);
 		this.guidedChecking = true;
 		this.guidedNext.disabled = true;
 		this.guidedNext.textContent = this.copy.checking;
@@ -640,7 +722,7 @@ export class ProseIDForm {
 			this.refreshGuided();
 			return;
 		}
-		const blocking = (result?.issues || []).some((issue) => issue.field_id === current[0] && issue.severity === 'error');
+		const blocking = (result?.issues || []).some((issue) => issue.field_id === currentName && issue.severity === 'error');
 		if (blocking) {
 			this.guidedChecking = false;
 			this.refreshGuided();
@@ -1163,7 +1245,7 @@ export class ProseIDForm {
 			item.addEventListener('change', () => this.change(name, definition, item, true));
 			item.addEventListener('blur', () => {
 				this.blurred.add(name);
-				this.scheduleValidation(120);
+				this.scheduleValidation(120, [name], { includeRequired: true });
 			});
 		}
 		const error = text('span', 'error');
@@ -1195,7 +1277,7 @@ export class ProseIDForm {
 			this.updateSubmitState();
 			if (firstReview) {
 				this.emit('change', { name, value, values: { ...this.values } });
-				this.scheduleValidation(0);
+				this.scheduleValidation(0, [name]);
 			}
 			return;
 		}
@@ -1205,10 +1287,12 @@ export class ProseIDForm {
 		this.updateSubmitState();
 		this.setStatus('checking', this.copy.checking);
 		this.emit('change', { name, value, values: { ...this.values } });
-		this.scheduleValidation(0);
+		this.invalidateStaleValidationRequest();
+		this.scheduleValidation(0, [name]);
 	}
 
 	change(name, definition, control, immediate = false) {
+		const wasProvided = answerProvided(definition, this.values[name]);
 		const value = definition.type === 'boolean'
 			? (control.type === 'radio' ? control.value === 'true' : control.checked)
 			: definition.type === 'attestation'
@@ -1228,6 +1312,7 @@ export class ProseIDForm {
 			return;
 		}
 		this.values[name] = value;
+		const isProvided = answerProvided(definition, value);
 		this.updateAnswerProgress();
 		if (definition.type === 'boolean') {
 			const field = this.fields.get(name);
@@ -1240,63 +1325,137 @@ export class ProseIDForm {
 			this.determinationActivity.classList.add('evaluating');
 			this.determinationActivity.querySelector('span').textContent = this.copy.determinationUpdating;
 		}
-		if (this.flowType === 'guided_assessment' && this.guidedPhase === 'questions') this.refreshGuided();
+		if (this.flowType === 'guided_assessment' && this.guidedPhase === 'questions' && wasProvided !== isProvided) this.refreshGuided();
 		this.updateSubmitState();
 		this.setStatus('checking', this.copy.checking);
 		this.emit('change', { name, value: this.values[name], values: { ...this.values } });
-		this.scheduleValidation(immediate ? 0 : (this.options.validateDelay ?? 400));
+		this.invalidateStaleValidationRequest();
+		this.scheduleValidation(immediate ? 0 : (this.options.validateDelay ?? 400), [name]);
 	}
 
-	scheduleValidation(delay) {
+	validationRequest() {
+		const responses = normalizedResponses(this.manifest.schema?.definitions || {}, this.values);
+		const fingerprint = JSON.stringify([
+			this.manifest.flow.ref,
+			this.manifest.flow.effectiveAt,
+			this.locale,
+			responses
+		]);
+		return { responses, fingerprint };
+	}
+
+	invalidateStaleValidationRequest() {
+		if (!this.validationPromise) return;
+		const { fingerprint } = this.validationRequest();
+		if (fingerprint === this.validationPromiseFingerprint) return;
+		this.validationSequence += 1;
+		this.validationAbort?.abort();
+		this.validationAbort = null;
+		this.validationPromise = null;
+		this.validationPromiseFingerprint = '';
+	}
+
+	localValidationIssues(names, { includeRequired = false } = {}) {
+		const selected = names ? new Set(names) : null;
+		const issues = [];
+		for (const [name, field] of this.fields) {
+			if (selected && !selected.has(name)) continue;
+			if (field.engineVisible === false) continue;
+			const issue = localConstraintIssue(name, field.definition, this.values[name], { includeRequired });
+			if (issue) issues.push(issue);
+		}
+		return issues;
+	}
+
+	renderLocalIssues(names, issues = this.localValidationIssues(names)) {
+		const selected = new Set(names || []);
+		const retained = (this.lastValidation?.issues || []).filter((issue) => !selected.has(issue?.field_id));
+		this.renderIssues([...retained, ...issues]);
+	}
+
+	scheduleValidation(delay, names = null, { includeRequired = false } = {}) {
 		clearTimeout(this.validationTimer);
-		this.validationTimer = setTimeout(() => this.validate(), Math.max(0, delay));
+		this.validationTimer = setTimeout(() => {
+			const localIssues = names?.length ? this.localValidationIssues(names, { includeRequired }) : [];
+			if (names?.length) this.renderLocalIssues(names, localIssues);
+			if (localIssues.some((issue) => issue.severity === 'error')) {
+				this.valid = false;
+				this.updateSubmitState();
+				this.setStatus('idle', this.copy.incomplete);
+				return;
+			}
+			this.validate();
+		}, Math.max(0, delay));
 	}
 
 	async validate() {
 		if (this.destroyed || !this.manifest) return null;
+		const { responses, fingerprint } = this.validationRequest();
+		if (this.lastValidation && this.lastValidationFingerprint === fingerprint) {
+			this.renderIssues(this.lastValidation.issues || []);
+			this.updateSubmitState();
+			return this.lastValidation;
+		}
+		if (this.validationPromise && this.validationPromiseFingerprint === fingerprint) {
+			return this.validationPromise;
+		}
 		const sequence = ++this.validationSequence;
 		this.validationAbort?.abort();
 		this.validationAbort = new AbortController();
 		this.setStatus('checking', this.copy.checking);
-		try {
-			const responses = normalizedResponses(this.manifest.schema?.definitions || {}, this.values);
-			const result = await this.api.validate(
-				this.manifest.flow.ref,
-				responses,
-				this.manifest.flow.effectiveAt,
-				this.locale,
-				this.validationAbort.signal
-			);
-			if (sequence !== this.validationSequence) return null;
-			this.lastValidation = result;
-			this.valid = result.valid === true;
-			this.validationLocked = false;
-			this.applyDefinitions(result.definitions || {});
-			this.renderIssues(result.issues || []);
-			if (this.flowType === 'determination') {
-				this.determinationActivity?.classList.remove('evaluating');
-				if (this.determinationActivity) this.determinationActivity.querySelector('span').textContent = this.copy.determinationAuto;
-				this.refreshDetermination();
-			}
-			this.updateSubmitState();
-			this.setStatus(this.valid ? 'ready' : 'idle', this.valid ? this.copy.ready : this.copy.incomplete);
-			this.emit('validation', { valid: this.valid, status: result.status, issues: result.issues || [] });
-			return result;
-		} catch (error) {
-			if (error?.name === 'AbortError') return null;
-			if (sequence !== this.validationSequence) return null;
-			this.valid = false;
-			this.updateSubmitState();
-			const message = errorMessage(error.code, this.copy.checkFailed);
-			this.setStatus('error', message);
-			if (error?.code === 'flow_changed' && this.formError) {
-				this.validationLocked = true;
-				this.formError.hidden = false;
-				this.formError.textContent = message;
+		const signal = this.validationAbort.signal;
+		const request = (async () => {
+			try {
+				const result = await this.api.validate(
+					this.manifest.flow.ref,
+					responses,
+					this.manifest.flow.effectiveAt,
+					this.locale,
+					signal
+				);
+				if (sequence !== this.validationSequence) return null;
+				this.lastValidation = result;
+				this.lastValidationFingerprint = fingerprint;
+				this.valid = result.valid === true;
+				this.validationLocked = false;
+				this.applyDefinitions(result.definitions || {});
+				this.renderIssues(result.issues || []);
+				if (this.flowType === 'determination') {
+					this.determinationActivity?.classList.remove('evaluating');
+					if (this.determinationActivity) this.determinationActivity.querySelector('span').textContent = this.copy.determinationAuto;
+					this.refreshDetermination();
+				}
 				this.updateSubmitState();
+				this.setStatus(this.valid ? 'ready' : 'idle', this.valid ? this.copy.ready : this.copy.incomplete);
+				this.emit('validation', { valid: this.valid, status: result.status, issues: result.issues || [] });
+				return result;
+			} catch (error) {
+				if (error?.name === 'AbortError') return null;
+				if (sequence !== this.validationSequence) return null;
+				this.valid = false;
+				this.updateSubmitState();
+				const message = errorMessage(error.code, this.copy.checkFailed);
+				this.setStatus('error', message);
+				if (error?.code === 'flow_changed' && this.formError) {
+					this.validationLocked = true;
+					this.formError.hidden = false;
+					this.formError.textContent = message;
+					this.updateSubmitState();
+				}
+				this.emit('error', { error });
+				return null;
 			}
-			this.emit('error', { error });
-			return null;
+		})();
+		this.validationPromise = request;
+		this.validationPromiseFingerprint = fingerprint;
+		try {
+			return await request;
+		} finally {
+			if (this.validationPromise === request) {
+				this.validationPromise = null;
+				this.validationPromiseFingerprint = '';
+				this.validationAbort = null;
+			}
 		}
 	}
 
@@ -1319,16 +1478,6 @@ export class ProseIDForm {
 	}
 
 	clearStaleFieldEvaluation(name) {
-		if (this.lastValidation?.issues) {
-			this.lastValidation = {
-				...this.lastValidation,
-				issues: this.lastValidation.issues.filter((issue) => issue?.field_id !== name),
-				definitions: {
-					...(this.lastValidation.definitions || {}),
-					[name]: this.manifest.schema?.definitions?.[name]
-				}
-			};
-		}
 		const field = this.fields.get(name);
 		if (!field) return;
 		field.error.textContent = '';
@@ -1338,6 +1487,7 @@ export class ProseIDForm {
 
 	shouldShow(issue) {
 		if (this.submittedAttempted) return true;
+		if (issue?.local === true && !isEmptyValue(this.fields.get(issue.field_id)?.definition, this.values[issue.field_id])) return true;
 		if (issue?.trigger === 'completion') return false;
 		if (issue?.trigger === 'correction') return this.blurred.has(issue.field_id);
 		return issue?.severity === 'warning' || issue?.severity === 'notice';
@@ -1465,7 +1615,6 @@ export class ProseIDForm {
 			this.guidedIndex = Math.max(0, this.visibleFields().findIndex(([fieldName]) => fieldName === name));
 			this.refreshGuided();
 		}
-		await Promise.resolve();
 		const field = this.fields.get(name);
 		field?.wrap?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
 		(field?.controls || [field?.control]).find((control) => control && control.type !== 'hidden')?.focus?.({ preventScroll: true });
