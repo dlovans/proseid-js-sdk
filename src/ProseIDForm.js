@@ -63,8 +63,7 @@ const humanizeText = (value) => {
 const humanizeChoice = (value) => humanizeText(value).split(' ')
 	.map((word) => CHOICE_ACRONYMS.get(word.toLocaleLowerCase()) ?? word)
 	.join(' ');
-const isEmptyValue = (definition, value) => value === undefined || value === null ||
-	((definition?.type === 'string' || definition?.type === 'select') && value === '');
+const isEmptyValue = (_definition, value) => value === undefined || value === null || value === '';
 const answerProvided = (definition, value) => {
 	if (definition?.type === 'attestation' && definition?.required === true) return value === true;
 	return !isEmptyValue(definition, value);
@@ -150,6 +149,17 @@ export class ProseIDForm {
 		this.target.dataset.proseidDensity = value.density;
 	}
 
+	progressEnabled() {
+		return this.options.showProgress !== false;
+	}
+
+	renderLedger(className = '') {
+		if (!this.progressEnabled()) return null;
+		const ledger = text('div', `ledger${className ? ` ${className}` : ''}`);
+		ledger.append(text('span', 'ledger-fill'));
+		return ledger;
+	}
+
 	installStyles() {
 		if ('adoptedStyleSheets' in this.shadow && typeof CSSStyleSheet !== 'undefined' && CSSStyleSheet.prototype.replaceSync) {
 			const sheet = new CSSStyleSheet();
@@ -169,9 +179,9 @@ export class ProseIDForm {
 		const shell = text('div', 'shell');
 		const skeleton = text('div', 'skeleton');
 		for (let i = 0; i < 6; i++) skeleton.append(text('div', 'skeleton-line'));
-		const ledger = text('div', 'ledger loading');
-		ledger.append(text('span', 'ledger-fill'));
-		shell.append(ledger, skeleton);
+		const ledger = this.renderLedger('loading');
+		if (ledger) shell.append(ledger);
+		shell.append(skeleton);
 		this.shadow.append(shell);
 	}
 
@@ -388,14 +398,16 @@ export class ProseIDForm {
 		else if (this.flowType === 'checklist') this.formNode.append(this.renderChecklist());
 		else this.formNode.append(this.fieldList, this.renderActions({ standardForm: true }));
 		body.append(this.formError, this.formNode);
-		this.progressNode = text('div', 'ledger');
-		this.progressNode.setAttribute('role', 'progressbar');
-		this.progressNode.setAttribute('aria-label', this.copy.answerProgress);
-		this.progressNode.setAttribute('aria-valuemin', '0');
-		this.progressNode.setAttribute('aria-valuemax', '100');
-		this.progressFill = text('span', 'ledger-fill');
-		this.progressNode.append(this.progressFill);
-		shell.append(this.progressNode, head, body);
+		this.progressNode = this.renderLedger();
+		this.progressFill = this.progressNode?.querySelector('.ledger-fill') || null;
+		if (this.progressNode) {
+			this.progressNode.setAttribute('role', 'progressbar');
+			this.progressNode.setAttribute('aria-label', this.copy.answerProgress);
+			this.progressNode.setAttribute('aria-valuemin', '0');
+			this.progressNode.setAttribute('aria-valuemax', '100');
+			shell.append(this.progressNode);
+		}
+		shell.append(head, body);
 		this.shadow.append(shell);
 		this.updateAnswerProgress();
 	}
@@ -486,7 +498,9 @@ export class ProseIDForm {
 			if (candidate !== field && candidate.wrap.parentNode !== this.guidedParking) this.guidedParking.append(candidate.wrap);
 		}
 		field.wrap.hidden = false;
-		this.guidedFieldSlot.replaceChildren(field.wrap);
+		if (this.guidedFieldSlot.childElementCount !== 1 || this.guidedFieldSlot.firstElementChild !== field.wrap) {
+			this.guidedFieldSlot.replaceChildren(field.wrap);
+		}
 		this.guidedIndexNode.replaceChildren(
 			text('span', '', this.copy.guidedProgress(this.guidedIndex + 1, entries.length)),
 			text('small', '', this.guidedIndex === entries.length - 1 ? this.copy.guidedReviewCue : this.copy.guidedContinueCue)
@@ -500,46 +514,88 @@ export class ProseIDForm {
 		this.guidedPath.replaceChildren();
 		const heading = text('div', 'guided-path-heading');
 		heading.append(text('span', '', this.copy.guidedPath), text('strong', '', `${this.guidedIndex + 1}/${entries.length}`));
-		const rail = text('div', 'guided-progress');
-		const fill = text('span', '');
-		fill.style.width = `${Math.round(((this.guidedIndex + 1) / entries.length) * 100)}%`;
-		rail.append(fill);
 		const list = document.createElement('ol');
-		entries.slice(0, this.guidedIndex).forEach(([entryName, entryField]) => {
+		entries.forEach(([entryName, entryField], index) => {
+			if (index === this.guidedIndex) {
+				const hasAnswer = answerProvided(entryField.definition, this.values[entryName]);
+				const active = text('li', hasAnswer ? 'active answered' : 'active');
+				const activeCopy = text('span', 'guided-path-copy');
+				activeCopy.append(text('strong', '', entryField.label), text('small', '', this.copy.guidedCurrent));
+				active.append(text('span', 'guided-marker', hasAnswer ? '✓' : ''), activeCopy);
+				list.append(active);
+				return;
+			}
+			if (!answerProvided(entryField.definition, this.values[entryName])) {
+				const future = text('li', 'remaining');
+				const futureCopy = text('span', 'guided-path-copy');
+				futureCopy.append(text('strong', '', entryField.label), text('small', '', this.copy.notAnswered));
+				future.append(text('span', 'guided-marker'), futureCopy);
+				list.append(future);
+				return;
+			}
 			const item = text('li', 'answered');
 			const button = text('button', 'guided-path-button');
 			button.type = 'button';
-			const copy = text('span', 'guided-path-copy');
-			copy.append(
+			const pathCopy = text('span', 'guided-path-copy');
+			pathCopy.append(
 				text('strong', '', entryField.label),
 				text('small', '', this.displayValue(this.values[entryName], entryField.definition))
 			);
-			button.append(text('span', 'guided-marker', '✓'), copy);
-			button.addEventListener('click', () => {
-				this.guidedIndex = entries.findIndex(([name]) => name === entryName);
-				this.guidedPhase = 'questions';
-				this.refreshGuided();
+			button.append(text('span', 'guided-marker', '✓'), pathCopy);
+			let navigatedOnPointerDown = false;
+			button.addEventListener('pointerdown', (event) => {
+				if (event.button !== 0) return;
+				navigatedOnPointerDown = true;
+				event.preventDefault();
+				this.goToGuidedQuestion(entryName);
+			});
+			button.addEventListener('click', (event) => {
+				event.preventDefault();
+				if (navigatedOnPointerDown) {
+					navigatedOnPointerDown = false;
+					return;
+				}
+				this.goToGuidedQuestion(entryName);
 			});
 			item.append(button);
 			list.append(item);
 		});
-		const active = text('li', 'active');
-		const activeCopy = text('span', 'guided-path-copy');
-		activeCopy.append(text('strong', '', field.label), text('small', '', this.copy.guidedCurrent));
-		active.append(text('span', 'guided-marker'), activeCopy);
-		list.append(active);
-		const remaining = entries.length - this.guidedIndex - 1;
-		if (remaining > 0) {
-			const future = text('li', 'remaining');
-			const futureCopy = text('span', 'guided-path-copy');
-			futureCopy.append(text('strong', '', this.copy.guidedRemaining(remaining)), text('small', '', this.copy.guidedUpdated));
-			future.append(text('span', 'guided-marker'), futureCopy);
-			list.append(future);
+		this.guidedPath.append(heading);
+		if (this.progressEnabled()) {
+			const rail = text('div', 'guided-progress');
+			const fill = text('span', '');
+			const answered = entries.filter(([name, candidate]) => answerProvided(candidate.definition, this.values[name])).length;
+			fill.style.width = `${Math.round((answered / entries.length) * 100)}%`;
+			rail.append(fill);
+			this.guidedPath.append(rail);
 		}
-		this.guidedPath.append(heading, rail, list);
+		this.guidedPath.append(list);
 		requestAnimationFrame(() => {
 			const active = list.querySelector('.active');
 			if (active && list.scrollHeight > list.clientHeight) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+		});
+	}
+
+	goToGuidedQuestion(name) {
+		clearTimeout(this.validationTimer);
+		this.validationSequence += 1;
+		this.validationAbort?.abort();
+		this.validationAbort = null;
+		const entries = this.visibleFields();
+		const index = entries.findIndex(([entryName]) => entryName === name);
+		if (index < 0) return;
+		this.guidedChecking = false;
+		this.guidedPhase = 'questions';
+		this.guidedIndex = index;
+		this.guidedReview.hidden = true;
+		this.guidedQuestion.hidden = false;
+		this.guidedPath.hidden = false;
+		this.refreshGuided();
+		requestAnimationFrame(() => {
+			const field = this.fields.get(name);
+			const controls = field?.controls || [field?.control];
+			(controls.find((control) => control?.checked) || controls.find((control) => control && control.type !== 'hidden'))
+				?.focus?.({ preventScroll: true });
 		});
 	}
 
@@ -606,16 +662,13 @@ export class ProseIDForm {
 		const head = text('header', 'review-head');
 		head.append(text('span', 'eyebrow', this.copy.finalCheck), text('h2', '', this.copy.reviewTitle), text('p', '', this.copy.reviewHelp));
 		const list = text('div', 'review-list');
-		this.visibleFields().forEach(([name, field], index) => {
+		this.visibleFields().forEach(([name, field]) => {
 			const row = text('div', 'review-row');
 			const answer = text('span', 'review-answer');
 			answer.append(text('small', '', field.label), text('strong', '', this.displayValue(this.values[name], field.definition)));
 			const change = text('button', 'review-change', this.copy.changeAnswer);
 			change.type = 'button';
-			change.addEventListener('click', () => {
-				this.guidedIndex = index;
-				this.guidedPrevious();
-			});
+			change.addEventListener('click', () => this.goToGuidedQuestion(name));
 			row.append(answer, change);
 			list.append(row);
 		});
@@ -702,11 +755,13 @@ export class ProseIDForm {
 			text('strong', '', `${reviewed}/${names.length}`),
 			text('span', '', this.copy.checklistProgress(reviewed, names.length))
 		);
-		const rail = text('div', 'checklist-progress-rail');
-		const fill = text('i', '');
-		fill.style.width = `${names.length ? Math.round((reviewed / names.length) * 100) : 100}%`;
-		rail.append(fill);
-		this.checklistProgress.append(rail);
+		if (this.progressEnabled()) {
+			const rail = text('div', 'checklist-progress-rail');
+			const fill = text('i', '');
+			fill.style.width = `${names.length ? Math.round((reviewed / names.length) * 100) : 100}%`;
+			rail.append(fill);
+			this.checklistProgress.append(rail);
+		}
 	}
 
 	updateSubmitState() {
@@ -1485,9 +1540,8 @@ export class ProseIDForm {
 		} else if (this.manifest.capabilities?.receiptEmail !== false) {
 			complete.append(this.renderReceiptEmail(result));
 		}
-		const ledger = text('div', 'ledger complete');
-		ledger.append(text('span', 'ledger-fill'));
-		shell.replaceChildren(ledger, complete);
+		const ledger = this.renderLedger('complete');
+		shell.replaceChildren(...(ledger ? [ledger, complete] : [complete]));
 		if (this.options.autoFocusCompletion !== false) {
 			requestAnimationFrame(() => {
 				if (this.destroyed) return;
@@ -1619,9 +1673,9 @@ export class ProseIDForm {
 		const complete = text('div', 'completion-view');
 		complete.append(text('div', 'seal', '!'), text('h2', '', this.copy.formUnavailable));
 		complete.append(text('p', '', errorMessage(error?.code, error?.message)));
-		const ledger = text('div', 'ledger');
-		ledger.append(text('span', 'ledger-fill'));
-		shell.append(ledger, complete);
+		const ledger = this.renderLedger();
+		if (ledger) shell.append(ledger);
+		shell.append(complete);
 		this.shadow.append(shell);
 	}
 

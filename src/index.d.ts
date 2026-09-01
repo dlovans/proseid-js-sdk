@@ -59,6 +59,8 @@ export interface MountOptions {
 	title?: string;
 	/** Bring the completion and optional receipt-email panel into view. Defaults to true. */
 	autoFocusCompletion?: boolean;
+	/** Show the top answer-progress rail and flow-specific progress rails. Defaults to true. */
+	showProgress?: boolean;
 	onReady?: (detail: { manifest: EmbedManifest }) => void;
 	onChange?: (detail: { name: string; value: unknown; values: Record<string, unknown> }) => void;
 	onValidation?: (detail: { valid: boolean; status: string; issues: unknown[] }) => void;

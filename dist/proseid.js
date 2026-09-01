@@ -34,7 +34,7 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.10.8";
+var VERSION = "0.10.9";
 
 // src/presentation.js
 var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
@@ -196,6 +196,8 @@ var styles = `
 	--proseid-field-gap: 18px;
 	--proseid-font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	display: block;
+	min-width: 0;
+	max-width: 100%;
 	container-type: inline-size;
 	color: var(--proseid-ink);
 	font-family: var(--proseid-font);
@@ -207,12 +209,13 @@ var styles = `
 :host([data-proseid-density="compact"]) { --proseid-head-pad-y: 18px; --proseid-head-pad-x: 20px; --proseid-body-pad: 20px; --proseid-field-gap: 13px; }
 * { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; }
-.shell { overflow: visible; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); box-shadow: 0 18px 55px rgba(22, 25, 23, .08); }
-.ledger { position: sticky; z-index: 45; top: var(--proseid-sticky-offset, 0px); height: 4px; overflow: hidden; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; background: var(--proseid-rule); box-shadow: 0 1px 0 color-mix(in srgb, var(--proseid-rule) 72%, transparent); }
-.ledger-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--proseid-accent); transition: width .22s ease; }
+.shell { position: relative; width: 100%; min-width: 0; max-width: 100%; overflow: visible; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); box-shadow: 0 18px 55px rgba(22, 25, 23, .08); }
+.ledger { position: absolute; z-index: 2; top: -1px; right: -1px; left: -1px; height: max(4px, var(--proseid-radius)); overflow: hidden; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; pointer-events: none; }
+.ledger::before { position: absolute; top: 0; right: 0; left: 0; height: 4px; background: var(--proseid-rule); box-shadow: 0 1px 0 color-mix(in srgb, var(--proseid-rule) 72%, transparent); content: ''; }
+.ledger-fill { position: relative; z-index: 1; display: block; width: 0; height: 4px; background: var(--proseid-accent); transition: width .22s ease; }
 .ledger.loading .ledger-fill { width: 34%; animation: ledger-loading 1.15s ease-in-out infinite alternate; }
-.ledger.complete { position: static; }
 .ledger.complete .ledger-fill { width: 100%; }
+.head, .body, form, .fields, .field, .guided, .guided-layout, .guided-question, .determination, .determination-layout, .determination-facts, .checklist, .checklist-section, .actions { min-width: 0; max-width: 100%; }
 .head { padding: var(--proseid-head-pad-y) var(--proseid-head-pad-x) calc(var(--proseid-head-pad-y) - 2px); border-bottom: 1px solid var(--proseid-rule); }
 .brands { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 25px; }
 .respondent-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
@@ -352,8 +355,12 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .guided-path-heading strong { color: var(--proseid-ink); font: 500 17px/1 Georgia, serif; letter-spacing: 0; }
 .guided-progress { height: 3px; margin: 12px 0 17px; overflow: hidden; border-radius: 2px; background: var(--proseid-rule); }
 .guided-progress span { display: block; height: 100%; border-radius: inherit; background: var(--proseid-accent); transition: width .2s ease; }
-.guided-path ol { display: grid; max-height: min(48dvh, 440px); gap: 3px; overflow-y: auto; margin: 0; padding: 0 7px 0 0; list-style: none; scrollbar-width: thin; scrollbar-color: var(--proseid-rule) transparent; }
-.guided-path-button { display: grid; width: 100%; grid-template-columns: auto minmax(0, 1fr); gap: 8px; border: 0; background: transparent; padding: 6px 0; color: var(--proseid-muted); text-align: left; cursor: pointer; }
+.guided-path ol { display: grid; max-height: min(48dvh, 440px); gap: 3px; overflow-y: auto; margin: 0; padding: 2px 7px 2px 2px; list-style: none; scrollbar-width: thin; scrollbar-color: var(--proseid-rule) transparent; }
+.guided-path li { min-width: 0; }
+.guided-path li + li { margin-top: 4px; }
+.guided-path li.active, .guided-path li.remaining, .guided-path-button { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 9px; }
+.guided-path li.active, .guided-path li.remaining { padding: 6px 0; }
+.guided-path-button { width: 100%; border: 0; background: transparent; padding: 6px 0; color: var(--proseid-muted); text-align: left; cursor: pointer; }
 .guided-path-button:disabled { cursor: default; }
 .guided-marker { display: grid; width: 17px; height: 17px; place-items: center; border: 1px solid var(--proseid-rule); border-radius: 50%; color: var(--proseid-surface); font-size: 9px; }
 .answered .guided-marker { border-color: var(--proseid-success); background: var(--proseid-success); }
@@ -407,7 +414,9 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .checklist-context-grid .field:has(textarea) { grid-column: 1 / -1; }
 .checklist-control-list { display: grid; gap: 10px; }
 .checklist-control-list .field { border: 1px solid var(--proseid-rule); border-radius: var(--proseid-control-radius); background: var(--proseid-surface); padding: 15px; }
-.checklist-control-list .check { border: 0; padding: 0; }
+.checklist-control-list .field:has(.check-row) { padding: 10px 12px; }
+.checklist-control-list .check { min-height: 44px; border: 0; padding: 0; }
+.checklist-control-list .error:empty { display: none; }
 .checklist-boolean { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .checklist-boolean-copy { display: flex; min-width: 0; align-items: center; gap: 7px; }
 .boolean-choice { display: inline-flex; flex: 0 0 auto; gap: 2px; border: 1px solid var(--proseid-rule); border-radius: 10px; background: var(--proseid-canvas); padding: 3px; }
@@ -1002,7 +1011,7 @@ var humanizeText = (value) => {
   return spaced.charAt(0).toLocaleUpperCase() + spaced.slice(1);
 };
 var humanizeChoice = (value) => humanizeText(value).split(" ").map((word) => CHOICE_ACRONYMS.get(word.toLocaleLowerCase()) ?? word).join(" ");
-var isEmptyValue = (definition, value) => value === void 0 || value === null || (definition?.type === "string" || definition?.type === "select") && value === "";
+var isEmptyValue = (_definition, value) => value === void 0 || value === null || value === "";
 var answerProvided = (definition, value) => {
   if (definition?.type === "attestation" && definition?.required === true) return value === true;
   return !isEmptyValue(definition, value);
@@ -1085,6 +1094,15 @@ var ProseIDForm = class {
     this.target.dataset.proseidShell = value.shell;
     this.target.dataset.proseidDensity = value.density;
   }
+  progressEnabled() {
+    return this.options.showProgress !== false;
+  }
+  renderLedger(className = "") {
+    if (!this.progressEnabled()) return null;
+    const ledger = text("div", `ledger${className ? ` ${className}` : ""}`);
+    ledger.append(text("span", "ledger-fill"));
+    return ledger;
+  }
   installStyles() {
     if ("adoptedStyleSheets" in this.shadow && typeof CSSStyleSheet !== "undefined" && CSSStyleSheet.prototype.replaceSync) {
       const sheet = new CSSStyleSheet();
@@ -1103,9 +1121,9 @@ var ProseIDForm = class {
     const shell = text("div", "shell");
     const skeleton = text("div", "skeleton");
     for (let i = 0; i < 6; i++) skeleton.append(text("div", "skeleton-line"));
-    const ledger = text("div", "ledger loading");
-    ledger.append(text("span", "ledger-fill"));
-    shell.append(ledger, skeleton);
+    const ledger = this.renderLedger("loading");
+    if (ledger) shell.append(ledger);
+    shell.append(skeleton);
     this.shadow.append(shell);
   }
   async load() {
@@ -1310,14 +1328,16 @@ var ProseIDForm = class {
     else if (this.flowType === "checklist") this.formNode.append(this.renderChecklist());
     else this.formNode.append(this.fieldList, this.renderActions({ standardForm: true }));
     body.append(this.formError, this.formNode);
-    this.progressNode = text("div", "ledger");
-    this.progressNode.setAttribute("role", "progressbar");
-    this.progressNode.setAttribute("aria-label", this.copy.answerProgress);
-    this.progressNode.setAttribute("aria-valuemin", "0");
-    this.progressNode.setAttribute("aria-valuemax", "100");
-    this.progressFill = text("span", "ledger-fill");
-    this.progressNode.append(this.progressFill);
-    shell.append(this.progressNode, head, body);
+    this.progressNode = this.renderLedger();
+    this.progressFill = this.progressNode?.querySelector(".ledger-fill") || null;
+    if (this.progressNode) {
+      this.progressNode.setAttribute("role", "progressbar");
+      this.progressNode.setAttribute("aria-label", this.copy.answerProgress);
+      this.progressNode.setAttribute("aria-valuemin", "0");
+      this.progressNode.setAttribute("aria-valuemax", "100");
+      shell.append(this.progressNode);
+    }
+    shell.append(head, body);
     this.shadow.append(shell);
     this.updateAnswerProgress();
   }
@@ -1399,7 +1419,9 @@ var ProseIDForm = class {
       if (candidate !== field && candidate.wrap.parentNode !== this.guidedParking) this.guidedParking.append(candidate.wrap);
     }
     field.wrap.hidden = false;
-    this.guidedFieldSlot.replaceChildren(field.wrap);
+    if (this.guidedFieldSlot.childElementCount !== 1 || this.guidedFieldSlot.firstElementChild !== field.wrap) {
+      this.guidedFieldSlot.replaceChildren(field.wrap);
+    }
     this.guidedIndexNode.replaceChildren(
       text("span", "", this.copy.guidedProgress(this.guidedIndex + 1, entries.length)),
       text("small", "", this.guidedIndex === entries.length - 1 ? this.copy.guidedReviewCue : this.copy.guidedContinueCue)
@@ -1412,46 +1434,86 @@ var ProseIDForm = class {
     this.guidedPath.replaceChildren();
     const heading = text("div", "guided-path-heading");
     heading.append(text("span", "", this.copy.guidedPath), text("strong", "", `${this.guidedIndex + 1}/${entries.length}`));
-    const rail = text("div", "guided-progress");
-    const fill = text("span", "");
-    fill.style.width = `${Math.round((this.guidedIndex + 1) / entries.length * 100)}%`;
-    rail.append(fill);
     const list = document.createElement("ol");
-    entries.slice(0, this.guidedIndex).forEach(([entryName, entryField]) => {
+    entries.forEach(([entryName, entryField], index) => {
+      if (index === this.guidedIndex) {
+        const hasAnswer = answerProvided(entryField.definition, this.values[entryName]);
+        const active = text("li", hasAnswer ? "active answered" : "active");
+        const activeCopy = text("span", "guided-path-copy");
+        activeCopy.append(text("strong", "", entryField.label), text("small", "", this.copy.guidedCurrent));
+        active.append(text("span", "guided-marker", hasAnswer ? "\u2713" : ""), activeCopy);
+        list.append(active);
+        return;
+      }
+      if (!answerProvided(entryField.definition, this.values[entryName])) {
+        const future = text("li", "remaining");
+        const futureCopy = text("span", "guided-path-copy");
+        futureCopy.append(text("strong", "", entryField.label), text("small", "", this.copy.notAnswered));
+        future.append(text("span", "guided-marker"), futureCopy);
+        list.append(future);
+        return;
+      }
       const item = text("li", "answered");
       const button = text("button", "guided-path-button");
       button.type = "button";
-      const copy = text("span", "guided-path-copy");
-      copy.append(
+      const pathCopy = text("span", "guided-path-copy");
+      pathCopy.append(
         text("strong", "", entryField.label),
         text("small", "", this.displayValue(this.values[entryName], entryField.definition))
       );
-      button.append(text("span", "guided-marker", "\u2713"), copy);
-      button.addEventListener("click", () => {
-        this.guidedIndex = entries.findIndex(([name]) => name === entryName);
-        this.guidedPhase = "questions";
-        this.refreshGuided();
+      button.append(text("span", "guided-marker", "\u2713"), pathCopy);
+      let navigatedOnPointerDown = false;
+      button.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        navigatedOnPointerDown = true;
+        event.preventDefault();
+        this.goToGuidedQuestion(entryName);
+      });
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        if (navigatedOnPointerDown) {
+          navigatedOnPointerDown = false;
+          return;
+        }
+        this.goToGuidedQuestion(entryName);
       });
       item.append(button);
       list.append(item);
     });
-    const active = text("li", "active");
-    const activeCopy = text("span", "guided-path-copy");
-    activeCopy.append(text("strong", "", field.label), text("small", "", this.copy.guidedCurrent));
-    active.append(text("span", "guided-marker"), activeCopy);
-    list.append(active);
-    const remaining = entries.length - this.guidedIndex - 1;
-    if (remaining > 0) {
-      const future = text("li", "remaining");
-      const futureCopy = text("span", "guided-path-copy");
-      futureCopy.append(text("strong", "", this.copy.guidedRemaining(remaining)), text("small", "", this.copy.guidedUpdated));
-      future.append(text("span", "guided-marker"), futureCopy);
-      list.append(future);
+    this.guidedPath.append(heading);
+    if (this.progressEnabled()) {
+      const rail = text("div", "guided-progress");
+      const fill = text("span", "");
+      const answered = entries.filter(([name, candidate]) => answerProvided(candidate.definition, this.values[name])).length;
+      fill.style.width = `${Math.round(answered / entries.length * 100)}%`;
+      rail.append(fill);
+      this.guidedPath.append(rail);
     }
-    this.guidedPath.append(heading, rail, list);
+    this.guidedPath.append(list);
     requestAnimationFrame(() => {
-      const active2 = list.querySelector(".active");
-      if (active2 && list.scrollHeight > list.clientHeight) active2.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      const active = list.querySelector(".active");
+      if (active && list.scrollHeight > list.clientHeight) active.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  }
+  goToGuidedQuestion(name) {
+    clearTimeout(this.validationTimer);
+    this.validationSequence += 1;
+    this.validationAbort?.abort();
+    this.validationAbort = null;
+    const entries = this.visibleFields();
+    const index = entries.findIndex(([entryName]) => entryName === name);
+    if (index < 0) return;
+    this.guidedChecking = false;
+    this.guidedPhase = "questions";
+    this.guidedIndex = index;
+    this.guidedReview.hidden = true;
+    this.guidedQuestion.hidden = false;
+    this.guidedPath.hidden = false;
+    this.refreshGuided();
+    requestAnimationFrame(() => {
+      const field = this.fields.get(name);
+      const controls = field?.controls || [field?.control];
+      (controls.find((control) => control?.checked) || controls.find((control) => control && control.type !== "hidden"))?.focus?.({ preventScroll: true });
     });
   }
   async guidedContinue() {
@@ -1515,16 +1577,13 @@ var ProseIDForm = class {
     const head = text("header", "review-head");
     head.append(text("span", "eyebrow", this.copy.finalCheck), text("h2", "", this.copy.reviewTitle), text("p", "", this.copy.reviewHelp));
     const list = text("div", "review-list");
-    this.visibleFields().forEach(([name, field], index) => {
+    this.visibleFields().forEach(([name, field]) => {
       const row = text("div", "review-row");
       const answer = text("span", "review-answer");
       answer.append(text("small", "", field.label), text("strong", "", this.displayValue(this.values[name], field.definition)));
       const change = text("button", "review-change", this.copy.changeAnswer);
       change.type = "button";
-      change.addEventListener("click", () => {
-        this.guidedIndex = index;
-        this.guidedPrevious();
-      });
+      change.addEventListener("click", () => this.goToGuidedQuestion(name));
       row.append(answer, change);
       list.append(row);
     });
@@ -1602,11 +1661,13 @@ var ProseIDForm = class {
       text("strong", "", `${reviewed}/${names.length}`),
       text("span", "", this.copy.checklistProgress(reviewed, names.length))
     );
-    const rail = text("div", "checklist-progress-rail");
-    const fill = text("i", "");
-    fill.style.width = `${names.length ? Math.round(reviewed / names.length * 100) : 100}%`;
-    rail.append(fill);
-    this.checklistProgress.append(rail);
+    if (this.progressEnabled()) {
+      const rail = text("div", "checklist-progress-rail");
+      const fill = text("i", "");
+      fill.style.width = `${names.length ? Math.round(reviewed / names.length * 100) : 100}%`;
+      rail.append(fill);
+      this.checklistProgress.append(rail);
+    }
   }
   updateSubmitState() {
     if (!this.submitButton) return;
@@ -2352,9 +2413,8 @@ var ProseIDForm = class {
     } else if (this.manifest.capabilities?.receiptEmail !== false) {
       complete.append(this.renderReceiptEmail(result));
     }
-    const ledger = text("div", "ledger complete");
-    ledger.append(text("span", "ledger-fill"));
-    shell.replaceChildren(ledger, complete);
+    const ledger = this.renderLedger("complete");
+    shell.replaceChildren(...ledger ? [ledger, complete] : [complete]);
     if (this.options.autoFocusCompletion !== false) {
       requestAnimationFrame(() => {
         if (this.destroyed) return;
@@ -2475,9 +2535,9 @@ var ProseIDForm = class {
     const complete = text("div", "completion-view");
     complete.append(text("div", "seal", "!"), text("h2", "", this.copy.formUnavailable));
     complete.append(text("p", "", errorMessage(error?.code, error?.message)));
-    const ledger = text("div", "ledger");
-    ledger.append(text("span", "ledger-fill"));
-    shell.append(ledger, complete);
+    const ledger = this.renderLedger();
+    if (ledger) shell.append(ledger);
+    shell.append(complete);
     this.shadow.append(shell);
   }
   emit(name, detail) {

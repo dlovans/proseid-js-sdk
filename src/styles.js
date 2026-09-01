@@ -22,6 +22,8 @@ export const styles = `
 	--proseid-field-gap: 18px;
 	--proseid-font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	display: block;
+	min-width: 0;
+	max-width: 100%;
 	container-type: inline-size;
 	color: var(--proseid-ink);
 	font-family: var(--proseid-font);
@@ -33,12 +35,13 @@ export const styles = `
 :host([data-proseid-density="compact"]) { --proseid-head-pad-y: 18px; --proseid-head-pad-x: 20px; --proseid-body-pad: 20px; --proseid-field-gap: 13px; }
 * { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; }
-.shell { overflow: visible; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); box-shadow: 0 18px 55px rgba(22, 25, 23, .08); }
-.ledger { position: sticky; z-index: 45; top: var(--proseid-sticky-offset, 0px); height: 4px; overflow: hidden; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; background: var(--proseid-rule); box-shadow: 0 1px 0 color-mix(in srgb, var(--proseid-rule) 72%, transparent); }
-.ledger-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--proseid-accent); transition: width .22s ease; }
+.shell { position: relative; width: 100%; min-width: 0; max-width: 100%; overflow: visible; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); box-shadow: 0 18px 55px rgba(22, 25, 23, .08); }
+.ledger { position: absolute; z-index: 2; top: -1px; right: -1px; left: -1px; height: max(4px, var(--proseid-radius)); overflow: hidden; border-radius: var(--proseid-radius) var(--proseid-radius) 0 0; pointer-events: none; }
+.ledger::before { position: absolute; top: 0; right: 0; left: 0; height: 4px; background: var(--proseid-rule); box-shadow: 0 1px 0 color-mix(in srgb, var(--proseid-rule) 72%, transparent); content: ''; }
+.ledger-fill { position: relative; z-index: 1; display: block; width: 0; height: 4px; background: var(--proseid-accent); transition: width .22s ease; }
 .ledger.loading .ledger-fill { width: 34%; animation: ledger-loading 1.15s ease-in-out infinite alternate; }
-.ledger.complete { position: static; }
 .ledger.complete .ledger-fill { width: 100%; }
+.head, .body, form, .fields, .field, .guided, .guided-layout, .guided-question, .determination, .determination-layout, .determination-facts, .checklist, .checklist-section, .actions { min-width: 0; max-width: 100%; }
 .head { padding: var(--proseid-head-pad-y) var(--proseid-head-pad-x) calc(var(--proseid-head-pad-y) - 2px); border-bottom: 1px solid var(--proseid-rule); }
 .brands { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 25px; }
 .respondent-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
@@ -178,8 +181,12 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .guided-path-heading strong { color: var(--proseid-ink); font: 500 17px/1 Georgia, serif; letter-spacing: 0; }
 .guided-progress { height: 3px; margin: 12px 0 17px; overflow: hidden; border-radius: 2px; background: var(--proseid-rule); }
 .guided-progress span { display: block; height: 100%; border-radius: inherit; background: var(--proseid-accent); transition: width .2s ease; }
-.guided-path ol { display: grid; max-height: min(48dvh, 440px); gap: 3px; overflow-y: auto; margin: 0; padding: 0 7px 0 0; list-style: none; scrollbar-width: thin; scrollbar-color: var(--proseid-rule) transparent; }
-.guided-path-button { display: grid; width: 100%; grid-template-columns: auto minmax(0, 1fr); gap: 8px; border: 0; background: transparent; padding: 6px 0; color: var(--proseid-muted); text-align: left; cursor: pointer; }
+.guided-path ol { display: grid; max-height: min(48dvh, 440px); gap: 3px; overflow-y: auto; margin: 0; padding: 2px 7px 2px 2px; list-style: none; scrollbar-width: thin; scrollbar-color: var(--proseid-rule) transparent; }
+.guided-path li { min-width: 0; }
+.guided-path li + li { margin-top: 4px; }
+.guided-path li.active, .guided-path li.remaining, .guided-path-button { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 9px; }
+.guided-path li.active, .guided-path li.remaining { padding: 6px 0; }
+.guided-path-button { width: 100%; border: 0; background: transparent; padding: 6px 0; color: var(--proseid-muted); text-align: left; cursor: pointer; }
 .guided-path-button:disabled { cursor: default; }
 .guided-marker { display: grid; width: 17px; height: 17px; place-items: center; border: 1px solid var(--proseid-rule); border-radius: 50%; color: var(--proseid-surface); font-size: 9px; }
 .answered .guided-marker { border-color: var(--proseid-success); background: var(--proseid-success); }
@@ -233,7 +240,9 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .checklist-context-grid .field:has(textarea) { grid-column: 1 / -1; }
 .checklist-control-list { display: grid; gap: 10px; }
 .checklist-control-list .field { border: 1px solid var(--proseid-rule); border-radius: var(--proseid-control-radius); background: var(--proseid-surface); padding: 15px; }
-.checklist-control-list .check { border: 0; padding: 0; }
+.checklist-control-list .field:has(.check-row) { padding: 10px 12px; }
+.checklist-control-list .check { min-height: 44px; border: 0; padding: 0; }
+.checklist-control-list .error:empty { display: none; }
 .checklist-boolean { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .checklist-boolean-copy { display: flex; min-width: 0; align-items: center; gap: 7px; }
 .boolean-choice { display: inline-flex; flex: 0 0 auto; gap: 2px; border: 1px solid var(--proseid-rule); border-radius: 10px; background: var(--proseid-canvas); padding: 3px; }

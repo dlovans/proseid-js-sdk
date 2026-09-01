@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, mountTest } from '../src/index.js';
 import { EmbedApi } from '../src/api.js';
+import { styles } from '../src/styles.js';
 import { THEME_NAMES } from '../src/themes.js';
 import { VERSION } from '../src/version.js';
 
@@ -63,6 +64,77 @@ describe('ProseID SDK', () => {
 		country.dispatchEvent(new Event('change', { bubbles: true }));
 		expect(progress.getAttribute('aria-valuenow')).toBe('100');
 		expect(root.querySelector('.ledger-fill').style.width).toBe('100%');
+	});
+
+	it('keeps the progress rail on the Flow edge and allows hosts to hide it', async () => {
+		expect(styles).toContain('.ledger { position: absolute;');
+		expect(styles).toContain('top: -1px; right: -1px; left: -1px;');
+		expect(styles).toContain('height: max(4px, var(--proseid-radius));');
+		expect(styles).not.toContain('.ledger { position: sticky;');
+		expect(styles).toContain('padding: 2px 7px 2px 2px;');
+		expect(styles).toContain('.checklist-control-list .check { min-height: 44px;');
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(manifest))
+			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch, showProgress: false });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		expect(root.querySelector('.ledger')).toBeNull();
+		expect(root.querySelector('h1').textContent).toBe('Client intake');
+	});
+
+	it('renders every input variant and counts only non-empty answers', async () => {
+		const fieldManifest = {
+			...manifest,
+			schema: { definitions: {
+				short_text: { type: 'string', label: 'Short text', required: true, min_length: 2, max_length: 80, pattern: '.+' },
+				long_text: { type: 'string', label: 'Long text', required: true, multiline: true },
+				email: { type: 'string', format: 'email', label: 'Email', required: true },
+				quantity: { type: 'number', label: 'Quantity', required: true, min: 1, max: 10, step: 1 },
+				budget: { type: 'currency', label: 'Budget', required: true, min: 0 },
+				country: { type: 'select', label: 'Country', required: true, options: [{ value: 'se', label: 'Sweden' }] },
+				date: { type: 'date', label: 'Date', required: true, min: '2025-01-01', max: '2030-12-31' },
+				active: { type: 'boolean', label: 'Active', required: true },
+				confirm: { type: 'attestation', statement: 'Confirm', required: true }
+			} }
+		};
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(fieldManifest))
+			.mockImplementation(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: fieldManifest.schema.definitions, issues: [] }));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch, validateDelay: 100000 });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		const progress = root.querySelector('.ledger[role="progressbar"]');
+		expect(progress.getAttribute('aria-valuetext')).toBe('0 of 9');
+		expect(root.querySelector('input[name="short_text"]').type).toBe('text');
+		expect(root.querySelector('input[name="short_text"]').minLength).toBe(2);
+		expect(root.querySelector('input[name="short_text"]').maxLength).toBe(80);
+		expect(root.querySelector('input[name="short_text"]').pattern).toBe('.+');
+		expect(root.querySelector('textarea[name="long_text"]')).not.toBeNull();
+		expect(root.querySelector('input[name="email"]').type).toBe('email');
+		expect(root.querySelector('input[name="quantity"]').type).toBe('number');
+		expect(root.querySelector('input[name="quantity"]').step).toBe('1');
+		expect(root.querySelector('input[name="budget"]').type).toBe('number');
+		expect(root.querySelector('input[name="budget"]').step).toBe('0.01');
+		expect(root.querySelector('select[name="country"] option:last-child').textContent).toBe('Sweden');
+		expect(root.querySelector('input[name="date"]').type).toBe('text');
+		expect(root.querySelectorAll('input[type="radio"][name="active"]')).toHaveLength(2);
+		expect(root.querySelector('input[name="confirm"]').getAttribute('role')).toBe('switch');
+
+		const quantity = root.querySelector('input[name="quantity"]');
+		quantity.value = '3';
+		quantity.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(instance.values.quantity).toBe(3);
+		expect(progress.getAttribute('aria-valuetext')).toBe('1 of 9');
+		quantity.value = '';
+		quantity.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(instance.values.quantity).toBe('');
+		expect(progress.getAttribute('aria-valuetext')).toBe('0 of 9');
+
+		const date = root.querySelector('input[name="date"]');
+		date.value = '';
+		date.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(progress.getAttribute('aria-valuetext')).toBe('0 of 9');
 	});
 
 	it('requires a browser-safe publishable key', () => {
@@ -478,21 +550,35 @@ describe('ProseID SDK', () => {
 				definitions: { ...guided.schema.definitions, assessment: { ...guided.schema.definitions.assessment, value: 'Eligible' } }, issues
 			});
 		});
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_guided_12345678', fetch, validateDelay: 100000 });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_guided_12345678', fetch, validateDelay: 100000, showProgress: false });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
+		expect(root.querySelector('.guided-progress')).toBeNull();
+		expect(root.querySelector('.guided-index').textContent).toContain('Question 1 of 2');
 		expect(root.querySelectorAll('.guided-path ol > li')).toHaveLength(2);
-		expect(root.querySelector('.guided-path .remaining').textContent).toContain('1 remaining');
+		expect(root.querySelector('.guided-path .remaining').textContent).toContain('Country');
+		expect(root.querySelector('.guided-path .remaining').textContent).toContain('Not answered');
 		expect(root.querySelector('.guided-index small').textContent).toContain('Continue when this answer looks right');
 		const name = root.querySelector('input[name="name"]');
+		name.focus();
 		name.value = 'Ada Lovelace';
 		name.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(root.activeElement).toBe(name);
+		expect(root.querySelector('.guided-path .active').classList.contains('answered')).toBe(true);
+		expect(root.querySelector('.guided-path .active .guided-marker').textContent).toBe('✓');
 		root.querySelector('.guided-navigation .primary-action').click();
 		await vi.waitFor(() => {
 			expect(instance.guidedIndex).toBe(1);
 			expect(root.querySelector('.guided-navigation .primary-action').disabled).toBe(true);
 			expect(root.querySelector('.guided-requirement').hidden).toBe(false);
 		});
+		const previousAnswer = root.querySelector('.guided-path .answered .guided-path-button');
+		previousAnswer.click();
+		expect(instance.guidedIndex).toBe(0);
+		expect(root.querySelector('input[name="name"]').value).toBe('Ada Lovelace');
+		expect(root.querySelector('.guided-path .active').classList.contains('answered')).toBe(true);
+		root.querySelector('.guided-navigation .primary-action').click();
+		await vi.waitFor(() => expect(instance.guidedIndex).toBe(1));
 		const country = root.querySelector('select[name="country"]');
 		country.value = 'Sweden';
 		country.dispatchEvent(new Event('change', { bubbles: true }));
@@ -501,6 +587,18 @@ describe('ProseID SDK', () => {
 		expect(root.querySelector('.review-list').textContent).toContain('Ada Lovelace');
 		expect(root.textContent).not.toContain('Eligible');
 		expect(root.querySelector('.guided-review .submit').disabled).toBe(false);
+		root.querySelector('.review-change').click();
+		expect(instance.guidedIndex).toBe(0);
+		expect(instance.values.country).toBe('Sweden');
+		expect(root.querySelector('.guided-path .active').classList.contains('answered')).toBe(true);
+		const countryAnswer = [...root.querySelectorAll('.guided-path .answered .guided-path-button')]
+			.find((button) => button.textContent.includes('Country'));
+		expect(countryAnswer).toBeDefined();
+		countryAnswer.click();
+		expect(instance.guidedIndex).toBe(1);
+		expect(root.querySelector('select[name="country"]').value).toBe('Sweden');
+		root.querySelector('.guided-navigation .primary-action').click();
+		await vi.waitFor(() => expect(root.querySelector('.guided-review').hidden).toBe(false));
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(root.textContent).toContain('Audit record guided_record'));
 		expect(root.querySelector('.recorded-result').textContent).toContain('Eligible');
@@ -585,10 +683,11 @@ describe('ProseID SDK', () => {
 			const valid = Boolean(payload.responses.reviewer) && payload.responses.confirmed === true;
 			return response({ ok: true, valid, status: valid ? 'READY' : 'INCOMPLETE', definitions: checklist.schema.definitions, issues: [] });
 		});
-		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_checklist_12345678', fetch, validateDelay: 100000 });
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_checklist_12345678', fetch, validateDelay: 100000, showProgress: false });
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('.checklist-progress').textContent).toContain('0/2');
+		expect(root.querySelector('.checklist-progress-rail')).toBeNull();
 		expect(root.querySelector('.checklist-title').textContent).toContain('Auditable compliance completion');
 		expect(root.querySelector('.checklist-section-head').textContent).toContain('Identify this review');
 		expect(root.querySelector('.checklist-outcomes')).toBeNull();

@@ -32,7 +32,7 @@ website—the embed API rejects secret keys.
 
 ```html
 <div id="compliance-form"></div>
-<script src="https://cdn.jsdelivr.net/npm/@alentra/proseid-js-sdk@0.10.8/dist/proseid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@alentra/proseid-js-sdk@0.10.9/dist/proseid.min.js"></script>
 <script>
   const form = ProseID.mount('#compliance-form', {
 	apiKey: 'proseid_pk_YOUR_PUBLISHABLE_KEY',
@@ -72,11 +72,10 @@ After a successful completion, the SDK brings the receipt and optional email con
 Set `autoFocusCompletion: false` only when the host application provides its own equivalent focus
 or scroll behavior.
 
-The answer-progress rail remains visible while the respondent moves through a long Flow. It sticks
-to the top of the viewport by default. If the host website has its own fixed header, set an inherited
-CSS offset on the mount target, for example `#compliance-form { --proseid-sticky-offset: 72px; }`.
-Avoid placing the mount target inside an ancestor with `overflow: hidden` or `overflow: auto`, because
-that ancestor becomes the browser's sticky-position boundary.
+The answer-progress rail sits across the absolute top edge of the embedded Flow. It moves with the
+Flow instead of sticking to the viewport, so it cannot float over questions or completion content.
+Set `showProgress: false` to remove the visual top rail and the Guided Assessment or Compliance
+Checklist progress rails. Textual question and checklist counts remain available to respondents.
 
 English and Swedish are bundled. The schema's language is the initial recommendation, while the
 respondent can switch language inside an active Flow. Their choice is saved in browser storage and

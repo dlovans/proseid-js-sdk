@@ -6,21 +6,33 @@
 		<title>ProseID SDK visual preview</title>
 		<style>
 			body { margin: 0; background: #eef0ef; color: #171918; font-family: system-ui, sans-serif; }
-			main { width: min(1500px, calc(100% - 32px)); margin: 54px auto 80px; }
-			.preview-label { margin: 0 0 18px; color: #747a76; font: 600 11px ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
-			.gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; align-items: start; }
+			main { width: min(980px, calc(100% - 32px)); margin: 54px auto 80px; }
+			.preview-head { display: grid; gap: 8px; margin-bottom: 32px; }
+			.preview-label { margin: 0; color: #747a76; font: 600 11px ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
+			.preview-head p:last-child { max-width: 680px; margin: 0; color: #555b57; font-size: 14px; line-height: 1.6; }
+			.gallery { display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; align-items: start; }
+			.variant { min-width: 0; }
 			.variant > span { display: block; margin: 0 0 9px; color: #747a76; font: 600 10px ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; }
-			@media (max-width: 980px) { .gallery { grid-template-columns: 1fr; } }
+			@media (max-width: 560px) { main { width: min(100% - 20px, 980px); margin-top: 24px; } .gallery { gap: 28px; } }
 		</style>
 	</head>
 	<body>
 		<main>
-			<p class="preview-label">SDK development preview · no data leaves this page</p>
+			<header class="preview-head">
+				<p class="preview-label">SDK development preview · no data leaves this page</p>
+				<p>Every renderer is stacked in one column. Resize the browser to inspect the same examples at tablet and mobile widths.</p>
+			</header>
 			<div class="gallery">
-				<div class="variant"><span>Standard Form · light · full attribution</span><div id="soft"></div></div>
-				<div class="variant"><span>Guided Assessment · charcoal · compact attribution</span><div id="capsule"></div></div>
-				<div class="variant"><span>Determination · midnight · custom logo</span><div id="rigid"></div></div>
-				<div class="variant"><span>Compliance Checklist · forest · hidden attribution</span><div id="underline"></div></div>
+				<section class="variant"><span>Standard Form · prefilled · light · soft · ready to submit</span><div id="form-soft"></div></section>
+				<section class="variant"><span>Standard Form · light · underline · compact</span><div id="form-underline"></div></section>
+				<section class="variant"><span>Standard Form · custom violet palette · soft</span><div id="form-custom"></div></section>
+				<section class="variant"><span>Field gallery · prefilled · every supported input · ready to submit</span><div id="field-gallery"></div></section>
+				<section class="variant"><span>Guided Assessment · charcoal · capsule · compact attribution</span><div id="guided-capsule"></div></section>
+				<section class="variant"><span>Guided Assessment · light · rigid · full attribution</span><div id="guided-rigid"></div></section>
+				<section class="variant"><span>Determination · midnight · rigid · progress hidden</span><div id="determination-rigid"></div></section>
+				<section class="variant"><span>Determination · prefilled · light · soft · ready to submit</span><div id="determination-soft"></div></section>
+				<section class="variant"><span>Compliance Checklist · forest · underline · hidden attribution</span><div id="checklist-underline"></div></section>
+				<section class="variant"><span>Compliance Checklist · charcoal · capsule · compact attribution</span><div id="checklist-capsule"></div></section>
 			</div>
 		</main>
 		<script src="../../dist/proseid.min.js"></script>
@@ -41,6 +53,23 @@
 			};
 			const manifests = {
 				form: baseManifest,
+				prefilledForm: { ...baseManifest, flow: { ...baseManifest.flow, ref: 'prefilled-form' }, schema: { ...baseManifest.schema, definitions: {
+					supplier_name: { ...baseManifest.schema.definitions.supplier_name, value: 'Northstar Components AB' },
+					jurisdiction: { ...baseManifest.schema.definitions.jurisdiction, value: 'Sweden' },
+					review_date: { ...baseManifest.schema.definitions.review_date, value: '2026-09-01' },
+					approved: { ...baseManifest.schema.definitions.approved, value: true }
+				} } },
+				gallery: { ...baseManifest, flow: { ...baseManifest.flow, ref: 'field-gallery', title: 'Complete input gallery', description: 'Exercise every supported ProseID input and its main constraints in one Flow.' }, schema: { ...baseManifest.schema, definitions: {
+					short_text: { type: 'string', label: 'Short text', required: true, value: 'CRA-2026-041', placeholder: 'Enter a concise value', min_length: 2, max_length: 80, info: 'A standard single-line text input.' },
+					long_text: { type: 'string', label: 'Long explanation', required: true, value: 'The affected connected product was reviewed after a material firmware change. Engineering confirmed the current release, affected versions and responsible owner.', multiline: true, placeholder: 'Describe the relevant facts', max_length: 1200, help: 'Use this for explanations that need more than one line.' },
+					contact_email: { type: 'string', format: 'email', label: 'Contact email', required: true, value: 'reviewer@example.com', placeholder: 'name@example.com' },
+					quantity: { type: 'number', label: 'Affected products', required: true, value: 25, min: 1, max: 10000, step: 1, placeholder: '25' },
+					estimated_cost: { type: 'currency', label: 'Estimated cost (EUR)', required: true, value: 1250.5, min: 0, max: 1000000, placeholder: '1250.00' },
+					jurisdiction: { type: 'select', label: 'Primary jurisdiction', required: true, value: 'eu', placeholder: 'Choose jurisdiction', options: [{ value: 'eu', label: 'European Union' }, { value: 'uk', label: 'United Kingdom' }, { value: 'us', label: 'United States' }] },
+					review_date: { type: 'date', label: 'Review date', required: true, value: '2026-09-01', min: '2025-01-01', max: '2030-12-31' },
+					material_change: { type: 'boolean', label: 'A material change has occurred', required: true, value: true, info: 'Boolean inputs require an explicit Yes or No answer.' },
+					confirmed: { type: 'attestation', statement: 'I confirm that the information above is accurate.', required: true, value: true }
+				} } },
 				guided: { ...baseManifest, flow: { ...baseManifest.flow, ref: 'guided', flowType: 'guided_assessment', title: 'Supplier risk assessment' }, schema: { ...baseManifest.schema, definitions: {
 					supplier_name: baseManifest.schema.definitions.supplier_name,
 					jurisdiction: baseManifest.schema.definitions.jurisdiction,
@@ -51,6 +80,11 @@
 					risk_likely: { type: 'boolean', label: 'The incident is likely to risk individuals', required: true },
 					deadline_status: { type: 'string', label: 'Deadline status', readonly: true, visible: true }
 				} } },
+				prefilledDetermination: { ...baseManifest, flow: { ...baseManifest.flow, ref: 'prefilled-determination', flowType: 'determination', title: 'Notification deadline' }, schema: { ...baseManifest.schema, definitions: {
+					hours_elapsed: { type: 'number', label: 'Hours since awareness', required: true, value: 24, min: 0, placeholder: '24' },
+					risk_likely: { type: 'boolean', label: 'The incident is likely to risk individuals', required: true, value: true },
+					deadline_status: { type: 'string', label: 'Deadline status', readonly: true, visible: true }
+				} } },
 				checklist: { ...baseManifest, flow: { ...baseManifest.flow, ref: 'checklist', flowType: 'checklist', title: 'Supplier control review' }, schema: { ...baseManifest.schema, definitions: {
 					supplier_name: baseManifest.schema.definitions.supplier_name,
 					security_reviewed: { type: 'boolean', label: 'Security evidence has been reviewed', required: true },
@@ -58,25 +92,46 @@
 				} } }
 			};
 			const mockFetch = async (url, options = {}) => {
-				const kind = url.includes('/guided') ? 'guided' : url.includes('/determination') ? 'determination' : url.includes('/checklist') ? 'checklist' : 'form';
+				const kind = url.includes('field_gallery') ? 'gallery' : url.includes('form_prefilled') ? 'prefilledForm' : url.includes('determination_prefilled') ? 'prefilledDetermination' : url.includes('guided') ? 'guided' : url.includes('determination') ? 'determination' : url.includes('checklist') ? 'checklist' : 'form';
 				const manifest = manifests[kind];
 				if (!options.body) {
 					const attribution = options.headers['x-proseid-attribution'] || 'full';
 					return new Response(JSON.stringify({ ...manifest, presentation: { attribution, whiteLabel: attribution === 'hidden', completionMicrons: attribution === 'hidden' ? 250 : 200, surchargeMicrons: attribution === 'hidden' ? 50 : 0 } }), { status: 200 });
 				}
 				const body = JSON.parse(options.body);
-				if (body.action === 'complete') return new Response(JSON.stringify({ ok: true, status: 'completed', recordId: 'preview_audit_record', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }), { status: 200 });
+				if (body.action === 'complete') {
+					const result = manifest.flow.flowType === 'determination'
+						? { status: 'READY', outcomes: [{ fieldId: 'deadline_status', label: 'Deadline status', type: 'string', value: Number(body.responses.hours_elapsed) <= 72 ? 'Within 72 hours' : 'Late', message: 'Preserve the awareness time and supporting incident evidence.' }], notices: [{ kind: 'advisory', severity: 'notice', message: 'Confirm the applicable authority and official reporting channel.' }] }
+						: manifest.flow.flowType === 'guided_assessment'
+							? { status: 'READY', outcomes: [{ fieldId: 'assessment_result', label: 'Assessment result', type: 'string', value: 'Review complete', message: 'The recorded answers are ready for the accountable reviewer.' }], notices: [] }
+							: manifest.flow.flowType === 'checklist'
+								? { status: 'READY', outcomes: [{ fieldId: 'control_status', label: 'Control status', type: 'string', value: 'Checklist complete', message: 'All required controls were reviewed.' }], notices: [] }
+								: null;
+					return new Response(JSON.stringify({ ok: true, status: 'completed', recordId: 'preview_audit_record', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null, result }), { status: 200 });
+				}
 				if (body.action === 'email_receipt') return new Response(JSON.stringify({ ok: true, status: 'sent' }), { status: 200 });
 				const editable = Object.entries(manifest.schema.definitions).filter(([, definition]) => definition.readonly !== true);
 				const missing = editable.filter(([name, definition]) => definition.required && (body.responses[name] === '' || body.responses[name] == null || (definition.type === 'attestation' && body.responses[name] !== true)));
-				const definitions = kind === 'determination' ? { ...manifest.schema.definitions, deadline_status: { ...manifest.schema.definitions.deadline_status, value: Number(body.responses.hours_elapsed) <= 72 ? 'Within 72 hours' : 'Late' } } : manifest.schema.definitions;
+				const definitions = manifest.flow.flowType === 'determination' ? { ...manifest.schema.definitions, deadline_status: { ...manifest.schema.definitions.deadline_status, value: Number(body.responses.hours_elapsed) <= 72 ? 'Within 72 hours' : 'Late' } } : manifest.schema.definitions;
 				return new Response(JSON.stringify({ ok: true, valid: missing.length === 0, status: missing.length ? 'INCOMPLETE' : 'READY', definitions, issues: missing.map(([name]) => ({ field_id: name, severity: 'error', kind: 'missing_required', trigger: 'correction' })) }), { status: 200 });
 			};
 			const base = { apiKey: `proseid_pk_${'a'.repeat(40)}`, fetch: mockFetch };
-			ProseID.mount('#soft', { ...base, flow: 'flow_form_preview', appearance: 'soft', theme: 'light' });
-			ProseID.mount('#capsule', { ...base, flow: 'flow_guided_preview', appearance: 'capsule', theme: 'charcoal', branding: { proseid: 'compact' } });
-			ProseID.mount('#rigid', { ...base, flow: 'flow_determination_preview', appearance: { shape: 'rigid', density: 'compact' }, theme: 'midnight', branding: { logoUrl: 'http://127.0.0.1:8091/examples/preview/icon-placeholder.svg', logoAlt: 'Northstar symbol' } });
-			ProseID.mount('#underline', { ...base, flow: 'flow_checklist_preview', appearance: 'underline', theme: 'forest', branding: { proseid: 'hidden' } });
+			ProseID.mount('#form-soft', { ...base, flow: 'flow_form_prefilled_preview', appearance: 'soft', theme: 'light' });
+			ProseID.mount('#form-underline', { ...base, flow: 'flow_form_underline_preview', appearance: { preset: 'underline', density: 'compact' }, theme: 'light', branding: { proseid: 'compact' } });
+			ProseID.mount('#form-custom', {
+				...base,
+				flow: 'flow_form_custom_preview',
+				appearance: 'soft',
+				theme: 'light',
+				colors: { accent: '#7357ff', accentInk: '#5138cf', canvas: '#f4f2ff', surface: '#ffffff', ink: '#17152a', copy: '#54506b', muted: '#76728a', rule: '#ded9f2', success: '#167653', successTint: '#e8f5ef', submitInk: '#ffffff', skeletonGlow: '#ffffff' }
+			});
+			ProseID.mount('#field-gallery', { ...base, flow: 'flow_field_gallery_preview', appearance: 'soft', theme: 'light' });
+			ProseID.mount('#guided-capsule', { ...base, flow: 'flow_guided_capsule_preview', appearance: 'capsule', theme: 'charcoal', branding: { proseid: 'compact' } });
+			ProseID.mount('#guided-rigid', { ...base, flow: 'flow_guided_rigid_preview', appearance: { shape: 'rigid', density: 'compact' }, theme: 'light' });
+			ProseID.mount('#determination-rigid', { ...base, flow: 'flow_determination_rigid_preview', appearance: { shape: 'rigid', density: 'compact' }, theme: 'midnight', showProgress: false, branding: { logoUrl: 'http://127.0.0.1:8091/examples/preview/icon-placeholder.svg', logoAlt: 'Northstar symbol' } });
+			ProseID.mount('#determination-soft', { ...base, flow: 'flow_determination_prefilled_preview', appearance: 'soft', theme: 'light' });
+			ProseID.mount('#checklist-underline', { ...base, flow: 'flow_checklist_underline_preview', appearance: 'underline', theme: 'forest', branding: { proseid: 'hidden' } });
+			ProseID.mount('#checklist-capsule', { ...base, flow: 'flow_checklist_capsule_preview', appearance: { preset: 'capsule', density: 'compact' }, theme: 'charcoal', branding: { proseid: 'compact' } });
 		</script>
 	</body>
 </html>
