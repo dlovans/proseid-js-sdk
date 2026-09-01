@@ -34,11 +34,40 @@ export interface SigningAdapter {
 	sign(nextAction: Record<string, unknown>, context: { manifest: EmbedManifest; values: Record<string, unknown> }): Promise<unknown>;
 }
 
+/**
+ * Advanced renderer transport. ProseID's hosted runtime uses this interface so the public hosted
+ * Flow and third-party embeds share one renderer while retaining separate server trust boundaries.
+ */
+export interface FlowTransport {
+	manifest(attemptId: string, signal?: AbortSignal): Promise<EmbedManifest>;
+	validate(flowRef: string, responses: Record<string, unknown>, effectiveAt: string, language: string, signal?: AbortSignal): Promise<ValidationResult>;
+	complete(flowRef: string, recordId: string, responses: Record<string, unknown>, effectiveAt: string, signature?: unknown, language?: string, signal?: AbortSignal): Promise<CompletionResult>;
+	prepareSigning?(flowRef: string, recordId: string, responses: Record<string, unknown>, effectiveAt: string, signal?: AbortSignal): Promise<Record<string, unknown>>;
+	emailReceipt?(flowRef: string, recordId: string, email: string, signal?: AbortSignal): Promise<unknown>;
+	setAttribution?(value: 'full' | 'compact' | 'hidden'): void;
+}
+
+export interface ValidationResult {
+	ok?: boolean;
+	valid: boolean;
+	status: string;
+	definitions: Record<string, Record<string, unknown>>;
+	issues: Array<Record<string, unknown>>;
+}
+
 export interface MountOptions {
 	/** Canonical Flow ID shown in the ProseID workspace. */
 	flow: string;
 	/** Browser-safe `proseid_pk_…` key identifying the organization that owns the Flow. */
-	apiKey: string;
+	apiKey?: string;
+	/** Advanced: use a trusted host adapter instead of the public embed API. */
+	transport?: FlowTransport;
+	/** Stable attempt/Record identifier supplied by a trusted host. */
+	recordId?: string;
+	/** Respondent-safe values restored by the host, for example from a browser-bound draft. */
+	initialValues?: Record<string, unknown> | null;
+	/** A completed attempt restored by the host. It is rendered without re-submitting. */
+	initialCompletion?: CompletionResult | null;
 	apiBase?: string;
 	/** Curated loading/test fallback. A production Flow's saved theme is authoritative. */
 	theme?: ThemeName;

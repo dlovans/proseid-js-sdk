@@ -142,6 +142,78 @@ describe('ProseID SDK', () => {
 		expect(() => mount('#form', { apiKey: `proseid_sk_${'a'.repeat(48)}`, flow: 'flow_12345678', fetch: vi.fn() })).toThrow(/publishable key/i);
 	});
 
+	it('uses an injected host transport without requiring or exposing a publishable key', async () => {
+		const transport = {
+			manifest: vi.fn().mockResolvedValue(manifest),
+			validate: vi.fn().mockResolvedValue({
+				ok: true,
+				valid: true,
+				status: 'READY',
+				definitions: manifest.schema.definitions,
+				issues: []
+			}),
+			complete: vi.fn(),
+			emailReceipt: vi.fn()
+		};
+		const onChange = vi.fn();
+		const instance = mount('#form', {
+			flow: 'flow_12345678',
+			transport,
+			recordId: 'hosted_attempt_123',
+			initialValues: { full_name: 'Restored respondent' },
+			onChange
+		});
+		await instance.ready;
+		expect(transport.manifest).toHaveBeenCalledWith('hosted_attempt_123');
+		expect(document.querySelector('#form').shadowRoot.querySelector('input[name="full_name"]').value)
+			.toBe('Restored respondent');
+		expect(transport.validate).toHaveBeenCalledWith(
+			'flow_1',
+			{ full_name: 'Restored respondent' },
+			'2026-07-16',
+			'en',
+			expect.any(AbortSignal)
+		);
+		expect(onChange).not.toHaveBeenCalled();
+	});
+
+	it('restores the canonical completion view without validating or submitting again', async () => {
+		const completion = {
+			ok: true,
+			status: 'completed',
+			recordId: 'hosted_record_123',
+			effectiveAt: '2026-07-16',
+			logicVersion: '1.0.0',
+			temporalRange: null,
+			duplicate: false,
+			delivered: { email: false, webhook: false },
+			nextAction: null,
+			result: { status: 'READY', outcomes: [], notices: [] }
+		};
+		const transport = {
+			manifest: vi.fn().mockResolvedValue(manifest),
+			validate: vi.fn(),
+			complete: vi.fn(),
+			emailReceipt: vi.fn()
+		};
+		const onComplete = vi.fn();
+		const instance = mount('#form', {
+			flow: 'flow_12345678',
+			transport,
+			recordId: 'hosted_record_123',
+			initialCompletion: completion,
+			onComplete,
+			autoFocusCompletion: false
+		});
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		expect(root.querySelector('.completion-view')).not.toBeNull();
+		expect(root.textContent).toContain('hosted_record_123');
+		expect(transport.validate).not.toHaveBeenCalled();
+		expect(transport.complete).not.toHaveBeenCalled();
+		expect(onComplete).not.toHaveBeenCalled();
+	});
+
 	it('accepts HTTPS and localhost API origins but rejects unsafe transport', () => {
 		expect(() => new EmbedApi({ apiKey: API_KEY, flow: 'flow_12345678', apiBase: 'http://proseid.example', fetchImpl: vi.fn() }))
 			.toThrow(/valid HTTPS/i);
@@ -522,6 +594,25 @@ describe('ProseID SDK', () => {
 			action: 'email_receipt', flowRef: 'flow_1', recordId: 'audit_123', email: 'respondent@example.com'
 		});
 		vi.useRealTimers();
+	});
+
+	it('returns authoritative completion validation failures to the relevant field', async () => {
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(manifest))
+			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: manifest.schema.definitions, issues: [] }))
+			.mockImplementationOnce(() => response({
+				ok: false,
+				error: 'validation_failed',
+				status: 'INCOMPLETE',
+				issues: [{ field_id: 'full_name', severity: 'error', kind: 'missing_required', trigger: 'completion' }]
+			}, 422));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+		await vi.waitFor(() => expect(root.querySelector('.field .error').textContent).toContain('required'));
+		expect(root.querySelector('.completion-view')).toBeNull();
+		expect(root.querySelector('button[type="submit"]').disabled).toBe(false);
 	});
 
 	it('completes a Guided Assessment through questions, review and one record', async () => {

@@ -34,7 +34,7 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.10.9";
+var VERSION = "0.11.0";
 
 // src/presentation.js
 var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
@@ -947,6 +947,7 @@ var friendlyIssue = (issue, label, copy) => {
   }
 };
 var randomRecordId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll("-", "") || Math.random().toString(36).slice(2).padEnd(16, "0")}`;
+var RECORD_ID_RE = /^[A-Za-z0-9_-]{4,128}$/;
 var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 var FLOW_TYPES = /* @__PURE__ */ new Set(["form", "guided_assessment", "determination", "checklist"]);
 var LANGUAGES = /* @__PURE__ */ new Set(["en", "sv"]);
@@ -1039,13 +1040,13 @@ var ProseIDForm = class {
     this.target = typeof target === "string" ? document.querySelector(target) : target;
     if (!(this.target instanceof Element)) throw new ProseIDError("invalid_target", "Choose an element to contain the ProseID form.");
     if (!options?.flow && !options?.testMode) throw new ProseIDError("invalid_flow", "The Flow ID is required.");
-    if (!options?.apiKey) throw new ProseIDError("invalid_api_key", "A ProseID publishable key is required.");
+    if (!options?.transport && !options?.apiKey) throw new ProseIDError("invalid_api_key", "A ProseID publishable key is required.");
     this.options = options;
     this.explicitLocale = options.locale ? normalizeLocale(options.locale) : "";
     this.locale = this.explicitLocale || readLocalePreference() || "en";
     this.copy = messagesFor(this.locale, options.messages);
     this.attribution = normalizeAttribution(options.branding?.proseid);
-    this.api = new EmbedApi({
+    this.api = options.transport || new EmbedApi({
       apiBase: options.apiBase,
       apiKey: options.apiKey,
       flow: options.flow,
@@ -1054,6 +1055,11 @@ var ProseIDForm = class {
       parentOrigin: options.parentOrigin || globalThis.location?.origin || "",
       fetchImpl: options.fetch
     });
+    for (const method of ["manifest", "validate", "complete"]) {
+      if (typeof this.api?.[method] !== "function") {
+        throw new ProseIDError("invalid_transport", `The Flow transport must provide a ${method}() method.`);
+      }
+    }
     this.signing = new SigningCoordinator(options.signingAdapter);
     this.shadow = this.target.shadowRoot || this.target.attachShadow({ mode: "open" });
     this.values = {};
@@ -1072,7 +1078,11 @@ var ProseIDForm = class {
     this.submitting = false;
     this.validationLocked = false;
     this.cleanupFns = [];
-    this.recordId = randomRecordId();
+    const requestedRecordId = String(options.recordId || "").trim();
+    if (requestedRecordId && !RECORD_ID_RE.test(requestedRecordId)) {
+      throw new ProseIDError("invalid_record_id", "Use a valid Flow attempt ID.");
+    }
+    this.recordId = requestedRecordId || randomRecordId();
     this.applyAppearance(options.appearance);
     this.applyTheme(options.theme);
     this.renderLoading();
@@ -1140,7 +1150,7 @@ var ProseIDForm = class {
       this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
       this.locale = this.explicitLocale || readLocalePreference() || normalizeLocale(this.manifest.flow?.language);
       this.copy = messagesFor(this.locale, this.options.messages);
-      this.api.setAttribution(this.attribution);
+      this.api.setAttribution?.(this.attribution);
       this.applyTheme(this.manifest.presentation?.theme ?? this.options.theme);
       if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
         throw new ProseIDError("signing_not_available", "Signing is not available in this embedded Flow yet.");
@@ -1148,6 +1158,10 @@ var ProseIDForm = class {
       this.seedValues();
       this.renderForm();
       this.emit("ready", { manifest: this.manifest });
+      if (this.options.initialCompletion) {
+        this.renderComplete(this.options.initialCompletion);
+        return this;
+      }
       await this.validate();
       return this;
     } catch (error) {
@@ -1159,6 +1173,7 @@ var ProseIDForm = class {
   seedValues() {
     for (const [name, definition] of Object.entries(this.manifest.schema?.definitions || {})) {
       let value = definition?.value;
+      if (definition?.readonly !== true && this.options.initialValues && Object.prototype.hasOwnProperty.call(this.options.initialValues, name)) value = this.options.initialValues[name];
       if (definition?.type === "select" && (value === void 0 || value === null)) value = "";
       if (definition?.type === "attestation" && value !== true) value = false;
       this.values[name] = value;
@@ -2391,6 +2406,18 @@ var ProseIDForm = class {
       this.emit("complete", result);
     } catch (error) {
       this.submitting = false;
+      if (error?.code === "validation_failed" && Array.isArray(error?.details?.issues)) {
+        this.valid = false;
+        this.lastValidation = {
+          ...this.lastValidation || {},
+          valid: false,
+          status: error.details.status || "INVALID",
+          issues: error.details.issues
+        };
+        this.renderIssues(error.details.issues);
+        this.refreshDetermination();
+        await this.focusFirstInvalid(this.lastValidation);
+      }
       this.updateSubmitState();
       this.submitButton.textContent = this.options.submitLabel || this.defaultSubmitLabel();
       this.formError.hidden = false;
