@@ -34,7 +34,7 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.11.1";
+var VERSION = "0.11.3";
 
 // src/presentation.js
 var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
@@ -233,7 +233,8 @@ button, input, select, textarea { font: inherit; }
 .verified { color: var(--proseid-success); }
 .proseid-brand { display: flex; flex: 0 0 auto; align-items: center; gap: 7px; border: 1px solid #dfe2df; border-radius: 999px; background: #ffffff; padding: 4px 8px 4px 5px; color: #454a47; font-size: 11px; text-decoration: none; }
 .proseid-brand img { width: 24px; height: 24px; border-radius: 6px; }
-.proseid-brand.compact span { display: none; }
+.proseid-brand.compact { border: 0; border-radius: 0; background: transparent; padding: 0; }
+.proseid-brand.compact img { border-radius: 0; }
 h1 { max-width: 22ch; margin: 0; font: 500 clamp(25px, 5vw, 35px)/1.04 Georgia, "Times New Roman", serif; letter-spacing: -.025em; }
 .description { max-width: 62ch; margin: 12px 0 0; color: var(--proseid-copy); font-size: 14px; line-height: 1.65; }
 .schema-details { margin-top: 17px; border-top: 1px solid var(--proseid-rule); padding-top: 14px; }
@@ -334,16 +335,42 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .error { min-height: 0; color: var(--proseid-accent-ink); font-size: 11px; line-height: 1.45; }
 .form-error { margin-bottom: 16px; border: 1px solid color-mix(in srgb, var(--proseid-accent) 28%, var(--proseid-rule)); border-radius: 11px; background: color-mix(in srgb, var(--proseid-accent) 6%, var(--proseid-surface)); padding: 11px 12px; color: var(--proseid-accent-ink); font-size: 12px; line-height: 1.5; }
 .actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--proseid-rule); }
+.action-meta { display: flex; min-width: 0; align-items: center; justify-content: flex-end; }
 .standard-form-actions { grid-template-columns: minmax(0, 1fr); }
 .standard-form-actions .submit { display: flex; width: 100%; align-items: center; justify-content: center; text-align: center; }
 .privacy { display: flex; align-items: flex-start; gap: 7px; color: var(--proseid-muted); font-size: 10px; line-height: 1.5; }
 .privacy svg { width: 13px; height: 13px; flex: 0 0 13px; margin-top: 1px; }
-.submit { min-width: 128px; min-height: 42px; border: 0; border-radius: var(--proseid-button-radius); background: var(--proseid-accent); padding: 10px 17px; color: var(--proseid-submit-ink); font-size: 12px; font-weight: 720; cursor: pointer; transition: transform .15s ease, filter .15s ease; }
+.submit { display: inline-flex; min-width: 128px; min-height: 42px; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: var(--proseid-button-radius); background: var(--proseid-accent); padding: 10px 17px; color: var(--proseid-submit-ink); font-size: 12px; font-weight: 720; cursor: pointer; transition: transform .15s ease, filter .15s ease; }
 .submit:hover:not(:disabled) { filter: brightness(.94); transform: translateY(-1px); }
 .submit:focus-visible { outline: 2px solid var(--proseid-ink); outline-offset: 3px; }
 .submit:disabled { cursor: not-allowed; filter: grayscale(.25); opacity: .48; }
+.submit[aria-busy="true"] { filter: none; opacity: 1; }
+.button-spinner { width: 14px; height: 14px; flex: 0 0 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: button-spin .7s linear infinite; }
+.button-label { white-space: nowrap; }
+.validation-navigator-slot { position: relative; z-index: 40; display: flex; height: 46px; min-width: 46px; flex: 0 0 auto; justify-content: flex-end; pointer-events: none; }
+.validation-navigator { display: flex; width: fit-content; height: 46px; max-width: 100%; flex: 0 0 auto; align-items: stretch; border: 1px solid transparent; border-radius: var(--proseid-control-radius); background: transparent; box-shadow: none; pointer-events: auto; transition: border-color .18s ease, background .18s ease, box-shadow .22s ease; }
+.validation-navigator[data-open="true"] { border-color: color-mix(in srgb, var(--proseid-ink) 13%, var(--proseid-rule)); background: color-mix(in srgb, var(--proseid-surface) 94%, transparent); box-shadow: 0 18px 42px -22px rgba(18, 20, 19, .66); backdrop-filter: blur(14px); }
+.validation-orb { position: relative; z-index: 1; display: grid; width: 44px; height: 44px; flex: 0 0 44px; place-items: center; border: 0; border-radius: var(--proseid-button-radius); outline: 0; background: var(--proseid-ink); padding: 0; color: var(--proseid-surface); font-size: 12px; font-weight: 780; cursor: pointer; transition: border-radius .22s ease, filter .16s ease; }
+.validation-orb-value { grid-area: 1 / 1; }
+.validation-orb:hover { filter: brightness(.94); }
+.validation-navigator[data-open="true"] .validation-orb { border-radius: 0 var(--proseid-control-radius) var(--proseid-control-radius) 0; }
+.validation-orb:focus-visible, .validation-jump:focus-visible { outline: 2px solid var(--proseid-accent); outline-offset: 3px; }
+.validation-navigator[data-state="needed"] .validation-orb, .validation-navigator[data-state="attention"] .validation-orb { background: var(--proseid-accent); color: var(--proseid-submit-ink); }
+.validation-navigator[data-state="ready"] .validation-orb { background: var(--proseid-success); color: var(--proseid-surface); }
+.validation-navigator[data-state="checking"] .validation-orb::before { width: 16px; height: 16px; grid-area: 1 / 1; border: 2px solid color-mix(in srgb, var(--proseid-surface) 30%, transparent); border-top-color: var(--proseid-surface); border-radius: 50%; content: ''; animation: validation-spin .8s linear infinite; }
+.validation-reveal { width: 0; min-width: 0; overflow: hidden; opacity: 0; pointer-events: none; transform: translateX(-8px); transition: width .34s cubic-bezier(.22, 1, .36, 1), opacity .18s ease, transform .34s cubic-bezier(.22, 1, .36, 1); }
+.validation-navigator[data-open="true"] .validation-reveal { width: min(292px, calc(100cqw - 82px)); opacity: 1; transform: translateX(0); }
+.validation-navigator[data-open="true"] .validation-reveal { pointer-events: auto; }
+.validation-jump { display: grid; width: 100%; height: 44px; grid-template-columns: minmax(0, 1fr) 42px; align-items: stretch; border: 0; outline: 0; background: transparent; padding: 0; color: var(--proseid-ink); text-align: left; cursor: pointer; }
+.validation-copy { display: grid; min-width: 0; align-content: center; gap: 2px; padding: 6px 12px 6px 13px; }
+.validation-label, .validation-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.validation-label { font-size: 11px; line-height: 1.2; }
+.validation-detail { color: var(--proseid-muted); font-size: 8px; line-height: 1.25; }
+.validation-arrow { display: grid; place-items: center; border-left: 1px solid var(--proseid-rule); color: var(--proseid-muted); font-size: 15px; }
+.validation-navigator[data-state="ready"] .validation-label, .validation-navigator[data-state="ready"] .validation-arrow { color: var(--proseid-success); }
+@keyframes validation-spin { to { transform: rotate(360deg); } }
 .eyebrow { color: var(--proseid-accent-ink); font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
-.primary-action, .secondary-action { min-height: 42px; border-radius: var(--proseid-button-radius); padding: 10px 16px; font-size: 12px; font-weight: 720; cursor: pointer; }
+.primary-action, .secondary-action { min-height: 42px; border-radius: var(--proseid-button-radius); padding: 10px 16px; font-size: 12px; font-weight: 720; white-space: nowrap; cursor: pointer; }
 .primary-action { border: 1px solid var(--proseid-ink); background: var(--proseid-ink); color: var(--proseid-surface); }
 .secondary-action { border: 1px solid var(--proseid-rule); background: transparent; color: var(--proseid-copy); }
 .primary-action:disabled, .secondary-action:disabled { cursor: not-allowed; opacity: .45; }
@@ -355,16 +382,22 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .guided-path-heading strong { color: var(--proseid-ink); font: 500 17px/1 Georgia, serif; letter-spacing: 0; }
 .guided-progress { height: 3px; margin: 12px 0 17px; overflow: hidden; border-radius: 2px; background: var(--proseid-rule); }
 .guided-progress span { display: block; height: 100%; border-radius: inherit; background: var(--proseid-accent); transition: width .2s ease; }
-.guided-path ol { display: grid; max-height: min(48dvh, 440px); gap: 3px; overflow-y: auto; margin: 0; padding: 2px 7px 2px 2px; list-style: none; scrollbar-width: thin; scrollbar-color: var(--proseid-rule) transparent; }
-.guided-path li { min-width: 0; }
+.guided-path ol { display: grid; max-height: min(48dvh, 440px); gap: 3px; overflow-y: auto; margin: 0; padding: 2px 7px 2px 2px; outline: 0; list-style: none; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.guided-path ol:hover, .guided-path ol:focus, .guided-path ol:focus-within { scrollbar-color: var(--proseid-rule) transparent; }
+.guided-path ol:focus-visible { outline: 1px solid var(--proseid-accent); outline-offset: 2px; }
+.guided-path ol::-webkit-scrollbar { width: 6px; }
+.guided-path ol::-webkit-scrollbar-track { background: transparent; }
+.guided-path ol::-webkit-scrollbar-thumb { border-radius: 999px; background: transparent; }
+.guided-path ol:hover::-webkit-scrollbar-thumb, .guided-path ol:focus::-webkit-scrollbar-thumb, .guided-path ol:focus-within::-webkit-scrollbar-thumb { background: var(--proseid-rule); }
+.guided-path li { min-width: 0; border: 1px solid transparent; border-radius: max(7px, calc(var(--proseid-radius) * .7)); transition: border-color .2s ease, background-color .2s ease; }
 .guided-path li + li { margin-top: 4px; }
-.guided-path li.active, .guided-path li.remaining, .guided-path-button { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 9px; }
-.guided-path li.active, .guided-path li.remaining { padding: 6px 0; }
-.guided-path-button { width: 100%; border: 0; background: transparent; padding: 6px 0; color: var(--proseid-muted); text-align: left; cursor: pointer; }
+.guided-path li.active { margin-right: 2px; border-color: color-mix(in srgb, var(--proseid-accent) 20%, var(--proseid-rule)); background-color: color-mix(in srgb, var(--proseid-accent) 7%, var(--proseid-surface)); }
+.guided-path-button { display: grid; width: 100%; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 9px; border: 0; background: transparent; padding: 7px 8px; color: var(--proseid-muted); text-align: left; cursor: pointer; }
 .guided-path-button:disabled { cursor: default; }
 .guided-marker { display: grid; width: 17px; height: 17px; place-items: center; border: 1px solid var(--proseid-rule); border-radius: 50%; color: var(--proseid-surface); font-size: 9px; }
 .answered .guided-marker { border-color: var(--proseid-success); background: var(--proseid-success); }
 .active .guided-marker { border: 5px solid color-mix(in srgb, var(--proseid-accent) 15%, var(--proseid-surface)); background: var(--proseid-accent); box-shadow: 0 0 0 1px var(--proseid-accent); }
+.active.answered .guided-marker { border: 1px solid var(--proseid-success); background: var(--proseid-success); box-shadow: none; }
 .guided-path-copy { display: grid; min-width: 0; gap: 2px; }
 .guided-path-copy strong, .guided-path-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .guided-path-copy strong { color: var(--proseid-copy); font-size: 11px; }
@@ -376,9 +409,10 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .guided-field-slot .label, .guided-field-slot .check-copy { font: 500 clamp(20px, 4vw, 27px)/1.2 Georgia, serif; letter-spacing: -.02em; }
 .guided-field-slot .control { margin-top: 11px; min-height: 48px; font-size: 15px; }
 .guided-navigation { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 18px; border-top: 1px solid var(--proseid-rule); }
-.guided-requirement { margin-left: auto; color: var(--proseid-accent-ink); font-size: 10px; font-weight: 650; text-align: right; }
-.guided-requirement[hidden] { display: none; }
-.guided-review { grid-column: 1 / -1; width: min(700px, 100%); margin: 0 auto; }
+.guided-path[hidden], .guided-question[hidden], .guided-review[hidden], .field-parking[hidden] { display: none !important; }
+.guided-navigation > .validation-navigator-slot { min-width: 46px; max-width: 338px; flex: 1 1 46px; }
+.guided-navigation > .primary-action, .guided-navigation > .secondary-action, .guided-review-actions > .primary-action, .guided-review-actions > .secondary-action, .guided-review-actions > .submit { flex: 0 0 auto; white-space: nowrap; }
+.guided-review { grid-column: 1 / -1; width: 100%; min-width: 0; border: 1px solid var(--proseid-rule); border-radius: calc(var(--proseid-radius) + 2px); background: var(--proseid-surface); padding: clamp(20px, 3.4vw, 31px); }
 .review-head h2, .experience-head h2, .checklist-title h2 { margin: 7px 0 0; font: 500 clamp(24px, 4vw, 32px)/1.08 Georgia, serif; letter-spacing: -.025em; }
 .review-head p, .experience-head p, .checklist-title p { margin: 9px 0 0; color: var(--proseid-copy); font-size: 12px; line-height: 1.6; }
 .review-list { margin-top: 24px; border-top: 1px solid var(--proseid-rule); }
@@ -388,7 +422,11 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .review-answer strong { overflow-wrap: anywhere; color: var(--proseid-ink); font-size: 13px; }
 .review-change { border: 0; background: transparent; padding: 4px 0; color: var(--proseid-accent-ink); font-size: 11px; font-weight: 700; cursor: pointer; }
 .guided-review .privacy { margin-top: 20px; }
-.guided-review-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 17px; padding-top: 18px; border-top: 1px solid var(--proseid-rule); }
+.guided-review-readiness { display: flex; min-width: 0; justify-content: flex-end; margin-top: 17px; padding-top: 18px; border-top: 1px solid var(--proseid-rule); }
+.guided-review-readiness > .validation-navigator-slot { width: min(338px, 100%); max-width: 100%; flex: 0 1 338px; container-type: inline-size; }
+.guided-review-readiness .validation-navigator[data-open="true"] { width: 100%; }
+.guided-review-readiness .validation-navigator[data-open="true"] .validation-reveal { width: auto; flex: 1 1 auto; }
+.guided-review-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
 
 .determination-layout { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; width: min(100%, 760px); margin-inline: auto; }
 .experience-head { margin-bottom: 23px; }
@@ -396,7 +434,6 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .determination-activity i { width: 7px; height: 7px; border-radius: 50%; background: var(--proseid-success); box-shadow: 0 0 0 4px var(--proseid-success-tint); }
 .determination-activity.evaluating i { background: var(--proseid-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--proseid-accent) 12%, transparent); animation: pulse 1s ease-in-out infinite; }
 .determination > .actions { grid-template-columns: minmax(0, 1fr) auto; width: min(100%, 760px); margin-inline: auto; }
-.determination > .actions .privacy { grid-column: 1; }
 .determination > .actions .submit { grid-column: 2; width: 100%; }
 
 .checklist { display: grid; gap: 28px; }
@@ -449,43 +486,46 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .skeleton-line { height: 12px; margin: 10px 0; border-radius: 8px; background: linear-gradient(90deg, var(--proseid-canvas), var(--proseid-skeleton-glow), var(--proseid-canvas)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 .skeleton-line:nth-child(2) { width: 62%; height: 30px; margin-top: 28px; }
 .skeleton-line:nth-child(3) { width: 82%; }
-.completion-view { padding: 42px 30px; text-align: center; }
-.seal { display: grid; width: 54px; height: 54px; margin: 0 auto 20px; place-items: center; border: 1px solid color-mix(in srgb, var(--proseid-success) 25%, var(--proseid-rule)); border-radius: 50%; background: var(--proseid-success-tint); color: var(--proseid-success); font-size: 25px; }
-.completion-view h2 { margin: 0; font: 500 30px/1.1 Georgia, serif; }
-.completion-view p { max-width: 46ch; margin: 12px auto 0; color: var(--proseid-copy); font-size: 13px; line-height: 1.6; }
-.recorded-result { max-width: 600px; margin: 28px auto 0; overflow: hidden; border: 1px solid var(--proseid-rule); border-left: 3px solid var(--proseid-accent); border-radius: var(--proseid-radius); background: color-mix(in srgb, var(--proseid-accent) 5%, var(--proseid-surface)); text-align: left; }
-.recorded-result-head { padding: 20px 22px 17px; border-bottom: 1px solid var(--proseid-rule); }
-.recorded-result-head h3 { margin: 6px 0 0; color: var(--proseid-ink); font: 500 24px/1.12 Georgia, serif; letter-spacing: -.02em; }
-.completion-view .recorded-result-head p { max-width: none; margin: 6px 0 0; font-size: 11px; }
-.recorded-outcomes { display: grid; padding: 0 22px; }
-.recorded-outcome { padding: 17px 0; border-bottom: 1px solid var(--proseid-rule); }
+.completion-view { width: min(100%, 680px); margin: 0 auto; padding: 30px; text-align: left; }
+.completion-summary { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: start; gap: 13px; }
+.completion-summary-copy { min-width: 0; }
+.seal { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid color-mix(in srgb, var(--proseid-success) 26%, var(--proseid-rule)); border-radius: 50%; background: var(--proseid-success-tint); color: var(--proseid-success); font-size: 17px; font-weight: 720; }
+.completion-view h2 { margin: 0; font: 500 22px/1.12 Georgia, serif; letter-spacing: -.015em; }
+.completion-summary p { max-width: 54ch; margin: 5px 0 0; color: var(--proseid-copy); font-size: 11px; line-height: 1.55; }
+.recorded-result { margin: 20px 0 0; overflow: hidden; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); text-align: left; }
+.recorded-result-head { padding: 16px 18px 14px; border-bottom: 1px solid var(--proseid-rule); }
+.recorded-result-head h3 { margin: 5px 0 0; color: var(--proseid-ink); font: 500 19px/1.16 Georgia, serif; letter-spacing: -.015em; }
+.completion-view .recorded-result-head p { max-width: none; margin: 5px 0 0; color: var(--proseid-copy); font-size: 10px; line-height: 1.5; }
+.recorded-outcomes { display: grid; padding: 0 18px; }
+.recorded-outcome { padding: 14px 0; border-bottom: 1px solid var(--proseid-rule); }
 .recorded-outcome:last-child { border-bottom: 0; }
 .recorded-outcome small { display: block; color: var(--proseid-muted); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
-.recorded-outcome strong { display: block; margin-top: 5px; color: var(--proseid-ink); font: 500 20px/1.2 Georgia, serif; overflow-wrap: anywhere; }
-.completion-view .recorded-outcome p { max-width: none; margin: 6px 0 0; font-size: 11px; }
-.recorded-notices { margin: 0 22px 20px; padding-top: 16px; border-top: 1px solid var(--proseid-rule); }
+.recorded-outcome strong { display: block; margin-top: 4px; color: var(--proseid-ink); font: 500 16px/1.25 Georgia, serif; overflow-wrap: anywhere; }
+.completion-view .recorded-outcome p { max-width: none; margin: 5px 0 0; color: var(--proseid-copy); font-size: 10px; line-height: 1.5; }
+.recorded-notices { margin: 0 18px 16px; padding-top: 13px; border-top: 1px solid var(--proseid-rule); }
 .recorded-notices ul { display: grid; gap: 7px; margin: 9px 0 0; padding: 0; list-style: none; }
 .recorded-notices li { position: relative; padding-left: 14px; color: var(--proseid-copy); font-size: 11px; line-height: 1.5; }
 .recorded-notices li::before { position: absolute; top: .62em; left: 0; width: 5px; height: 5px; border-radius: 50%; background: var(--proseid-accent); content: ''; }
-.receipt { width: fit-content; max-width: 100%; margin: 22px auto 0; border: 1px solid var(--proseid-rule); border-radius: 10px; background: var(--proseid-canvas); padding: 9px 12px; color: var(--proseid-muted); font: 10px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
-.receipt-copy { max-width: 520px; margin: 28px auto 0; border-top: 1px solid var(--proseid-rule); padding-top: 24px; text-align: left; }
+.receipt { width: fit-content; max-width: 100%; margin: 9px 0 0; border: 1px solid var(--proseid-rule); border-radius: 8px; background: var(--proseid-canvas); padding: 6px 9px; color: var(--proseid-muted); font: 9px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+.receipt-copy { margin: 18px 0 0; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-canvas); padding: 16px 18px; text-align: left; }
 .receipt-copy h3 { margin: 0; color: var(--proseid-ink); font: 650 14px/1.35 var(--proseid-font); }
-.completion-view .receipt-help { max-width: none; margin: 5px 0 0; color: var(--proseid-muted); font-size: 11px; line-height: 1.55; }
-.receipt-form { margin-top: 15px; }
+.completion-view .receipt-help { max-width: none; margin: 4px 0 0; color: var(--proseid-muted); font-size: 10px; line-height: 1.5; }
+.receipt-form { margin-top: 12px; }
 .receipt-field { display: grid; gap: 7px; }
 .receipt-label { color: var(--proseid-ink); font-size: 11px; font-weight: 650; }
 .receipt-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .receipt-input { width: 100%; min-width: 0; min-height: 42px; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-control-radius); outline: none; background: var(--proseid-surface); padding: 9px 11px; color: var(--proseid-ink); font-size: 13px; transition: border-color .16s ease, box-shadow .16s ease; }
 .receipt-input:focus { border-color: var(--proseid-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--proseid-accent) 13%, transparent); }
 .receipt-input[aria-invalid="true"] { border-color: var(--proseid-accent); }
-.receipt-button { min-height: 42px; border: 0; border-radius: var(--proseid-button-radius); background: var(--proseid-ink); padding: 9px 15px; color: var(--proseid-surface); font-size: 11px; font-weight: 720; white-space: nowrap; cursor: pointer; transition: transform .15s ease, opacity .15s ease; }
+.receipt-button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: var(--proseid-button-radius); background: var(--proseid-ink); padding: 9px 15px; color: var(--proseid-surface); font-size: 11px; font-weight: 720; white-space: nowrap; cursor: pointer; transition: transform .15s ease, opacity .15s ease; }
 .receipt-button:hover:not(:disabled) { transform: translateY(-1px); }
 .receipt-button:focus-visible { outline: 2px solid var(--proseid-accent); outline-offset: 3px; }
 .receipt-button:disabled { cursor: not-allowed; opacity: .42; }
+.receipt-button[aria-busy="true"] { opacity: 1; }
 .completion-view .receipt-status { min-height: 17px; max-width: none; margin: 0; color: var(--proseid-muted); font-size: 11px; line-height: 1.5; }
 .completion-view .receipt-status[data-state="sent"] { color: var(--proseid-success); }
 .completion-view .receipt-status[data-state="error"] { color: var(--proseid-accent-ink); }
-.completion-view .receipt-test { margin-top: 18px; color: var(--proseid-muted); font-size: 11px; }
+.completion-view .receipt-test { margin: 16px 0 0 49px; color: var(--proseid-muted); font-size: 10px; }
 :host([data-proseid-shell="flat"]) .shell { border-color: transparent; box-shadow: none; }
 :host([data-proseid-shell="flat"]) .ledger { height: 2px; }
 :host([data-proseid-fields="underline"]) .control { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }
@@ -499,10 +539,11 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
 @keyframes ledger-loading { from { transform: translateX(-105%); } to { transform: translateX(295%); } }
+@keyframes button-spin { to { transform: rotate(360deg); } }
 @container (max-width: 720px) {
 	.guided-layout, .determination-layout, .checklist-section { grid-template-columns: 1fr; }
 	.determination > .actions { grid-template-columns: 1fr; }
-	.determination > .actions .privacy, .determination > .actions .submit { grid-column: 1; }
+	.determination > .actions .submit { grid-column: 1; }
 	.guided-path { position: static; }
 	.guided-path ol { display: none; }
 	.guided-question { min-height: 0; }
@@ -514,16 +555,33 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 }
 @container (max-width: 520px) {
 	.head, .body { padding-right: 18px; padding-left: 18px; }
+	.completion-view { padding: 22px 18px; }
+	.completion-summary { grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
+	.seal { width: 32px; height: 32px; font-size: 14px; }
+	.completion-view h2 { font-size: 19px; }
+	.recorded-result-head, .receipt-copy { padding-right: 14px; padding-left: 14px; }
+	.recorded-outcomes { padding-right: 14px; padding-left: 14px; }
+	.recorded-notices { margin-right: 14px; margin-left: 14px; }
+	.completion-view .receipt-test { margin-left: 42px; }
 	.brands { align-items: flex-start; }
 	.respondent-tools { flex-direction: column-reverse; align-items: flex-end; }
 	.actions { grid-template-columns: 1fr; }
 	.submit { width: 100%; }
-	.guided-navigation { flex-wrap: wrap; }
-	.guided-requirement { order: -1; width: 100%; margin-left: 0; text-align: left; }
+	.guided-navigation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+	.guided-navigation > .validation-navigator-slot { width: 100%; grid-column: 1 / -1; grid-row: 1; }
+	.guided-navigation > .secondary-action { width: 100%; grid-column: 1; grid-row: 2; }
+	.guided-navigation > .primary-action { width: 100%; grid-column: 2; grid-row: 2; }
+	.guided-navigation .validation-navigator[data-open="true"] { width: 100%; }
+	.guided-navigation .validation-navigator[data-open="true"] .validation-reveal { width: auto; flex: 1 1 auto; }
+	.guided-review-readiness > .validation-navigator-slot { width: 100%; flex-basis: 100%; }
+	.guided-review-actions > .secondary-action { width: auto; min-width: 0; flex: 0 0 auto; }
+	.guided-review-actions > .submit { width: auto; min-width: 0; flex: 1 1 auto; }
 	.checklist-boolean, .boolean-row { align-items: stretch; flex-direction: column; }
 	.boolean-choice { width: 100%; }
 	.boolean-choice button, .boolean-row .boolean-choice label { flex: 1; }
 	.receipt-row { grid-template-columns: 1fr; }
+	.validation-navigator[data-open="true"] .validation-reveal { width: min(250px, calc(100cqw - 70px)); }
+	.validation-detail { display: none; }
 }
 @media (max-width: 560px) {
 	.head, .body { padding-right: 18px; padding-left: 18px; }
@@ -535,7 +593,15 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 	.guided-question { min-height: 0; }
 	.guided-index { align-items: flex-start; flex-direction: column; gap: 5px; }
 	.guided-index small { max-width: none; text-align: left; }
-	.guided-navigation .primary-action, .guided-navigation .secondary-action { flex: 1; }
+	.guided-navigation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+	.guided-navigation > .validation-navigator-slot { width: 100%; grid-column: 1 / -1; grid-row: 1; }
+	.guided-navigation > .secondary-action { width: 100%; grid-column: 1; grid-row: 2; }
+	.guided-navigation > .primary-action { width: 100%; grid-column: 2; grid-row: 2; }
+	.guided-navigation .validation-navigator[data-open="true"] { width: 100%; }
+	.guided-navigation .validation-navigator[data-open="true"] .validation-reveal { width: auto; flex: 1 1 auto; }
+	.guided-review-readiness > .validation-navigator-slot { width: 100%; flex-basis: 100%; }
+	.guided-review-actions > .secondary-action { width: auto; min-width: 0; flex: 0 0 auto; }
+	.guided-review-actions > .submit { width: auto; min-width: 0; flex: 1 1 auto; }
 	.checklist-completion { grid-template-columns: 1fr; }
 	.checklist-completion .privacy { display: none; }
 	.checklist-context-grid { grid-template-columns: 1fr; }
@@ -553,7 +619,7 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 	.boolean-row .boolean-choice label { flex: 1; }
 	.respondent-tools { gap: 8px; }
 }
-@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button, .info-popover, .ledger-fill, .guided-progress span, .checklist-progress-rail i, .toggle-track, .toggle-track::after { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button, .button-spinner, .info-popover, .ledger-fill, .guided-progress span, .guided-path li, .checklist-progress-rail i, .toggle-track, .toggle-track::after, .validation-reveal, .validation-orb::before { animation: none; transition: none; } }
 `;
 
 // src/i18n.js
@@ -573,6 +639,16 @@ var dictionaries = {
     interpretation: (version) => `Interpretation ${version}`,
     moreInformation: (label) => `More information about ${label}`,
     answerProgress: "Answer progress",
+    answersNeeded: (count) => `${count} ${count === 1 ? "answer" : "answers"} needed`,
+    answersNeedAttention: (count) => `${count} ${count === 1 ? "answer needs" : "answers need"} attention`,
+    checkingAnswers: "Checking answers\u2026",
+    checkingAnswersHelp: "The current answers are being verified",
+    readyToComplete: "Ready to complete",
+    goToFirstUnfinished: "Go to the first unfinished answer",
+    goToFirstAttention: "Go to the first answer that needs attention",
+    answersChecked: "All current answers passed validation",
+    openAnswerNavigator: "Open answer status",
+    closeAnswerNavigator: "Close answer status",
     requiredLabel: "Required",
     idle: "Enter your details to check this Flow",
     checking: "Checking your answers\u2026",
@@ -581,7 +657,7 @@ var dictionaries = {
     checkFailed: "Could not check this Flow. Try again.",
     creating: "Creating the verified record\u2026",
     submit: "Submit",
-    submitting: "Submitting\u2026",
+    submitting: "Submitting",
     privacy: "Checked by ProseID. Sent only when you submit.",
     privacyWhiteLabel: "Checked securely. Sent only when you submit.",
     completeTitle: "Submission complete.",
@@ -595,7 +671,7 @@ var dictionaries = {
     receiptLabel: "Email address",
     receiptPlaceholder: "you@example.com",
     receiptAction: "Email me",
-    receiptSending: "Sending\u2026",
+    receiptSending: "Sending",
     receiptSent: (email) => `A copy is on its way to ${email}.`,
     receiptInvalid: "Enter a valid email address.",
     receiptError: "The copy could not be sent. Check the email and try again.",
@@ -622,7 +698,6 @@ var dictionaries = {
     guidedReviewCue: "Review this final answer, then check the complete path before submitting.",
     back: "Back",
     continue: "Continue",
-    answerRequired: "Answer this question to continue.",
     reviewAnswers: "Review answers",
     finalCheck: "Final check",
     reviewTitle: "Review your answers",
@@ -705,6 +780,16 @@ var dictionaries = {
     interpretation: (version) => `Tolkning ${version}`,
     moreInformation: (label) => `Mer information om ${label}`,
     answerProgress: "Svarsstatus",
+    answersNeeded: (count) => `${count} svar beh\xF6vs`,
+    answersNeedAttention: (count) => `${count} svar beh\xF6ver ses \xF6ver`,
+    checkingAnswers: "Kontrollerar svaren\u2026",
+    checkingAnswersHelp: "De aktuella svaren verifieras",
+    readyToComplete: "Redo att slutf\xF6ra",
+    goToFirstUnfinished: "G\xE5 till det f\xF6rsta obesvarade f\xE4ltet",
+    goToFirstAttention: "G\xE5 till det f\xF6rsta svaret som beh\xF6ver ses \xF6ver",
+    answersChecked: "Alla aktuella svar har godk\xE4nts",
+    openAnswerNavigator: "\xD6ppna svarsstatus",
+    closeAnswerNavigator: "St\xE4ng svarsstatus",
     requiredLabel: "Obligatoriskt",
     idle: "Fyll i uppgifterna f\xF6r att kontrollera fl\xF6det",
     checking: "Kontrollerar dina svar\u2026",
@@ -713,7 +798,7 @@ var dictionaries = {
     checkFailed: "Fl\xF6det kunde inte kontrolleras. F\xF6rs\xF6k igen.",
     creating: "Skapar den verifierade posten\u2026",
     submit: "Skicka",
-    submitting: "Skickar\u2026",
+    submitting: "Skickar",
     privacy: "Kontrolleras av ProseID. Skickas f\xF6rst n\xE4r du v\xE4ljer Skicka.",
     privacyWhiteLabel: "Kontrolleras s\xE4kert. Skickas f\xF6rst n\xE4r du v\xE4ljer Skicka.",
     completeTitle: "Inskickat.",
@@ -727,7 +812,7 @@ var dictionaries = {
     receiptLabel: "E-postadress",
     receiptPlaceholder: "du@exempel.se",
     receiptAction: "Mejla mig",
-    receiptSending: "Skickar\u2026",
+    receiptSending: "Skickar",
     receiptSent: (email) => `En kopia \xE4r p\xE5 v\xE4g till ${email}.`,
     receiptInvalid: "Ange en giltig e-postadress.",
     receiptError: "Kopian kunde inte skickas. Kontrollera adressen och f\xF6rs\xF6k igen.",
@@ -754,7 +839,6 @@ var dictionaries = {
     guidedReviewCue: "Granska det sista svaret och kontrollera sedan hela v\xE4gen innan du skickar.",
     back: "Tillbaka",
     continue: "Forts\xE4tt",
-    answerRequired: "Besvara fr\xE5gan f\xF6r att forts\xE4tta.",
     reviewAnswers: "Granska svaren",
     finalCheck: "Slutlig kontroll",
     reviewTitle: "Granska dina svar",
@@ -952,6 +1036,8 @@ var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 var FLOW_TYPES = /* @__PURE__ */ new Set(["form", "guided_assessment", "determination", "checklist"]);
 var LANGUAGES = /* @__PURE__ */ new Set(["en", "sv"]);
 var LANGUAGE_STORAGE_KEY = "proseid_flow_language";
+var DEFAULT_VALIDATION_DELAY = 400;
+var LOCALLY_VALID_VALIDATION_DELAY = 180;
 var normalizeLocale = (value) => {
   const language = String(value || "").trim().toLowerCase().split("-")[0];
   return LANGUAGES.has(language) ? language : "en";
@@ -1159,6 +1245,9 @@ var ProseIDForm = class {
     this.validationPromise = null;
     this.validationPromiseFingerprint = "";
     this.lastValidationFingerprint = "";
+    this.validationScheduled = false;
+    this.validationInFlight = false;
+    this.validationNavigatorOpen = false;
     this.submitting = false;
     this.validationLocked = false;
     this.cleanupFns = [];
@@ -1172,10 +1261,14 @@ var ProseIDForm = class {
     this.renderLoading();
     this.ready = this.load();
   }
-  applyTheme(theme = {}) {
+  applyTheme(theme = {}, manifestColors = {}) {
     const name = normalizeTheme(theme);
     this.target.dataset.proseidTheme = name;
-    const colors = { ...THEMES[name], ...normalizeColors(this.options.colors) };
+    const colors = {
+      ...THEMES[name],
+      ...normalizeColors(manifestColors),
+      ...normalizeColors(this.options.colors)
+    };
     for (const [key, value] of Object.entries(colors)) {
       const token = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
       this.target.style.setProperty(`--proseid-${token}`, value);
@@ -1235,7 +1328,11 @@ var ProseIDForm = class {
       this.locale = this.explicitLocale || readLocalePreference() || normalizeLocale(this.manifest.flow?.language);
       this.copy = messagesFor(this.locale, this.options.messages);
       this.api.setAttribution?.(this.attribution);
-      this.applyTheme(this.manifest.presentation?.theme ?? this.options.theme);
+      this.applyTheme(
+        this.manifest.presentation?.theme ?? this.options.theme,
+        this.manifest.presentation?.colors
+      );
+      this.applyAppearance(this.options.appearance ?? this.manifest.presentation?.appearance);
       if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
         throw new ProseIDError("signing_not_available", "Signing is not available in this embedded Flow yet.");
       }
@@ -1266,6 +1363,7 @@ var ProseIDForm = class {
   setLocale(locale) {
     const next = normalizeLocale(locale);
     if (next === this.locale) return;
+    const restoreGuidedReview = this.flowType === "guided_assessment" && this.guidedPhase === "review";
     this.locale = next;
     this.copy = messagesFor(next, this.options.messages);
     saveLocalePreference(next);
@@ -1276,7 +1374,12 @@ var ProseIDForm = class {
       this.applyDefinitions(this.lastValidation.definitions || {});
       this.renderIssues(this.lastValidation.issues || []);
     }
+    if (restoreGuidedReview) this.showGuidedReview();
     this.updateSubmitState();
+    this.setStatus(
+      this.validationInFlight || this.validationScheduled ? "checking" : this.valid ? "ready" : "idle",
+      this.validationInFlight || this.validationScheduled ? this.copy.checking : this.valid ? this.copy.ready : this.copy.incomplete
+    );
     this.emit("language", { language: next });
   }
   renderLanguageSelector() {
@@ -1422,6 +1525,7 @@ var ProseIDForm = class {
     this.submitButton = text("button", "submit", this.options.submitLabel || this.defaultSubmitLabel());
     this.submitButton.type = "submit";
     this.submitButton.disabled = true;
+    this.validationNavigator = this.renderValidationNavigator();
     if (this.flowType === "guided_assessment") this.formNode.append(this.renderGuided());
     else if (this.flowType === "determination") this.formNode.append(this.renderDetermination());
     else if (this.flowType === "checklist") this.formNode.append(this.renderChecklist());
@@ -1439,12 +1543,25 @@ var ProseIDForm = class {
     shell.append(head, body);
     this.shadow.append(shell);
     this.updateAnswerProgress();
+    this.updateValidationNavigator();
   }
   defaultSubmitLabel() {
     if (this.flowType === "guided_assessment") return this.copy.completeAssessment;
     if (this.flowType === "determination") return this.copy.confirmDetermination;
     if (this.flowType === "checklist") return this.copy.completeChecklist;
     return this.copy.submit;
+  }
+  setButtonBusy(button, busy, label) {
+    if (!button) return;
+    button.classList.toggle("is-loading", busy);
+    button.setAttribute("aria-busy", String(busy));
+    button.replaceChildren();
+    if (busy) {
+      const spinner = text("span", "button-spinner");
+      spinner.setAttribute("aria-hidden", "true");
+      button.append(spinner);
+    }
+    button.append(text("span", "button-label", label));
   }
   renderPrivacy() {
     const privacy = text("div", "privacy");
@@ -1454,7 +1571,9 @@ var ProseIDForm = class {
   }
   renderActions({ standardForm = false } = {}) {
     const actions = text("div", standardForm ? "actions standard-form-actions" : "actions");
-    actions.append(this.renderPrivacy(), this.submitButton);
+    const meta = text("div", "action-meta");
+    meta.append(this.validationNavigator);
+    actions.append(meta, this.submitButton);
     return actions;
   }
   visibleFields() {
@@ -1481,17 +1600,31 @@ var ProseIDForm = class {
     this.guidedIndexNode = text("div", "guided-index");
     this.guidedFieldSlot = text("div", "guided-field-slot");
     const navigation = text("div", "guided-navigation");
+    this.guidedNavigation = navigation;
     this.guidedBack = text("button", "secondary-action", this.copy.back);
     this.guidedBack.type = "button";
     this.guidedBack.addEventListener("click", () => this.guidedPrevious());
     this.guidedNext = text("button", "primary-action", this.copy.continue);
     this.guidedNext.type = "button";
     this.guidedNext.addEventListener("click", () => this.guidedContinue());
-    this.guidedRequirement = text("span", "guided-requirement", this.copy.answerRequired);
-    this.guidedRequirement.hidden = true;
-    navigation.append(this.guidedBack, this.guidedRequirement, this.guidedNext);
+    navigation.append(this.guidedBack, this.validationNavigator, this.guidedNext);
     this.guidedQuestion.append(this.guidedIndexNode, this.guidedFieldSlot, navigation);
     this.guidedPath = text("aside", "guided-path");
+    this.guidedPathHeading = text("div", "guided-path-heading");
+    this.guidedPathHeadingLabel = text("span", "", this.copy.guidedPath);
+    this.guidedPathHeadingCount = text("strong");
+    this.guidedPathHeading.append(this.guidedPathHeadingLabel, this.guidedPathHeadingCount);
+    this.guidedPathList = document.createElement("ol");
+    this.guidedPathList.tabIndex = 0;
+    this.guidedPathList.setAttribute("aria-label", this.copy.guidedPath);
+    this.guidedPath.append(this.guidedPathHeading);
+    if (this.progressEnabled()) {
+      this.guidedPathProgress = text("div", "guided-progress");
+      this.guidedPathProgressFill = text("span");
+      this.guidedPathProgress.append(this.guidedPathProgressFill);
+      this.guidedPath.append(this.guidedPathProgress);
+    }
+    this.guidedPath.append(this.guidedPathList);
     this.guidedReview = text("section", "guided-review");
     this.guidedReview.hidden = true;
     this.guidedParking = text("div", "field-parking");
@@ -1505,12 +1638,18 @@ var ProseIDForm = class {
   }
   refreshGuided() {
     if (!this.guidedQuestion) return;
+    const list = this.guidedPathList;
+    const previousPathScrollTop = list?.scrollTop || 0;
+    if (this.validationNavigator?.parentNode !== this.guidedNavigation) {
+      this.guidedNavigation.insertBefore(this.validationNavigator, this.guidedNext);
+    }
     const entries = this.visibleFields();
     if (!entries.length) {
       this.guidedQuestion.replaceChildren(text("p", "empty-state", "This Flow has no visible questions."));
       this.guidedPath.hidden = true;
       return;
     }
+    this.guidedPath.hidden = false;
     this.guidedIndex = Math.min(this.guidedIndex, entries.length - 1);
     const [currentName, field] = entries[this.guidedIndex];
     for (const [, candidate] of entries) {
@@ -1526,72 +1665,75 @@ var ProseIDForm = class {
       text("small", "", this.guidedIndex === entries.length - 1 ? this.copy.guidedReviewCue : this.copy.guidedContinueCue)
     );
     this.guidedBack.disabled = this.guidedIndex === 0;
-    const needsAnswer = field.definition?.required === true && !answerProvided(field.definition, this.values[currentName]);
-    this.guidedNext.disabled = this.guidedChecking || needsAnswer;
-    this.guidedRequirement.hidden = !needsAnswer;
+    this.guidedNext.disabled = this.guidedChecking;
     this.guidedNext.textContent = this.guidedIndex === entries.length - 1 ? this.copy.reviewAnswers : this.copy.continue;
-    this.guidedPath.replaceChildren();
-    const heading = text("div", "guided-path-heading");
-    heading.append(text("span", "", this.copy.guidedPath), text("strong", "", `${this.guidedIndex + 1}/${entries.length}`));
-    const list = document.createElement("ol");
-    entries.forEach(([entryName, entryField], index) => {
-      if (index === this.guidedIndex) {
-        const hasAnswer = answerProvided(entryField.definition, this.values[entryName]);
-        const active = text("li", hasAnswer ? "active answered" : "active");
-        const activeCopy = text("span", "guided-path-copy");
-        activeCopy.append(text("strong", "", entryField.label), text("small", "", this.copy.guidedCurrent));
-        active.append(text("span", "guided-marker", hasAnswer ? "\u2713" : ""), activeCopy);
-        list.append(active);
-        return;
-      }
-      if (!answerProvided(entryField.definition, this.values[entryName])) {
-        const future = text("li", "remaining");
-        const futureCopy = text("span", "guided-path-copy");
-        futureCopy.append(text("strong", "", entryField.label), text("small", "", this.copy.notAnswered));
-        future.append(text("span", "guided-marker"), futureCopy);
-        list.append(future);
-        return;
-      }
-      const item = text("li", "answered");
-      const button = text("button", "guided-path-button");
-      button.type = "button";
-      const pathCopy = text("span", "guided-path-copy");
-      pathCopy.append(
-        text("strong", "", entryField.label),
-        text("small", "", this.displayValue(this.values[entryName], entryField.definition))
-      );
-      button.append(text("span", "guided-marker", "\u2713"), pathCopy);
-      let navigatedOnPointerDown = false;
-      button.addEventListener("pointerdown", (event) => {
-        if (event.button !== 0) return;
-        navigatedOnPointerDown = true;
-        event.preventDefault();
-        this.goToGuidedQuestion(entryName);
-      });
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        if (navigatedOnPointerDown) {
-          navigatedOnPointerDown = false;
-          return;
-        }
-        this.goToGuidedQuestion(entryName);
-      });
-      item.append(button);
-      list.append(item);
-    });
-    this.guidedPath.append(heading);
-    if (this.progressEnabled()) {
-      const rail = text("div", "guided-progress");
-      const fill = text("span", "");
+    this.guidedPathHeadingLabel.textContent = this.copy.guidedPath;
+    this.guidedPathHeadingCount.textContent = `${this.guidedIndex + 1}/${entries.length}`;
+    list.setAttribute("aria-label", this.copy.guidedPath);
+    if (this.guidedPathProgressFill) {
       const answered = entries.filter(([name, candidate]) => answerProvided(candidate.definition, this.values[name])).length;
-      fill.style.width = `${Math.round(answered / entries.length * 100)}%`;
-      rail.append(fill);
-      this.guidedPath.append(rail);
+      this.guidedPathProgressFill.style.width = `${Math.round(answered / entries.length * 100)}%`;
     }
-    this.guidedPath.append(list);
+    const existingItems = new Map([...list.children].map((item) => [item.dataset.field, item]));
+    const nextItems = entries.map(([entryName, entryField], index) => {
+      let item = existingItems.get(entryName);
+      if (!item) {
+        item = text("li");
+        item.dataset.field = entryName;
+        const button2 = text("button", "guided-path-button");
+        button2.type = "button";
+        const marker2 = text("span", "guided-marker");
+        const pathCopy = text("span", "guided-path-copy");
+        pathCopy.append(text("strong"), text("small"));
+        button2.append(marker2, pathCopy);
+        let navigatedOnPointerDown = false;
+        button2.addEventListener("pointerdown", (event) => {
+          if (button2.disabled || event.button !== 0) return;
+          navigatedOnPointerDown = true;
+          event.preventDefault();
+          this.goToGuidedQuestion(entryName);
+        });
+        button2.addEventListener("click", (event) => {
+          event.preventDefault();
+          if (button2.disabled) return;
+          if (navigatedOnPointerDown) {
+            navigatedOnPointerDown = false;
+            return;
+          }
+          this.goToGuidedQuestion(entryName);
+        });
+        item.append(button2);
+      }
+      const button = item.querySelector(".guided-path-button");
+      const marker = item.querySelector(".guided-marker");
+      const label = item.querySelector(".guided-path-copy strong");
+      const detail = item.querySelector(".guided-path-copy small");
+      const hasAnswer = answerProvided(entryField.definition, this.values[entryName]);
+      const isActive = index === this.guidedIndex;
+      item.className = isActive ? hasAnswer ? "active answered" : "active" : hasAnswer ? "answered" : "remaining";
+      if (isActive) item.setAttribute("aria-current", "step");
+      else item.removeAttribute("aria-current");
+      button.disabled = isActive || !hasAnswer;
+      marker.textContent = hasAnswer ? "\u2713" : "";
+      label.textContent = entryField.label;
+      detail.textContent = isActive ? this.copy.guidedCurrent : hasAnswer ? this.displayValue(this.values[entryName], entryField.definition) : this.copy.notAnswered;
+      return item;
+    });
+    const currentItems = [...list.children];
+    const structureChanged = currentItems.length !== nextItems.length || currentItems.some((item, index) => item !== nextItems[index]);
+    if (structureChanged) list.replaceChildren(...nextItems);
+    list.scrollTop = previousPathScrollTop;
     requestAnimationFrame(() => {
       const active = list.querySelector(".active");
-      if (active && list.scrollHeight > list.clientHeight) active.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      if (!active || list.scrollHeight <= list.clientHeight) return;
+      const listBounds = list.getBoundingClientRect();
+      const activeBounds = active.getBoundingClientRect();
+      let nextTop = list.scrollTop;
+      if (activeBounds.top < listBounds.top) nextTop -= listBounds.top - activeBounds.top;
+      else if (activeBounds.bottom > listBounds.bottom) nextTop += activeBounds.bottom - listBounds.bottom;
+      if (Math.abs(nextTop - list.scrollTop) < 1) return;
+      const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      list.scrollTo({ top: Math.max(0, nextTop), behavior: reducedMotion ? "auto" : "smooth" });
     });
   }
   goToGuidedQuestion(name) {
@@ -1686,13 +1828,15 @@ var ProseIDForm = class {
       list.append(row);
     });
     const actions = text("div", "guided-review-actions");
+    const readiness = text("div", "guided-review-readiness");
     const back = text("button", "secondary-action", this.copy.back);
     back.type = "button";
     back.addEventListener("click", () => this.guidedPrevious());
+    readiness.append(this.validationNavigator);
     actions.append(back, this.submitButton);
     this.guidedReview.append(head);
     this.guidedReview.append(list);
-    this.guidedReview.append(this.renderPrivacy(), actions);
+    this.guidedReview.append(this.renderPrivacy(), readiness, actions);
     this.updateSubmitState();
   }
   renderDetermination() {
@@ -1770,6 +1914,146 @@ var ProseIDForm = class {
   updateSubmitState() {
     if (!this.submitButton) return;
     this.submitButton.disabled = this.submitting || this.guidedChecking || this.validationLocked;
+    this.updateValidationNavigator();
+  }
+  validationProblems() {
+    const { fingerprint } = this.validationRequest();
+    const localIssues = this.localValidationIssues(null, { includeRequired: true }).filter((issue) => issue?.severity === "error");
+    const problems = [];
+    const seenFields = /* @__PURE__ */ new Set();
+    const add = (issue, kind = "attention") => {
+      const name = issue?.field_id || "";
+      if (name) {
+        const field = this.fields.get(name);
+        if (!field || field.engineVisible === false || seenFields.has(name)) return;
+        seenFields.add(name);
+      }
+      problems.push({ issue, name, kind });
+    };
+    for (const issue of localIssues) {
+      const missing = issue.kind === "missing_required" || issue.kind === "attestation_incomplete";
+      add(issue, missing ? "missing" : "attention");
+    }
+    if (this.flowType === "checklist") {
+      for (const name of this.checklistControlNames()) {
+        if (!this.reviewed.has(name)) add({ field_id: name, severity: "error", kind: "missing_required", local: true }, "missing");
+      }
+    }
+    if (this.lastValidationFingerprint === fingerprint) {
+      for (const issue of this.lastValidation?.issues || []) {
+        if (issue?.severity === "error") add(issue, "attention");
+      }
+      if (this.lastValidation?.valid === false && problems.length === 0) add({ severity: "error" }, "attention");
+    }
+    return problems;
+  }
+  validationNavigatorState() {
+    if (!this.manifest) return { state: "checking", count: 0, label: this.copy.checkingAnswers, detail: "" };
+    const problems = this.validationProblems();
+    if (problems.length) {
+      const needsAttention = problems.some((problem) => problem.kind === "attention");
+      return {
+        state: needsAttention ? "attention" : "needed",
+        count: problems.length,
+        label: needsAttention ? this.copy.answersNeedAttention(problems.length) : this.copy.answersNeeded(problems.length),
+        detail: needsAttention ? this.copy.goToFirstAttention : this.copy.goToFirstUnfinished,
+        problems
+      };
+    }
+    const { fingerprint } = this.validationRequest();
+    const currentResult = this.lastValidationFingerprint === fingerprint ? this.lastValidation : null;
+    if (this.validationScheduled || this.validationInFlight || !currentResult) {
+      return { state: "checking", count: 0, label: this.copy.checkingAnswers, detail: this.copy.checkingAnswersHelp, problems: [] };
+    }
+    if (currentResult.valid === true) {
+      return { state: "ready", count: 0, label: this.copy.readyToComplete, detail: this.copy.answersChecked, problems: [] };
+    }
+    return {
+      state: "attention",
+      count: 1,
+      label: this.copy.answersNeedAttention(1),
+      detail: this.copy.goToFirstAttention,
+      problems: [{ issue: { severity: "error" }, name: "", kind: "attention" }]
+    };
+  }
+  renderValidationNavigator() {
+    const wrap = text("div", "validation-navigator-slot");
+    const navigator = text("div", "validation-navigator");
+    navigator.dataset.open = "false";
+    navigator.dataset.state = "checking";
+    const id = `proseid-answer-status-${this.recordId}`;
+    const toggle = text("button", "validation-orb");
+    toggle.type = "button";
+    toggle.setAttribute("aria-controls", id);
+    toggle.setAttribute("aria-expanded", "false");
+    this.validationOrbValue = text("span", "validation-orb-value");
+    this.validationOrbValue.setAttribute("aria-hidden", "true");
+    toggle.append(this.validationOrbValue);
+    const reveal = text("div", "validation-reveal");
+    reveal.id = id;
+    const jump = text("button", "validation-jump");
+    jump.type = "button";
+    this.validationCopy = text("span", "validation-copy");
+    this.validationLabel = text("strong", "validation-label");
+    this.validationLabel.setAttribute("aria-live", "polite");
+    this.validationDetail = text("small", "validation-detail");
+    this.validationCopy.append(this.validationLabel, this.validationDetail);
+    this.validationArrow = text("span", "validation-arrow", "\u2192");
+    this.validationArrow.setAttribute("aria-hidden", "true");
+    jump.append(this.validationCopy, this.validationArrow);
+    reveal.append(jump);
+    navigator.append(reveal, toggle);
+    wrap.append(navigator);
+    toggle.addEventListener("click", () => {
+      this.validationNavigatorOpen = !this.validationNavigatorOpen;
+      this.updateValidationNavigator();
+    });
+    jump.addEventListener("click", () => {
+      const state = this.validationNavigatorState();
+      if (state.problems?.length) this.navigateToFirstProblem(state.problems);
+      this.validationNavigatorOpen = false;
+      this.updateValidationNavigator();
+    });
+    return wrap;
+  }
+  updateValidationNavigator() {
+    const navigator = this.validationNavigator?.querySelector?.(".validation-navigator");
+    const toggle = navigator?.querySelector?.(".validation-orb");
+    const jump = navigator?.querySelector?.(".validation-jump");
+    const reveal = navigator?.querySelector?.(".validation-reveal");
+    if (!navigator || !toggle || !jump || !reveal) return;
+    const state = this.validationNavigatorState();
+    navigator.dataset.state = state.state;
+    navigator.dataset.open = String(this.validationNavigatorOpen);
+    toggle.setAttribute("aria-expanded", String(this.validationNavigatorOpen));
+    reveal.setAttribute("aria-hidden", String(!this.validationNavigatorOpen));
+    jump.tabIndex = this.validationNavigatorOpen ? 0 : -1;
+    toggle.setAttribute("aria-label", this.validationNavigatorOpen ? this.copy.closeAnswerNavigator : `${this.copy.openAnswerNavigator}: ${state.label}`);
+    this.validationOrbValue.textContent = state.state === "ready" ? "\u2713" : state.state === "checking" ? "" : state.count > 99 ? "99+" : String(state.count);
+    this.validationLabel.textContent = state.label;
+    this.validationDetail.textContent = state.detail;
+    jump.setAttribute("aria-label", state.problems?.length ? `${state.label}. ${state.detail}` : state.label);
+    this.validationArrow.textContent = state.problems?.length ? "\u2192" : state.state === "ready" ? "\u2713" : "\xB7";
+  }
+  async navigateToFirstProblem(problems = this.validationProblems()) {
+    const orderedNames = this.visibleFields().map(([name]) => name);
+    const named = problems.filter((problem) => problem.name);
+    named.sort((a, b) => orderedNames.indexOf(a.name) - orderedNames.indexOf(b.name));
+    const target = named[0];
+    if (!target) {
+      this.submittedAttempted = true;
+      this.renderIssues(this.lastValidation?.issues || []);
+      this.formError?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      return;
+    }
+    this.blurred.add(target.name);
+    const localIssues = this.localValidationIssues([target.name], { includeRequired: true });
+    this.renderLocalIssues([target.name], localIssues);
+    if (this.flowType === "guided_assessment") this.goToGuidedQuestion(target.name);
+    const field = this.fields.get(target.name);
+    field?.wrap?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    const controls = field?.controls || [field?.control];
+    (controls.find((control) => control?.checked) || controls.find((control) => control && control.type !== "hidden"))?.focus?.({ preventScroll: true });
   }
   renderDatePicker(id, definition, labelText) {
     const wrap = text("div", "date-control");
@@ -2212,14 +2496,16 @@ var ProseIDForm = class {
     this.setStatus("checking", this.copy.checking);
     this.emit("change", { name, value: this.values[name], values: { ...this.values } });
     this.invalidateStaleValidationRequest();
-    this.scheduleValidation(immediate ? 0 : this.options.validateDelay ?? 400, [name]);
+    const activeDefinition = this.fields.get(name)?.definition || definition;
+    const locallyValid = answerProvided(activeDefinition, value) && !localConstraintIssue(name, activeDefinition, value, { includeRequired: true });
+    const validationDelay = immediate ? 0 : this.options.validateDelay ?? (locallyValid ? LOCALLY_VALID_VALIDATION_DELAY : DEFAULT_VALIDATION_DELAY);
+    this.scheduleValidation(validationDelay, [name]);
   }
   validationRequest() {
     const responses = normalizedResponses(this.manifest.schema?.definitions || {}, this.values);
     const fingerprint = JSON.stringify([
       this.manifest.flow.ref,
       this.manifest.flow.effectiveAt,
-      this.locale,
       responses
     ]);
     return { responses, fingerprint };
@@ -2233,6 +2519,8 @@ var ProseIDForm = class {
     this.validationAbort = null;
     this.validationPromise = null;
     this.validationPromiseFingerprint = "";
+    this.validationInFlight = false;
+    this.updateValidationNavigator();
   }
   localValidationIssues(names, { includeRequired = false } = {}) {
     const selected = names ? new Set(names) : null;
@@ -2252,7 +2540,10 @@ var ProseIDForm = class {
   }
   scheduleValidation(delay, names = null, { includeRequired = false } = {}) {
     clearTimeout(this.validationTimer);
+    this.validationScheduled = true;
+    this.updateValidationNavigator();
     this.validationTimer = setTimeout(() => {
+      this.validationScheduled = false;
       const localIssues = names?.length ? this.localValidationIssues(names, { includeRequired }) : [];
       if (names?.length) this.renderLocalIssues(names, localIssues);
       if (localIssues.some((issue) => issue.severity === "error")) {
@@ -2268,6 +2559,7 @@ var ProseIDForm = class {
     if (this.destroyed || !this.manifest) return null;
     const { responses, fingerprint } = this.validationRequest();
     if (this.lastValidation && this.lastValidationFingerprint === fingerprint) {
+      this.validationScheduled = false;
       this.renderIssues(this.lastValidation.issues || []);
       this.updateSubmitState();
       return this.lastValidation;
@@ -2276,6 +2568,8 @@ var ProseIDForm = class {
       return this.validationPromise;
     }
     const sequence = ++this.validationSequence;
+    this.validationScheduled = false;
+    this.validationInFlight = true;
     this.validationAbort?.abort();
     this.validationAbort = new AbortController();
     this.setStatus("checking", this.copy.checking);
@@ -2324,6 +2618,7 @@ var ProseIDForm = class {
     })();
     this.validationPromise = request;
     this.validationPromiseFingerprint = fingerprint;
+    this.updateValidationNavigator();
     try {
       return await request;
     } finally {
@@ -2331,6 +2626,8 @@ var ProseIDForm = class {
         this.validationPromise = null;
         this.validationPromiseFingerprint = "";
         this.validationAbort = null;
+        this.validationInFlight = false;
+        this.updateValidationNavigator();
       }
     }
   }
@@ -2350,6 +2647,7 @@ var ProseIDForm = class {
     if (this.flowType === "guided_assessment" && this.guidedPhase === "questions") this.refreshGuided();
     if (this.flowType === "checklist") this.updateChecklistProgress();
     this.updateAnswerProgress();
+    this.updateValidationNavigator();
   }
   clearStaleFieldEvaluation(name) {
     const field = this.fields.get(name);
@@ -2491,7 +2789,18 @@ var ProseIDForm = class {
     event.preventDefault();
     if (this.destroyed || this.submitting) return;
     clearTimeout(this.validationTimer);
+    this.validationScheduled = false;
     this.submittedAttempted = true;
+    const localIssues = this.localValidationIssues(null, { includeRequired: true });
+    if (localIssues.some((issue) => issue.severity === "error")) {
+      const { fingerprint } = this.validationRequest();
+      const currentServerIssues = this.lastValidationFingerprint === fingerprint ? this.lastValidation?.issues || [] : [];
+      this.renderIssues([...currentServerIssues, ...localIssues]);
+      this.validationNavigatorOpen = true;
+      this.updateValidationNavigator();
+      await this.navigateToFirstProblem(this.validationProblems());
+      return;
+    }
     if (this.flowType === "checklist") {
       const firstUnreviewed = this.checklistControlNames().find((name) => !this.reviewed.has(name));
       if (firstUnreviewed) {
@@ -2511,7 +2820,7 @@ var ProseIDForm = class {
     }
     this.submitting = true;
     this.submitButton.disabled = true;
-    this.submitButton.textContent = this.copy.submitting;
+    this.setButtonBusy(this.submitButton, true, this.copy.submitting);
     this.setStatus("checking", this.copy.creating);
     this.emit("submit", { values: { ...this.values } });
     try {
@@ -2524,7 +2833,7 @@ var ProseIDForm = class {
           if (!signature) {
             this.submitting = false;
             this.updateSubmitState();
-            this.submitButton.textContent = this.options.submitLabel || this.defaultSubmitLabel();
+            this.setButtonBusy(this.submitButton, false, this.options.submitLabel || this.defaultSubmitLabel());
             this.setStatus("ready", this.copy.ready);
             return;
           }
@@ -2565,7 +2874,7 @@ var ProseIDForm = class {
         await this.focusFirstInvalid(this.lastValidation);
       }
       this.updateSubmitState();
-      this.submitButton.textContent = this.options.submitLabel || this.defaultSubmitLabel();
+      this.setButtonBusy(this.submitButton, false, this.options.submitLabel || this.defaultSubmitLabel());
       this.formError.hidden = false;
       this.formError.textContent = errorMessage(error.code, error.message);
       this.setStatus("error", "Submission not saved");
@@ -2576,9 +2885,15 @@ var ProseIDForm = class {
     for (const cleanup of this.cleanupFns.splice(0)) cleanup();
     const shell = this.shadow.querySelector(".shell");
     const complete = text("div", "completion-view");
-    complete.append(text("div", "seal", "\u2713"), text("h2", "", result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
-    complete.append(text("p", "", result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)));
-    complete.append(text("div", "receipt", result.test ? this.copy.testRecord(result.recordId) : this.copy.auditRecord(result.recordId)));
+    const summary = text("header", "completion-summary");
+    const summaryCopy = text("div", "completion-summary-copy");
+    summaryCopy.append(
+      text("h2", "", result.test ? this.copy.testCompleteTitle : this.copy.completeTitle),
+      text("p", "", result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)),
+      text("div", "receipt", result.test ? this.copy.testRecord(result.recordId) : this.copy.auditRecord(result.recordId))
+    );
+    summary.append(text("div", "seal", "\u2713"), summaryCopy);
+    complete.append(summary);
     const recordedResult = this.renderRecordedResult(result.result);
     if (recordedResult) complete.append(recordedResult);
     if (result.test) {
@@ -2683,19 +2998,19 @@ var ProseIDForm = class {
     }
     input.disabled = true;
     button.disabled = true;
-    button.textContent = this.copy.receiptSending;
+    this.setButtonBusy(button, true, this.copy.receiptSending);
     status.dataset.state = "idle";
     status.textContent = "";
     try {
       await this.api.emailReceipt(this.manifest.flow.ref, result.recordId, email);
       status.dataset.state = "sent";
       status.textContent = this.copy.receiptSent(email);
-      button.textContent = this.copy.receiptAction;
+      this.setButtonBusy(button, false, this.copy.receiptAction);
       this.emit("receipt", { status: "sent", recordId: result.recordId, email });
     } catch (error) {
       input.disabled = false;
       button.disabled = false;
-      button.textContent = this.copy.receiptAction;
+      this.setButtonBusy(button, false, this.copy.receiptAction);
       status.dataset.state = "error";
       status.textContent = error?.code === "rate_limited" ? this.copy.receiptRateLimited : this.copy.receiptError;
       this.emit("receipt", { status: "error", recordId: result.recordId, email, error });
@@ -2722,6 +3037,8 @@ var ProseIDForm = class {
     this.destroyed = true;
     this.validationSequence += 1;
     clearTimeout(this.validationTimer);
+    this.validationScheduled = false;
+    this.validationInFlight = false;
     this.validationAbort?.abort();
     this.signatureCancel?.();
     for (const cleanup of this.cleanupFns.splice(0)) cleanup();

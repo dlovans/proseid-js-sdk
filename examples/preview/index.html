@@ -31,6 +31,11 @@
 				<section class="variant"><span>Guided Assessment · light · rigid · full attribution</span><div id="guided-rigid"></div></section>
 				<section class="variant"><span>Determination · midnight · rigid · progress hidden</span><div id="determination-rigid"></div></section>
 				<section class="variant"><span>Determination · prefilled · light · soft · ready to submit</span><div id="determination-soft"></div></section>
+				<section class="variant"><span>Completed view · light · soft</span><div id="completion-light"></div></section>
+				<section class="variant"><span>Completed view · charcoal · capsule</span><div id="completion-charcoal"></div></section>
+				<section class="variant"><span>Completed view · midnight · rigid</span><div id="completion-midnight"></div></section>
+				<section class="variant"><span>Completed view · forest · underline</span><div id="completion-forest"></div></section>
+				<section class="variant"><span>Completed view · custom violet palette</span><div id="completion-custom"></div></section>
 				<section class="variant"><span>Compliance Checklist · forest · underline · hidden attribution</span><div id="checklist-underline"></div></section>
 				<section class="variant"><span>Compliance Checklist · charcoal · capsule · compact attribution</span><div id="checklist-capsule"></div></section>
 			</div>
@@ -130,6 +135,35 @@
 			ProseID.mount('#guided-rigid', { ...base, flow: 'flow_guided_rigid_preview', appearance: { shape: 'rigid', density: 'compact' }, theme: 'light' });
 			ProseID.mount('#determination-rigid', { ...base, flow: 'flow_determination_rigid_preview', appearance: { shape: 'rigid', density: 'compact' }, theme: 'midnight', showProgress: false, branding: { logoUrl: 'http://127.0.0.1:8091/examples/preview/icon-placeholder.svg', logoAlt: 'Northstar symbol' } });
 			ProseID.mount('#determination-soft', { ...base, flow: 'flow_determination_prefilled_preview', appearance: 'soft', theme: 'light' });
+			const completion = {
+				ok: true,
+				status: 'completed',
+				recordId: 'preview_audit_record',
+				effectiveAt: '2026-09-01',
+				logicVersion: '1.0.0',
+				temporalRange: null,
+				duplicate: false,
+				delivered: { email: false, webhook: false },
+				nextAction: null,
+				result: { status: 'READY', outcomes: [{ fieldId: 'deadline_status', label: 'Deadline status', type: 'string', value: 'Within 72 hours', message: 'Preserve the awareness time and supporting incident evidence.' }], notices: [{ kind: 'advisory', severity: 'notice', message: 'Confirm the applicable authority and official reporting channel.' }] }
+			};
+			const mountCompletion = (selector, options) => ProseID.mount(selector, {
+				...base,
+				flow: `flow_determination_${options.theme}_complete_preview`,
+				locale: 'en',
+				autoFocusCompletion: false,
+				initialCompletion: completion,
+				...options
+			});
+			mountCompletion('#completion-light', { appearance: 'soft', theme: 'light' });
+			mountCompletion('#completion-charcoal', { appearance: 'capsule', theme: 'charcoal' });
+			mountCompletion('#completion-midnight', { appearance: 'rigid', theme: 'midnight' });
+			mountCompletion('#completion-forest', { appearance: 'underline', theme: 'forest' });
+			mountCompletion('#completion-custom', {
+				appearance: { shape: 'capsule', fields: 'outlined', shell: 'card', density: 'compact' },
+				theme: 'light',
+				colors: { accent: '#7357ff', accentInk: '#5138cf', canvas: '#f4f2ff', surface: '#ffffff', ink: '#17152a', copy: '#54506b', muted: '#76728a', rule: '#ded9f2', success: '#167653', successTint: '#e8f5ef', submitInk: '#ffffff', skeletonGlow: '#ffffff' }
+			});
 			ProseID.mount('#checklist-underline', { ...base, flow: 'flow_checklist_underline_preview', appearance: 'underline', theme: 'forest', branding: { proseid: 'hidden' } });
 			ProseID.mount('#checklist-capsule', { ...base, flow: 'flow_checklist_capsule_preview', appearance: { preset: 'capsule', density: 'compact' }, theme: 'charcoal', branding: { proseid: 'compact' } });
 		</script>

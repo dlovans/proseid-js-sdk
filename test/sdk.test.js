@@ -248,6 +248,64 @@ describe('ProseID SDK', () => {
 		expect(root.querySelector('button[type="submit"]').disabled).toBe(false);
 	});
 
+	it('turns answer status into a smooth navigator without disabling completion', async () => {
+		const twoFieldManifest = {
+			...manifest,
+			schema: { definitions: {
+				full_name: { type: 'string', label: 'Full name', required: true, min_length: 3 },
+				country: { type: 'select', label: 'Country', required: true, options: ['se'] }
+			} }
+		};
+		const transport = {
+			manifest: vi.fn().mockResolvedValue(twoFieldManifest),
+			validate: vi.fn(async (_flow, values) => ({
+				ok: true,
+				valid: values.full_name === 'Ada' && values.country === 'se',
+				status: values.full_name === 'Ada' && values.country === 'se' ? 'READY' : 'INCOMPLETE',
+				definitions: twoFieldManifest.schema.definitions,
+				issues: []
+			})),
+			complete: vi.fn(),
+			emailReceipt: vi.fn()
+		};
+		const instance = mount('#form', { flow: 'flow_12345678', transport, validateDelay: 5 });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		const navigator = root.querySelector('.validation-navigator');
+		const orb = root.querySelector('.validation-orb');
+		expect(navigator.closest('.action-meta')).not.toBeNull();
+		expect(root.querySelector('.action-meta .privacy')).toBeNull();
+		expect(styles).toContain('border-radius: var(--proseid-button-radius)');
+		expect(styles).toContain('border-radius: var(--proseid-control-radius)');
+		expect(navigator.dataset.state).toBe('needed');
+		expect(orb.textContent).toBe('2');
+		expect(root.querySelector('.validation-label').textContent).toBe('2 answers needed');
+		expect(root.querySelector('.submit').disabled).toBe(false);
+
+		orb.click();
+		expect(navigator.dataset.open).toBe('true');
+		root.querySelector('.validation-jump').click();
+		const name = root.querySelector('input[name="full_name"]');
+		expect(root.activeElement).toBe(name);
+		expect(name.getAttribute('aria-invalid')).toBe('true');
+
+		name.value = 'x';
+		name.dispatchEvent(new Event('input', { bubbles: true }));
+		await vi.waitFor(() => expect(navigator.dataset.state).toBe('attention'));
+		expect(root.querySelector('.validation-label').textContent).toBe('2 answers need attention');
+
+		name.value = 'Ada';
+		name.dispatchEvent(new Event('input', { bubbles: true }));
+		const country = root.querySelector('select[name="country"]');
+		country.value = 'se';
+		country.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(navigator.dataset.state).toBe('checking');
+		await vi.waitFor(() => expect(navigator.dataset.state).toBe('ready'));
+		expect(root.querySelector('.validation-label').textContent).toBe('Ready to complete');
+		expect(orb.textContent).toBe('✓');
+		expect(root.querySelector('.submit').disabled).toBe(false);
+	});
+
 	it('tells a respondent to reload when the server rejects a stale legal date', async () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(manifest))
@@ -273,8 +331,50 @@ describe('ProseID SDK', () => {
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('.guided')).not.toBeNull();
 		expect(root.textContent).toContain('Question 1 of 1');
+		expect(root.querySelector('.guided-path ol').tabIndex).toBe(0);
+		expect(root.querySelector('.guided-path ol').getAttribute('aria-label')).toBe('Decision path');
 		expect(root.querySelector('.guided-index small').textContent).toContain('Review this final answer');
 		expect(root.textContent).toContain('Review answers');
+		expect(styles).toContain('scrollbar-color: transparent transparent');
+		expect(styles).toContain('.guided-path ol:hover::-webkit-scrollbar-thumb');
+		expect(styles).toContain('.guided-path li.active {');
+		expect(styles).toContain('background: color-mix(in srgb, var(--proseid-accent) 7%, var(--proseid-surface))');
+	});
+
+	it('preserves the guided decision-path scroll position when an answer updates its marker', async () => {
+		const definitions = Object.fromEntries(Array.from({ length: 12 }, (_, index) => [
+			`answer_${index + 1}`,
+			{ type: 'string', label: `Answer ${index + 1}`, required: true }
+		]));
+		const guided = {
+			...manifest,
+			flow: { ...manifest.flow, flowType: 'guided_assessment' },
+			schema: { definitions }
+		};
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(guided))
+			.mockImplementation(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions, issues: [] }));
+		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_guided_12345678', fetch, validateDelay: 100000 });
+		await instance.ready;
+		const root = document.querySelector('#form').shadowRoot;
+		const originalPath = root.querySelector('.guided-path ol');
+		const originalFirstItem = originalPath.children[0];
+		const originalSecondItem = originalPath.children[1];
+		originalPath.scrollTop = 96;
+		const input = root.querySelector('input[name="answer_1"]');
+		input.value = 'Recorded answer';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		const refreshedPath = root.querySelector('.guided-path ol');
+		expect(refreshedPath).toBe(originalPath);
+		expect(refreshedPath.children[0]).toBe(originalFirstItem);
+		expect(refreshedPath.scrollTop).toBe(96);
+		expect(refreshedPath.querySelector('.active .guided-marker').textContent).toBe('✓');
+		root.querySelector('.guided-navigation .primary-action').click();
+		await vi.waitFor(() => expect(instance.guidedIndex).toBe(1));
+		expect(refreshedPath.children[0]).toBe(originalFirstItem);
+		expect(refreshedPath.children[1]).toBe(originalSecondItem);
+		expect(originalFirstItem.classList.contains('active')).toBe(false);
+		expect(originalSecondItem.classList.contains('active')).toBe(true);
 	});
 
 	it('shows public field-constraint errors locally and reuses the matching live result on Continue', async () => {
@@ -313,6 +413,43 @@ describe('ProseID SDK', () => {
 		root.querySelector('.guided-navigation .primary-action').click();
 		await vi.waitFor(() => expect(instance.guidedPhase).toBe('review'));
 		expect(transport.validate).toHaveBeenCalledTimes(2);
+	});
+
+	it('checks a locally valid typed answer sooner without overriding an explicit validation delay', async () => {
+		const guided = {
+			...manifest,
+			flow: { ...manifest.flow, flowType: 'guided_assessment' },
+			schema: { definitions: { name: { type: 'string', label: 'Your name', required: true, min_length: 2 } } }
+		};
+		const transport = {
+			manifest: vi.fn().mockResolvedValue(guided),
+			validate: vi.fn().mockResolvedValue({ ok: true, valid: false, status: 'INCOMPLETE', definitions: guided.schema.definitions, issues: [] }),
+			complete: vi.fn(),
+			emailReceipt: vi.fn()
+		};
+		const instance = mount('#form', { flow: 'flow_guided_12345678', transport });
+		await instance.ready;
+		const schedule = vi.spyOn(instance, 'scheduleValidation');
+		const input = document.querySelector('#form').shadowRoot.querySelector('input[name="name"]');
+
+		input.value = 'x';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(schedule).toHaveBeenLastCalledWith(400, ['name']);
+
+		input.value = 'Ada';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(schedule).toHaveBeenLastCalledWith(180, ['name']);
+		instance.destroy();
+
+		document.body.innerHTML = '<div id="form"></div>';
+		const configured = mount('#form', { flow: 'flow_guided_12345678', transport, validateDelay: 900 });
+		await configured.ready;
+		const configuredSchedule = vi.spyOn(configured, 'scheduleValidation');
+		const configuredInput = document.querySelector('#form').shadowRoot.querySelector('input[name="name"]');
+		configuredInput.value = 'Ada';
+		configuredInput.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(configuredSchedule).toHaveBeenLastCalledWith(900, ['name']);
+		configured.destroy();
 	});
 
 	it('reuses an in-flight live validation when Guided Continue is clicked', async () => {
@@ -445,15 +582,25 @@ describe('ProseID SDK', () => {
 	it('uses the schema language by default, lets the respondent switch, and records that choice', async () => {
 		const swedishManifest = {
 			...manifest,
-			flow: { ...manifest.flow, language: 'sv' }
+			flow: { ...manifest.flow, language: 'sv' },
+			schema: { definitions: {
+				full_name: { ...manifest.schema.definitions.full_name, value: 'Ada Lovelace' }
+			} }
 		};
-		const fetch = vi.fn()
-			.mockImplementationOnce(() => response(swedishManifest))
-			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: swedishManifest.schema.definitions, issues: [] }))
-			.mockImplementationOnce(() => response({ ok: true, status: 'completed', recordId: 'language_record', duplicate: false, delivered: { email: false, webhook: false }, nextAction: null }));
+		const fetch = vi.fn(async (_url, init = {}) => {
+			if (!init.body) return response(swedishManifest);
+			const payload = JSON.parse(init.body);
+			if (payload.action === 'complete') {
+				return response({ ok: true, status: 'completed', recordId: 'language_record', duplicate: false, delivered: { email: false, webhook: false }, nextAction: null });
+			}
+			return response({ ok: true, valid: true, status: 'READY', definitions: swedishManifest.schema.definitions, issues: [] });
+		});
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch });
 		await instance.ready;
 		let root = document.querySelector('#form').shadowRoot;
+		const validationsBeforeSwitch = fetch.mock.calls
+			.map(([, init]) => init?.body ? JSON.parse(init.body) : null)
+			.filter((payload) => payload?.action === 'validate').length;
 		expect(root.querySelector('.language-selector select').value).toBe('sv');
 		expect(root.querySelector('.language-selector select').getAttribute('aria-label')).toBe('Språk');
 		expect(root.querySelector('.submit').textContent).toBe('Skicka');
@@ -464,9 +611,17 @@ describe('ProseID SDK', () => {
 		expect(root.querySelector('.language-selector select').value).toBe('en');
 		expect(root.querySelector('.language-selector select').getAttribute('aria-label')).toBe('Language');
 		expect(localStorage.getItem('proseid_flow_language')).toBe('en');
+		expect(root.querySelector('input[name="full_name"]').value).toBe('Ada Lovelace');
+		expect(root.querySelector('.validation-navigator').dataset.state).toBe('ready');
+		const validationsAfterSwitch = fetch.mock.calls
+			.map(([, init]) => init?.body ? JSON.parse(init.body) : null)
+			.filter((payload) => payload?.action === 'validate').length;
+		expect(validationsAfterSwitch).toBe(validationsBeforeSwitch);
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(root.textContent).toContain('Audit record language_record'));
-		const completion = JSON.parse(fetch.mock.calls[2][1].body);
+		const completion = fetch.mock.calls
+			.map(([, init]) => init?.body ? JSON.parse(init.body) : null)
+			.find((payload) => payload?.action === 'complete');
 		expect(completion.language).toBe('en');
 	});
 
@@ -573,6 +728,78 @@ describe('ProseID SDK', () => {
 		expect(target.style.getPropertyValue('--proseid-canvas')).toBe('#151c1a');
 	});
 
+	it.each([
+		['light', '#f5f6f5'],
+		['charcoal', '#171b1c'],
+		['midnight', '#111827'],
+		['forest', '#151c1a']
+	])('renders the completed view with the %s Flow theme', async (theme, canvas) => {
+		const themedManifest = {
+			...manifest,
+			presentation: {
+				...manifest.presentation,
+				theme,
+				appearance: { shape: 'rigid', fields: 'underline', shell: 'flat', density: 'compact' }
+			}
+		};
+		const completion = {
+			ok: true,
+			status: 'completed',
+			recordId: `record_${theme}`,
+			effectiveAt: '2026-07-16',
+			logicVersion: '1.0.0',
+			temporalRange: null,
+			duplicate: false,
+			delivered: { email: false, webhook: false },
+			nextAction: null,
+			result: { status: 'READY', outcomes: [], notices: [] }
+		};
+		const transport = {
+			manifest: vi.fn().mockResolvedValue(themedManifest),
+			validate: vi.fn(),
+			complete: vi.fn()
+		};
+		const instance = mount('#form', { flow: 'flow_12345678', transport, initialCompletion: completion });
+		await instance.ready;
+		const target = document.querySelector('#form');
+		expect(target.dataset).toMatchObject({
+			proseidTheme: theme,
+			proseidShape: 'rigid',
+			proseidFields: 'underline',
+			proseidShell: 'flat',
+			proseidDensity: 'compact'
+		});
+		expect(target.style.getPropertyValue('--proseid-canvas')).toBe(canvas);
+		expect(target.shadowRoot.querySelector('.completion-summary')).not.toBeNull();
+	});
+
+	it('applies manifest palette overrides while allowing an embed mount to customize locally', async () => {
+		const styledManifest = {
+			...manifest,
+			presentation: {
+				...manifest.presentation,
+				theme: 'midnight',
+				colors: { canvas: '#123456', accent: '#abcdef' },
+				appearance: { shape: 'rigid', fields: 'underline', shell: 'flat', density: 'compact' }
+			}
+		};
+		const fetch = vi.fn()
+			.mockImplementationOnce(() => response(styledManifest))
+			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }));
+		const instance = mount('#form', {
+			apiKey: API_KEY,
+			flow: 'flow_12345678',
+			fetch,
+			colors: { canvas: '#654321' },
+			appearance: 'capsule'
+		});
+		await instance.ready;
+		const target = document.querySelector('#form');
+		expect(target.style.getPropertyValue('--proseid-canvas')).toBe('#654321');
+		expect(target.style.getPropertyValue('--proseid-accent')).toBe('#abcdef');
+		expect(target.dataset.proseidShape).toBe('capsule');
+	});
+
 	it('mounts the built-in remote test form without a Flow ID', async () => {
 		const testManifest = {
 			...manifest,
@@ -618,12 +845,16 @@ describe('ProseID SDK', () => {
 
 	it('validates after input and creates an audit completion', async () => {
 		vi.useFakeTimers();
+		let resolveCompletion;
+		let resolveReceipt;
+		const pendingCompletion = new Promise((resolve) => { resolveCompletion = resolve; });
+		const pendingReceipt = new Promise((resolve) => { resolveReceipt = resolve; });
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(manifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: false, status: 'INCOMPLETE', definitions: manifest.schema.definitions, issues: [] }))
 			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: manifest.schema.definitions, issues: [] }))
-			.mockImplementationOnce(() => response({ ok: true, status: 'completed', recordId: 'audit_123', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }))
-			.mockImplementationOnce(() => response({ ok: true, status: 'sent' }));
+			.mockImplementationOnce(() => pendingCompletion)
+			.mockImplementationOnce(() => pendingReceipt);
 		const complete = vi.fn();
 		const receipt = vi.fn();
 		const instance = mount('#form', { apiKey: API_KEY, flow: 'flow_12345678', fetch, validateDelay: 1, onComplete: complete, onReceipt: receipt });
@@ -640,8 +871,16 @@ describe('ProseID SDK', () => {
 		input.dispatchEvent(new Event('change', { bubbles: true }));
 		expect(root.querySelector('button[type="submit"]').disabled).toBe(false);
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+		await Promise.resolve();
+		const submitButton = root.querySelector('.submit');
+		expect(submitButton.getAttribute('aria-busy')).toBe('true');
+		expect(submitButton.querySelector('.button-spinner')).not.toBeNull();
+		expect(submitButton.textContent).toBe('Submitting');
+		resolveCompletion(await response({ ok: true, status: 'completed', recordId: 'audit_123', duplicate: false, delivered: { email: true, webhook: false }, nextAction: null }));
 		await vi.waitFor(() => expect(complete).toHaveBeenCalledWith(expect.objectContaining({ recordId: 'audit_123' })));
 		expect(root.querySelector('.completion-view')).not.toBeNull();
+		expect(root.querySelector('.completion-summary .seal').textContent).toBe('✓');
+		expect(root.querySelector('.completion-summary-copy').textContent).toContain('Audit record audit_123');
 		expect(root.querySelector('.ledger.complete')).not.toBeNull();
 		expect(root.querySelector('.ledger.complete.completion-view')).toBeNull();
 		expect(root.textContent).toContain('Audit record audit_123');
@@ -653,6 +892,11 @@ describe('ProseID SDK', () => {
 		email.dispatchEvent(new Event('input', { bubbles: true }));
 		expect(emailButton.disabled).toBe(false);
 		root.querySelector('.receipt-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+		await Promise.resolve();
+		expect(emailButton.getAttribute('aria-busy')).toBe('true');
+		expect(emailButton.querySelector('.button-spinner')).not.toBeNull();
+		expect(emailButton.textContent).toBe('Sending');
+		resolveReceipt(await response({ ok: true, status: 'sent' }));
 		await vi.waitFor(() => expect(receipt).toHaveBeenCalledWith(expect.objectContaining({
 			status: 'sent', recordId: 'audit_123', email: 'respondent@example.com'
 		})));
@@ -728,8 +972,8 @@ describe('ProseID SDK', () => {
 		root.querySelector('.guided-navigation .primary-action').click();
 		await vi.waitFor(() => {
 			expect(instance.guidedIndex).toBe(1);
-			expect(root.querySelector('.guided-navigation .primary-action').disabled).toBe(true);
-			expect(root.querySelector('.guided-requirement').hidden).toBe(false);
+			expect(root.querySelector('.guided-navigation .primary-action').disabled).toBe(false);
+			expect(root.querySelector('.guided-navigation .validation-label').textContent).toBe('1 answer needed');
 		});
 		const previousAnswer = root.querySelector('.guided-path .answered .guided-path-button');
 		previousAnswer.click();
@@ -741,8 +985,18 @@ describe('ProseID SDK', () => {
 		const country = root.querySelector('select[name="country"]');
 		country.value = 'Sweden';
 		country.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(root.querySelector('.guided-path .active').classList.contains('answered')).toBe(true);
+		expect(root.querySelector('.guided-path .active .guided-marker').textContent).toBe('✓');
+		expect(styles).toContain('.active.answered .guided-marker');
+		expect(styles).toContain('white-space: nowrap');
 		root.querySelector('.guided-navigation .primary-action').click();
 		await vi.waitFor(() => expect(root.querySelector('.guided-review').hidden).toBe(false));
+		expect(root.querySelector('.guided-question').hidden).toBe(true);
+		expect(root.querySelector('.guided-path').hidden).toBe(true);
+		expect(root.querySelector('.guided-review-readiness .validation-navigator-slot')).toBeDefined();
+		expect(root.querySelector('.guided-review-actions .validation-navigator-slot')).toBeNull();
+		expect(styles).toContain('.guided-question[hidden]');
+		expect(styles).toContain('.guided-review { grid-column: 1 / -1; width: 100%');
 		expect(root.querySelector('.review-list').textContent).toContain('Ada Lovelace');
 		expect(root.textContent).not.toContain('Eligible');
 		expect(root.querySelector('.guided-review .submit').disabled).toBe(false);
@@ -876,6 +1130,7 @@ describe('ProseID SDK', () => {
 		const fetch = vi.fn()
 			.mockImplementationOnce(() => response(signedManifest))
 			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: signedManifest.schema.definitions, issues: [] }))
+			.mockImplementationOnce(() => response({ ok: true, valid: true, status: 'READY', definitions: signedManifest.schema.definitions, issues: [] }))
 			.mockImplementationOnce(() => response({ ok: true, status: 'completed', recordId: 'signed_record', duplicate: false, delivered: { email: false, webhook: false }, nextAction: null }));
 		const complete = vi.fn();
 		const signing = vi.fn();
@@ -884,6 +1139,9 @@ describe('ProseID SDK', () => {
 		});
 		await instance.ready;
 		const root = document.querySelector('#form').shadowRoot;
+		const fullName = root.querySelector('input[name="full_name"]');
+		fullName.value = 'Ada Lovelace';
+		fullName.dispatchEvent(new Event('input', { bubbles: true }));
 		root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 		await vi.waitFor(() => expect(root.querySelector('.signature-dialog')).not.toBeNull());
 		const name = root.querySelector('.signature-input');
@@ -895,8 +1153,8 @@ describe('ProseID SDK', () => {
 		expect(signing).toHaveBeenCalledWith(expect.objectContaining({
 			mode: 'basic', signature: { kind: 'basic', typed_name: 'Ada Lovelace', acknowledged: true }
 		}));
-		expect(fetch).toHaveBeenCalledTimes(3);
-		const completionRequest = JSON.parse(fetch.mock.calls[2][1].body);
+		expect(fetch).toHaveBeenCalledTimes(4);
+		const completionRequest = JSON.parse(fetch.mock.calls[3][1].body);
 		expect(completionRequest.action).toBe('complete');
 		expect(completionRequest.signature).toEqual({ kind: 'basic', typed_name: 'Ada Lovelace', acknowledged: true });
 	});

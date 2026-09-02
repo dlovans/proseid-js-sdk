@@ -33,6 +33,8 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const FLOW_TYPES = new Set(['form', 'guided_assessment', 'determination', 'checklist']);
 const LANGUAGES = new Set(['en', 'sv']);
 const LANGUAGE_STORAGE_KEY = 'proseid_flow_language';
+const DEFAULT_VALIDATION_DELAY = 400;
+const LOCALLY_VALID_VALIDATION_DELAY = 180;
 const normalizeLocale = (value) => {
 	const language = String(value || '').trim().toLowerCase().split('-')[0];
 	return LANGUAGES.has(language) ? language : 'en';
@@ -210,6 +212,9 @@ export class ProseIDForm {
 		this.validationPromise = null;
 		this.validationPromiseFingerprint = '';
 		this.lastValidationFingerprint = '';
+		this.validationScheduled = false;
+		this.validationInFlight = false;
+		this.validationNavigatorOpen = false;
 		this.submitting = false;
 		this.validationLocked = false;
 		this.cleanupFns = [];
@@ -224,10 +229,16 @@ export class ProseIDForm {
 		this.ready = this.load();
 	}
 
-	applyTheme(theme = {}) {
+	applyTheme(theme = {}, manifestColors = {}) {
 		const name = normalizeTheme(theme);
 		this.target.dataset.proseidTheme = name;
-		const colors = { ...THEMES[name], ...normalizeColors(this.options.colors) };
+		// A Flow can publish a safe hosted palette. Embed callers retain the documented ability to
+		// customize their own mount, so local exact-hex overrides intentionally win last.
+		const colors = {
+			...THEMES[name],
+			...normalizeColors(manifestColors),
+			...normalizeColors(this.options.colors)
+		};
 		for (const [key, value] of Object.entries(colors)) {
 			const token = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 			this.target.style.setProperty(`--proseid-${token}`, value);
@@ -295,7 +306,11 @@ export class ProseIDForm {
 			this.api.setAttribution?.(this.attribution);
 			// Published Flows own their curated theme. The mount option remains the loading/test fallback,
 			// but production presentation cannot drift between the hosted and embedded renderers.
-			this.applyTheme(this.manifest.presentation?.theme ?? this.options.theme);
+			this.applyTheme(
+				this.manifest.presentation?.theme ?? this.options.theme,
+				this.manifest.presentation?.colors
+			);
+			this.applyAppearance(this.options.appearance ?? this.manifest.presentation?.appearance);
 			if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
 				throw new ProseIDError('signing_not_available', 'Signing is not available in this embedded Flow yet.');
 			}
@@ -332,6 +347,7 @@ export class ProseIDForm {
 	setLocale(locale) {
 		const next = normalizeLocale(locale);
 		if (next === this.locale) return;
+		const restoreGuidedReview = this.flowType === 'guided_assessment' && this.guidedPhase === 'review';
 		this.locale = next;
 		this.copy = messagesFor(next, this.options.messages);
 		saveLocalePreference(next);
@@ -342,7 +358,12 @@ export class ProseIDForm {
 			this.applyDefinitions(this.lastValidation.definitions || {});
 			this.renderIssues(this.lastValidation.issues || []);
 		}
+		if (restoreGuidedReview) this.showGuidedReview();
 		this.updateSubmitState();
+		this.setStatus(
+			this.validationInFlight || this.validationScheduled ? 'checking' : this.valid ? 'ready' : 'idle',
+			this.validationInFlight || this.validationScheduled ? this.copy.checking : this.valid ? this.copy.ready : this.copy.incomplete
+		);
 		this.emit('language', { language: next });
 	}
 
@@ -495,6 +516,7 @@ export class ProseIDForm {
 		this.submitButton = text('button', 'submit', this.options.submitLabel || this.defaultSubmitLabel());
 		this.submitButton.type = 'submit';
 		this.submitButton.disabled = true;
+		this.validationNavigator = this.renderValidationNavigator();
 		if (this.flowType === 'guided_assessment') this.formNode.append(this.renderGuided());
 		else if (this.flowType === 'determination') this.formNode.append(this.renderDetermination());
 		else if (this.flowType === 'checklist') this.formNode.append(this.renderChecklist());
@@ -512,6 +534,7 @@ export class ProseIDForm {
 		shell.append(head, body);
 		this.shadow.append(shell);
 		this.updateAnswerProgress();
+		this.updateValidationNavigator();
 	}
 
 	defaultSubmitLabel() {
@@ -519,6 +542,19 @@ export class ProseIDForm {
 		if (this.flowType === 'determination') return this.copy.confirmDetermination;
 		if (this.flowType === 'checklist') return this.copy.completeChecklist;
 		return this.copy.submit;
+	}
+
+	setButtonBusy(button, busy, label) {
+		if (!button) return;
+		button.classList.toggle('is-loading', busy);
+		button.setAttribute('aria-busy', String(busy));
+		button.replaceChildren();
+		if (busy) {
+			const spinner = text('span', 'button-spinner');
+			spinner.setAttribute('aria-hidden', 'true');
+			button.append(spinner);
+		}
+		button.append(text('span', 'button-label', label));
 	}
 
 	renderPrivacy() {
@@ -530,7 +566,9 @@ export class ProseIDForm {
 
 	renderActions({ standardForm = false } = {}) {
 		const actions = text('div', standardForm ? 'actions standard-form-actions' : 'actions');
-		actions.append(this.renderPrivacy(), this.submitButton);
+		const meta = text('div', 'action-meta');
+		meta.append(this.validationNavigator);
+		actions.append(meta, this.submitButton);
 		return actions;
 	}
 
@@ -561,18 +599,32 @@ export class ProseIDForm {
 		this.guidedIndexNode = text('div', 'guided-index');
 		this.guidedFieldSlot = text('div', 'guided-field-slot');
 		const navigation = text('div', 'guided-navigation');
+		this.guidedNavigation = navigation;
 		this.guidedBack = text('button', 'secondary-action', this.copy.back);
 		this.guidedBack.type = 'button';
 		this.guidedBack.addEventListener('click', () => this.guidedPrevious());
 		this.guidedNext = text('button', 'primary-action', this.copy.continue);
 		this.guidedNext.type = 'button';
 		this.guidedNext.addEventListener('click', () => this.guidedContinue());
-		this.guidedRequirement = text('span', 'guided-requirement', this.copy.answerRequired);
-		this.guidedRequirement.hidden = true;
-		navigation.append(this.guidedBack, this.guidedRequirement, this.guidedNext);
+		navigation.append(this.guidedBack, this.validationNavigator, this.guidedNext);
 		this.guidedQuestion.append(this.guidedIndexNode, this.guidedFieldSlot, navigation);
 
 		this.guidedPath = text('aside', 'guided-path');
+		this.guidedPathHeading = text('div', 'guided-path-heading');
+		this.guidedPathHeadingLabel = text('span', '', this.copy.guidedPath);
+		this.guidedPathHeadingCount = text('strong');
+		this.guidedPathHeading.append(this.guidedPathHeadingLabel, this.guidedPathHeadingCount);
+		this.guidedPathList = document.createElement('ol');
+		this.guidedPathList.tabIndex = 0;
+		this.guidedPathList.setAttribute('aria-label', this.copy.guidedPath);
+		this.guidedPath.append(this.guidedPathHeading);
+		if (this.progressEnabled()) {
+			this.guidedPathProgress = text('div', 'guided-progress');
+			this.guidedPathProgressFill = text('span');
+			this.guidedPathProgress.append(this.guidedPathProgressFill);
+			this.guidedPath.append(this.guidedPathProgress);
+		}
+		this.guidedPath.append(this.guidedPathList);
 		this.guidedReview = text('section', 'guided-review');
 		this.guidedReview.hidden = true;
 		this.guidedParking = text('div', 'field-parking');
@@ -587,12 +639,18 @@ export class ProseIDForm {
 
 	refreshGuided() {
 		if (!this.guidedQuestion) return;
+		const list = this.guidedPathList;
+		const previousPathScrollTop = list?.scrollTop || 0;
+		if (this.validationNavigator?.parentNode !== this.guidedNavigation) {
+			this.guidedNavigation.insertBefore(this.validationNavigator, this.guidedNext);
+		}
 		const entries = this.visibleFields();
 		if (!entries.length) {
 			this.guidedQuestion.replaceChildren(text('p', 'empty-state', 'This Flow has no visible questions.'));
 			this.guidedPath.hidden = true;
 			return;
 		}
+		this.guidedPath.hidden = false;
 		this.guidedIndex = Math.min(this.guidedIndex, entries.length - 1);
 		const [currentName, field] = entries[this.guidedIndex];
 		for (const [, candidate] of entries) {
@@ -608,73 +666,84 @@ export class ProseIDForm {
 			text('small', '', this.guidedIndex === entries.length - 1 ? this.copy.guidedReviewCue : this.copy.guidedContinueCue)
 		);
 		this.guidedBack.disabled = this.guidedIndex === 0;
-		const needsAnswer = field.definition?.required === true && !answerProvided(field.definition, this.values[currentName]);
-		this.guidedNext.disabled = this.guidedChecking || needsAnswer;
-		this.guidedRequirement.hidden = !needsAnswer;
+		this.guidedNext.disabled = this.guidedChecking;
 		this.guidedNext.textContent = this.guidedIndex === entries.length - 1 ? this.copy.reviewAnswers : this.copy.continue;
 
-		this.guidedPath.replaceChildren();
-		const heading = text('div', 'guided-path-heading');
-		heading.append(text('span', '', this.copy.guidedPath), text('strong', '', `${this.guidedIndex + 1}/${entries.length}`));
-		const list = document.createElement('ol');
-		entries.forEach(([entryName, entryField], index) => {
-			if (index === this.guidedIndex) {
-				const hasAnswer = answerProvided(entryField.definition, this.values[entryName]);
-				const active = text('li', hasAnswer ? 'active answered' : 'active');
-				const activeCopy = text('span', 'guided-path-copy');
-				activeCopy.append(text('strong', '', entryField.label), text('small', '', this.copy.guidedCurrent));
-				active.append(text('span', 'guided-marker', hasAnswer ? '✓' : ''), activeCopy);
-				list.append(active);
-				return;
-			}
-			if (!answerProvided(entryField.definition, this.values[entryName])) {
-				const future = text('li', 'remaining');
-				const futureCopy = text('span', 'guided-path-copy');
-				futureCopy.append(text('strong', '', entryField.label), text('small', '', this.copy.notAnswered));
-				future.append(text('span', 'guided-marker'), futureCopy);
-				list.append(future);
-				return;
-			}
-			const item = text('li', 'answered');
-			const button = text('button', 'guided-path-button');
-			button.type = 'button';
-			const pathCopy = text('span', 'guided-path-copy');
-			pathCopy.append(
-				text('strong', '', entryField.label),
-				text('small', '', this.displayValue(this.values[entryName], entryField.definition))
-			);
-			button.append(text('span', 'guided-marker', '✓'), pathCopy);
-			let navigatedOnPointerDown = false;
-			button.addEventListener('pointerdown', (event) => {
-				if (event.button !== 0) return;
-				navigatedOnPointerDown = true;
-				event.preventDefault();
-				this.goToGuidedQuestion(entryName);
-			});
-			button.addEventListener('click', (event) => {
-				event.preventDefault();
-				if (navigatedOnPointerDown) {
-					navigatedOnPointerDown = false;
-					return;
-				}
-				this.goToGuidedQuestion(entryName);
-			});
-			item.append(button);
-			list.append(item);
-		});
-		this.guidedPath.append(heading);
-		if (this.progressEnabled()) {
-			const rail = text('div', 'guided-progress');
-			const fill = text('span', '');
+		this.guidedPathHeadingLabel.textContent = this.copy.guidedPath;
+		this.guidedPathHeadingCount.textContent = `${this.guidedIndex + 1}/${entries.length}`;
+		list.setAttribute('aria-label', this.copy.guidedPath);
+		if (this.guidedPathProgressFill) {
 			const answered = entries.filter(([name, candidate]) => answerProvided(candidate.definition, this.values[name])).length;
-			fill.style.width = `${Math.round((answered / entries.length) * 100)}%`;
-			rail.append(fill);
-			this.guidedPath.append(rail);
+			this.guidedPathProgressFill.style.width = `${Math.round((answered / entries.length) * 100)}%`;
 		}
-		this.guidedPath.append(list);
+
+		const existingItems = new Map([...list.children].map((item) => [item.dataset.field, item]));
+		const nextItems = entries.map(([entryName, entryField], index) => {
+			let item = existingItems.get(entryName);
+			if (!item) {
+				item = text('li');
+				item.dataset.field = entryName;
+				const button = text('button', 'guided-path-button');
+				button.type = 'button';
+				const marker = text('span', 'guided-marker');
+				const pathCopy = text('span', 'guided-path-copy');
+				pathCopy.append(text('strong'), text('small'));
+				button.append(marker, pathCopy);
+				let navigatedOnPointerDown = false;
+				button.addEventListener('pointerdown', (event) => {
+					if (button.disabled || event.button !== 0) return;
+					navigatedOnPointerDown = true;
+					event.preventDefault();
+					this.goToGuidedQuestion(entryName);
+				});
+				button.addEventListener('click', (event) => {
+					event.preventDefault();
+					if (button.disabled) return;
+					if (navigatedOnPointerDown) {
+						navigatedOnPointerDown = false;
+						return;
+					}
+					this.goToGuidedQuestion(entryName);
+				});
+				item.append(button);
+			}
+			const button = item.querySelector('.guided-path-button');
+			const marker = item.querySelector('.guided-marker');
+			const label = item.querySelector('.guided-path-copy strong');
+			const detail = item.querySelector('.guided-path-copy small');
+			const hasAnswer = answerProvided(entryField.definition, this.values[entryName]);
+			const isActive = index === this.guidedIndex;
+			item.className = isActive ? (hasAnswer ? 'active answered' : 'active') : hasAnswer ? 'answered' : 'remaining';
+			if (isActive) item.setAttribute('aria-current', 'step');
+			else item.removeAttribute('aria-current');
+			button.disabled = isActive || !hasAnswer;
+			marker.textContent = hasAnswer ? '✓' : '';
+			label.textContent = entryField.label;
+			detail.textContent = isActive
+				? this.copy.guidedCurrent
+				: hasAnswer
+					? this.displayValue(this.values[entryName], entryField.definition)
+					: this.copy.notAnswered;
+			return item;
+		});
+		const currentItems = [...list.children];
+		const structureChanged = currentItems.length !== nextItems.length
+			|| currentItems.some((item, index) => item !== nextItems[index]);
+		if (structureChanged) list.replaceChildren(...nextItems);
+		// Branching can change the row set. Restore the inner position before paint; ordinary answer
+		// and navigation updates keep the same list and rows, allowing their theme-aware transitions.
+		list.scrollTop = previousPathScrollTop;
 		requestAnimationFrame(() => {
 			const active = list.querySelector('.active');
-			if (active && list.scrollHeight > list.clientHeight) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+			if (!active || list.scrollHeight <= list.clientHeight) return;
+			const listBounds = list.getBoundingClientRect();
+			const activeBounds = active.getBoundingClientRect();
+			let nextTop = list.scrollTop;
+			if (activeBounds.top < listBounds.top) nextTop -= listBounds.top - activeBounds.top;
+			else if (activeBounds.bottom > listBounds.bottom) nextTop += activeBounds.bottom - listBounds.bottom;
+			if (Math.abs(nextTop - list.scrollTop) < 1) return;
+			const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+			list.scrollTo({ top: Math.max(0, nextTop), behavior: reducedMotion ? 'auto' : 'smooth' });
 		});
 	}
 
@@ -774,13 +843,15 @@ export class ProseIDForm {
 			list.append(row);
 		});
 		const actions = text('div', 'guided-review-actions');
+		const readiness = text('div', 'guided-review-readiness');
 		const back = text('button', 'secondary-action', this.copy.back);
 		back.type = 'button';
 		back.addEventListener('click', () => this.guidedPrevious());
+		readiness.append(this.validationNavigator);
 		actions.append(back, this.submitButton);
 		this.guidedReview.append(head);
 		this.guidedReview.append(list);
-		this.guidedReview.append(this.renderPrivacy(), actions);
+		this.guidedReview.append(this.renderPrivacy(), readiness, actions);
 		this.updateSubmitState();
 	}
 
@@ -868,6 +939,155 @@ export class ProseIDForm {
 	updateSubmitState() {
 		if (!this.submitButton) return;
 		this.submitButton.disabled = this.submitting || this.guidedChecking || this.validationLocked;
+		this.updateValidationNavigator();
+	}
+
+	validationProblems() {
+		const { fingerprint } = this.validationRequest();
+		const localIssues = this.localValidationIssues(null, { includeRequired: true })
+			.filter((issue) => issue?.severity === 'error');
+		const problems = [];
+		const seenFields = new Set();
+		const add = (issue, kind = 'attention') => {
+			const name = issue?.field_id || '';
+			if (name) {
+				const field = this.fields.get(name);
+				if (!field || field.engineVisible === false || seenFields.has(name)) return;
+				seenFields.add(name);
+			}
+			problems.push({ issue, name, kind });
+		};
+
+		for (const issue of localIssues) {
+			const missing = issue.kind === 'missing_required' || issue.kind === 'attestation_incomplete';
+			add(issue, missing ? 'missing' : 'attention');
+		}
+		if (this.flowType === 'checklist') {
+			for (const name of this.checklistControlNames()) {
+				if (!this.reviewed.has(name)) add({ field_id: name, severity: 'error', kind: 'missing_required', local: true }, 'missing');
+			}
+		}
+		if (this.lastValidationFingerprint === fingerprint) {
+			for (const issue of this.lastValidation?.issues || []) {
+				if (issue?.severity === 'error') add(issue, 'attention');
+			}
+			if (this.lastValidation?.valid === false && problems.length === 0) add({ severity: 'error' }, 'attention');
+		}
+		return problems;
+	}
+
+	validationNavigatorState() {
+		if (!this.manifest) return { state: 'checking', count: 0, label: this.copy.checkingAnswers, detail: '' };
+		const problems = this.validationProblems();
+		if (problems.length) {
+			const needsAttention = problems.some((problem) => problem.kind === 'attention');
+			return {
+				state: needsAttention ? 'attention' : 'needed',
+				count: problems.length,
+				label: needsAttention
+					? this.copy.answersNeedAttention(problems.length)
+					: this.copy.answersNeeded(problems.length),
+				detail: needsAttention ? this.copy.goToFirstAttention : this.copy.goToFirstUnfinished,
+				problems
+			};
+		}
+		const { fingerprint } = this.validationRequest();
+		const currentResult = this.lastValidationFingerprint === fingerprint ? this.lastValidation : null;
+		if (this.validationScheduled || this.validationInFlight || !currentResult) {
+			return { state: 'checking', count: 0, label: this.copy.checkingAnswers, detail: this.copy.checkingAnswersHelp, problems: [] };
+		}
+		if (currentResult.valid === true) {
+			return { state: 'ready', count: 0, label: this.copy.readyToComplete, detail: this.copy.answersChecked, problems: [] };
+		}
+		return {
+			state: 'attention', count: 1, label: this.copy.answersNeedAttention(1),
+			detail: this.copy.goToFirstAttention, problems: [{ issue: { severity: 'error' }, name: '', kind: 'attention' }]
+		};
+	}
+
+	renderValidationNavigator() {
+		const wrap = text('div', 'validation-navigator-slot');
+		const navigator = text('div', 'validation-navigator');
+		navigator.dataset.open = 'false';
+		navigator.dataset.state = 'checking';
+		const id = `proseid-answer-status-${this.recordId}`;
+		const toggle = text('button', 'validation-orb');
+		toggle.type = 'button';
+		toggle.setAttribute('aria-controls', id);
+		toggle.setAttribute('aria-expanded', 'false');
+		this.validationOrbValue = text('span', 'validation-orb-value');
+		this.validationOrbValue.setAttribute('aria-hidden', 'true');
+		toggle.append(this.validationOrbValue);
+		const reveal = text('div', 'validation-reveal');
+		reveal.id = id;
+		const jump = text('button', 'validation-jump');
+		jump.type = 'button';
+		this.validationCopy = text('span', 'validation-copy');
+		this.validationLabel = text('strong', 'validation-label');
+		this.validationLabel.setAttribute('aria-live', 'polite');
+		this.validationDetail = text('small', 'validation-detail');
+		this.validationCopy.append(this.validationLabel, this.validationDetail);
+		this.validationArrow = text('span', 'validation-arrow', '→');
+		this.validationArrow.setAttribute('aria-hidden', 'true');
+		jump.append(this.validationCopy, this.validationArrow);
+		reveal.append(jump);
+		// Keep the control attached to the Flow edge while the detail rail opens inward.
+		navigator.append(reveal, toggle);
+		wrap.append(navigator);
+
+		toggle.addEventListener('click', () => {
+			this.validationNavigatorOpen = !this.validationNavigatorOpen;
+			this.updateValidationNavigator();
+		});
+		jump.addEventListener('click', () => {
+			const state = this.validationNavigatorState();
+			if (state.problems?.length) this.navigateToFirstProblem(state.problems);
+			this.validationNavigatorOpen = false;
+			this.updateValidationNavigator();
+		});
+		return wrap;
+	}
+
+	updateValidationNavigator() {
+		const navigator = this.validationNavigator?.querySelector?.('.validation-navigator');
+		const toggle = navigator?.querySelector?.('.validation-orb');
+		const jump = navigator?.querySelector?.('.validation-jump');
+		const reveal = navigator?.querySelector?.('.validation-reveal');
+		if (!navigator || !toggle || !jump || !reveal) return;
+		const state = this.validationNavigatorState();
+		navigator.dataset.state = state.state;
+		navigator.dataset.open = String(this.validationNavigatorOpen);
+		toggle.setAttribute('aria-expanded', String(this.validationNavigatorOpen));
+		reveal.setAttribute('aria-hidden', String(!this.validationNavigatorOpen));
+		jump.tabIndex = this.validationNavigatorOpen ? 0 : -1;
+		toggle.setAttribute('aria-label', this.validationNavigatorOpen ? this.copy.closeAnswerNavigator : `${this.copy.openAnswerNavigator}: ${state.label}`);
+		this.validationOrbValue.textContent = state.state === 'ready' ? '✓' : state.state === 'checking' ? '' : state.count > 99 ? '99+' : String(state.count);
+		this.validationLabel.textContent = state.label;
+		this.validationDetail.textContent = state.detail;
+		jump.setAttribute('aria-label', state.problems?.length ? `${state.label}. ${state.detail}` : state.label);
+		this.validationArrow.textContent = state.problems?.length ? '→' : state.state === 'ready' ? '✓' : '·';
+	}
+
+	async navigateToFirstProblem(problems = this.validationProblems()) {
+		const orderedNames = this.visibleFields().map(([name]) => name);
+		const named = problems.filter((problem) => problem.name);
+		named.sort((a, b) => orderedNames.indexOf(a.name) - orderedNames.indexOf(b.name));
+		const target = named[0];
+		if (!target) {
+			this.submittedAttempted = true;
+			this.renderIssues(this.lastValidation?.issues || []);
+			this.formError?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+			return;
+		}
+		this.blurred.add(target.name);
+		const localIssues = this.localValidationIssues([target.name], { includeRequired: true });
+		this.renderLocalIssues([target.name], localIssues);
+		if (this.flowType === 'guided_assessment') this.goToGuidedQuestion(target.name);
+		const field = this.fields.get(target.name);
+		field?.wrap?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+		const controls = field?.controls || [field?.control];
+		(controls.find((control) => control?.checked) || controls.find((control) => control && control.type !== 'hidden'))
+			?.focus?.({ preventScroll: true });
 	}
 
 	renderDatePicker(id, definition, labelText) {
@@ -1330,7 +1550,13 @@ export class ProseIDForm {
 		this.setStatus('checking', this.copy.checking);
 		this.emit('change', { name, value: this.values[name], values: { ...this.values } });
 		this.invalidateStaleValidationRequest();
-		this.scheduleValidation(immediate ? 0 : (this.options.validateDelay ?? 400), [name]);
+		const activeDefinition = this.fields.get(name)?.definition || definition;
+		const locallyValid = answerProvided(activeDefinition, value)
+			&& !localConstraintIssue(name, activeDefinition, value, { includeRequired: true });
+		const validationDelay = immediate
+			? 0
+			: this.options.validateDelay ?? (locallyValid ? LOCALLY_VALID_VALIDATION_DELAY : DEFAULT_VALIDATION_DELAY);
+		this.scheduleValidation(validationDelay, [name]);
 	}
 
 	validationRequest() {
@@ -1338,7 +1564,6 @@ export class ProseIDForm {
 		const fingerprint = JSON.stringify([
 			this.manifest.flow.ref,
 			this.manifest.flow.effectiveAt,
-			this.locale,
 			responses
 		]);
 		return { responses, fingerprint };
@@ -1353,6 +1578,8 @@ export class ProseIDForm {
 		this.validationAbort = null;
 		this.validationPromise = null;
 		this.validationPromiseFingerprint = '';
+		this.validationInFlight = false;
+		this.updateValidationNavigator();
 	}
 
 	localValidationIssues(names, { includeRequired = false } = {}) {
@@ -1375,7 +1602,10 @@ export class ProseIDForm {
 
 	scheduleValidation(delay, names = null, { includeRequired = false } = {}) {
 		clearTimeout(this.validationTimer);
+		this.validationScheduled = true;
+		this.updateValidationNavigator();
 		this.validationTimer = setTimeout(() => {
+			this.validationScheduled = false;
 			const localIssues = names?.length ? this.localValidationIssues(names, { includeRequired }) : [];
 			if (names?.length) this.renderLocalIssues(names, localIssues);
 			if (localIssues.some((issue) => issue.severity === 'error')) {
@@ -1392,6 +1622,7 @@ export class ProseIDForm {
 		if (this.destroyed || !this.manifest) return null;
 		const { responses, fingerprint } = this.validationRequest();
 		if (this.lastValidation && this.lastValidationFingerprint === fingerprint) {
+			this.validationScheduled = false;
 			this.renderIssues(this.lastValidation.issues || []);
 			this.updateSubmitState();
 			return this.lastValidation;
@@ -1400,6 +1631,8 @@ export class ProseIDForm {
 			return this.validationPromise;
 		}
 		const sequence = ++this.validationSequence;
+		this.validationScheduled = false;
+		this.validationInFlight = true;
 		this.validationAbort?.abort();
 		this.validationAbort = new AbortController();
 		this.setStatus('checking', this.copy.checking);
@@ -1448,6 +1681,7 @@ export class ProseIDForm {
 		})();
 		this.validationPromise = request;
 		this.validationPromiseFingerprint = fingerprint;
+		this.updateValidationNavigator();
 		try {
 			return await request;
 		} finally {
@@ -1455,6 +1689,8 @@ export class ProseIDForm {
 				this.validationPromise = null;
 				this.validationPromiseFingerprint = '';
 				this.validationAbort = null;
+				this.validationInFlight = false;
+				this.updateValidationNavigator();
 			}
 		}
 	}
@@ -1475,6 +1711,7 @@ export class ProseIDForm {
 		if (this.flowType === 'guided_assessment' && this.guidedPhase === 'questions') this.refreshGuided();
 		if (this.flowType === 'checklist') this.updateChecklistProgress();
 		this.updateAnswerProgress();
+		this.updateValidationNavigator();
 	}
 
 	clearStaleFieldEvaluation(name) {
@@ -1624,7 +1861,19 @@ export class ProseIDForm {
 		event.preventDefault();
 		if (this.destroyed || this.submitting) return;
 		clearTimeout(this.validationTimer);
+		this.validationScheduled = false;
 		this.submittedAttempted = true;
+		const localIssues = this.localValidationIssues(null, { includeRequired: true });
+		if (localIssues.some((issue) => issue.severity === 'error')) {
+			const { fingerprint } = this.validationRequest();
+			const currentServerIssues =
+				this.lastValidationFingerprint === fingerprint ? this.lastValidation?.issues || [] : [];
+			this.renderIssues([...currentServerIssues, ...localIssues]);
+			this.validationNavigatorOpen = true;
+			this.updateValidationNavigator();
+			await this.navigateToFirstProblem(this.validationProblems());
+			return;
+		}
 		if (this.flowType === 'checklist') {
 			const firstUnreviewed = this.checklistControlNames().find((name) => !this.reviewed.has(name));
 			if (firstUnreviewed) {
@@ -1644,7 +1893,7 @@ export class ProseIDForm {
 		}
 		this.submitting = true;
 		this.submitButton.disabled = true;
-		this.submitButton.textContent = this.copy.submitting;
+		this.setButtonBusy(this.submitButton, true, this.copy.submitting);
 		this.setStatus('checking', this.copy.creating);
 		this.emit('submit', { values: { ...this.values } });
 		try {
@@ -1657,7 +1906,7 @@ export class ProseIDForm {
 					if (!signature) {
 						this.submitting = false;
 						this.updateSubmitState();
-						this.submitButton.textContent = this.options.submitLabel || this.defaultSubmitLabel();
+						this.setButtonBusy(this.submitButton, false, this.options.submitLabel || this.defaultSubmitLabel());
 						this.setStatus('ready', this.copy.ready);
 						return;
 					}
@@ -1698,7 +1947,7 @@ export class ProseIDForm {
 				await this.focusFirstInvalid(this.lastValidation);
 			}
 			this.updateSubmitState();
-			this.submitButton.textContent = this.options.submitLabel || this.defaultSubmitLabel();
+			this.setButtonBusy(this.submitButton, false, this.options.submitLabel || this.defaultSubmitLabel());
 			this.formError.hidden = false;
 			this.formError.textContent = errorMessage(error.code, error.message);
 			this.setStatus('error', 'Submission not saved');
@@ -1710,9 +1959,15 @@ export class ProseIDForm {
 		for (const cleanup of this.cleanupFns.splice(0)) cleanup();
 		const shell = this.shadow.querySelector('.shell');
 		const complete = text('div', 'completion-view');
-		complete.append(text('div', 'seal', '✓'), text('h2', '', result.test ? this.copy.testCompleteTitle : this.copy.completeTitle));
-		complete.append(text('p', '', result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)));
-		complete.append(text('div', 'receipt', result.test ? this.copy.testRecord(result.recordId) : this.copy.auditRecord(result.recordId)));
+		const summary = text('header', 'completion-summary');
+		const summaryCopy = text('div', 'completion-summary-copy');
+		summaryCopy.append(
+			text('h2', '', result.test ? this.copy.testCompleteTitle : this.copy.completeTitle),
+			text('p', '', result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)),
+			text('div', 'receipt', result.test ? this.copy.testRecord(result.recordId) : this.copy.auditRecord(result.recordId))
+		);
+		summary.append(text('div', 'seal', '✓'), summaryCopy);
+		complete.append(summary);
 		const recordedResult = this.renderRecordedResult(result.result);
 		if (recordedResult) complete.append(recordedResult);
 		if (result.test) {
@@ -1827,19 +2082,19 @@ export class ProseIDForm {
 
 		input.disabled = true;
 		button.disabled = true;
-		button.textContent = this.copy.receiptSending;
+		this.setButtonBusy(button, true, this.copy.receiptSending);
 		status.dataset.state = 'idle';
 		status.textContent = '';
 		try {
 			await this.api.emailReceipt(this.manifest.flow.ref, result.recordId, email);
 			status.dataset.state = 'sent';
 			status.textContent = this.copy.receiptSent(email);
-			button.textContent = this.copy.receiptAction;
+			this.setButtonBusy(button, false, this.copy.receiptAction);
 			this.emit('receipt', { status: 'sent', recordId: result.recordId, email });
 		} catch (error) {
 			input.disabled = false;
 			button.disabled = false;
-			button.textContent = this.copy.receiptAction;
+			this.setButtonBusy(button, false, this.copy.receiptAction);
 			status.dataset.state = 'error';
 			status.textContent = error?.code === 'rate_limited' ? this.copy.receiptRateLimited : this.copy.receiptError;
 			this.emit('receipt', { status: 'error', recordId: result.recordId, email, error });
@@ -1869,6 +2124,8 @@ export class ProseIDForm {
 		this.destroyed = true;
 		this.validationSequence += 1;
 		clearTimeout(this.validationTimer);
+		this.validationScheduled = false;
+		this.validationInFlight = false;
 		this.validationAbort?.abort();
 		this.signatureCancel?.();
 		for (const cleanup of this.cleanupFns.splice(0)) cleanup();
