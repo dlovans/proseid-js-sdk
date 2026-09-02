@@ -23,8 +23,8 @@
 				<p>Every renderer is stacked in one column. Resize the browser to inspect the same examples at tablet and mobile widths.</p>
 			</header>
 			<div class="gallery">
-				<section class="variant"><span>Standard Form · prefilled · light · soft · ready to submit</span><div id="form-soft"></div></section>
-				<section class="variant"><span>Standard Form · light · underline · compact</span><div id="form-underline"></div></section>
+				<section class="variant"><span>Standard Form density comparison · 1 of 2 · comfortable</span><div id="form-comfortable"></div></section>
+				<section class="variant"><span>Standard Form density comparison · 2 of 2 · compact</span><div id="form-compact"></div></section>
 				<section class="variant"><span>Standard Form · custom violet palette · soft</span><div id="form-custom"></div></section>
 				<section class="variant"><span>Field gallery · prefilled · every supported input · ready to submit</span><div id="field-gallery"></div></section>
 				<section class="variant"><span>Guided Assessment · charcoal · capsule · compact attribution</span><div id="guided-capsule"></div></section>
@@ -121,8 +121,18 @@
 				return new Response(JSON.stringify({ ok: true, valid: missing.length === 0, status: missing.length ? 'INCOMPLETE' : 'READY', definitions, issues: missing.map(([name]) => ({ field_id: name, severity: 'error', kind: 'missing_required', trigger: 'correction' })) }), { status: 200 });
 			};
 			const base = { apiKey: `proseid_pk_${'a'.repeat(40)}`, fetch: mockFetch };
-			ProseID.mount('#form-soft', { ...base, flow: 'flow_form_prefilled_preview', appearance: 'soft', theme: 'light' });
-			ProseID.mount('#form-underline', { ...base, flow: 'flow_form_underline_preview', appearance: { preset: 'underline', density: 'compact' }, theme: 'light', branding: { proseid: 'compact' } });
+			ProseID.mount('#form-comfortable', {
+				...base,
+				flow: 'flow_form_density_comfortable_preview',
+				appearance: { shape: 'soft', fields: 'outlined', shell: 'card', density: 'comfortable' },
+				theme: 'light'
+			});
+			ProseID.mount('#form-compact', {
+				...base,
+				flow: 'flow_form_density_compact_preview',
+				appearance: { shape: 'soft', fields: 'outlined', shell: 'card', density: 'compact' },
+				theme: 'light'
+			});
 			ProseID.mount('#form-custom', {
 				...base,
 				flow: 'flow_form_custom_preview',
