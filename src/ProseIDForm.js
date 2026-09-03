@@ -368,6 +368,7 @@ export class ProseIDForm {
 	}
 
 	renderLanguageSelector() {
+		const wrap = text('div', 'language-controls');
 		const selector = text('label', 'language-selector');
 		const control = document.createElement('select');
 		control.setAttribute('aria-label', this.copy.languageLabel);
@@ -381,26 +382,82 @@ export class ProseIDForm {
 		const chevron = text('span', 'language-chevron');
 		chevron.setAttribute('aria-hidden', 'true');
 		selector.append(control, chevron);
-		return selector;
+
+		const mobile = document.createElement('details');
+		mobile.className = 'language-selector-mobile';
+		const summary = text('summary', 'language-summary');
+		summary.setAttribute('aria-label', this.copy.languageLabel);
+		summary.append(
+			text('span', 'language-abbreviation', this.locale.toUpperCase()),
+			text('span', 'language-summary-chevron')
+		);
+		const menu = text('div', 'language-menu');
+		for (const language of ['en', 'sv']) {
+			const option = text('button', 'language-option', language === 'sv' ? this.copy.swedish : this.copy.english);
+			option.type = 'button';
+			option.dataset.language = language;
+			option.setAttribute('aria-current', language === this.locale ? 'true' : 'false');
+			option.addEventListener('click', () => {
+				mobile.open = false;
+				this.setLocale(language);
+			});
+			menu.append(option);
+		}
+		mobile.append(summary, menu);
+		mobile.addEventListener('keydown', (event) => {
+			if (event.key !== 'Escape') return;
+			mobile.open = false;
+			summary.focus();
+		});
+		mobile.addEventListener('focusout', (event) => {
+			if (!mobile.contains(event.relatedTarget)) mobile.open = false;
+		});
+		wrap.append(selector, mobile);
+		return wrap;
 	}
 
 	brand(publisher) {
 		const wrap = text('div', 'brand');
+		const organization = text('a', 'brand-organization');
+		organization.href = this.registryUrl(`/registry/${encodeURIComponent(publisher.slug)}`);
+		organization.target = '_blank';
+		organization.rel = 'noopener noreferrer';
+		organization.setAttribute('aria-label', `Open ${publisher.name} in the ProseID Registry`);
 		const customLogo = safeLogoUrl(this.options.branding?.logoUrl);
 		const logo = customLogo || safeLogoUrl(publisher.logo);
 		if (logo) {
 			const img = document.createElement('img');
 			img.src = logo;
 			img.alt = this.options.branding?.logoAlt || `${publisher.name} logo`;
-			wrap.append(img);
+			organization.append(img);
 		} else {
-			wrap.append(text('span', 'brand-fallback', publisher.name.slice(0, 2).toUpperCase()));
+			organization.append(text('span', 'brand-fallback', publisher.name.slice(0, 2).toUpperCase()));
 		}
 		const copy = text('div', 'brand-copy');
 		copy.append(text('div', 'brand-name', publisher.name));
-		copy.append(text('div', `brand-note${publisher.verified ? ' verified' : ''}`, publisher.verified ? this.copy.verifiedPublisher : `@${publisher.slug}`));
-		wrap.append(copy);
+		copy.append(text('div', 'brand-note', `@${publisher.slug}`));
+		organization.append(copy);
+		wrap.append(organization);
+		const author = this.manifest.author;
+		if (author?.username) {
+			const authorLink = text('a', 'brand-author', `@${author.username}`);
+			authorLink.href = this.registryUrl(`/registry/publishers/${encodeURIComponent(author.username)}`);
+			authorLink.target = '_blank';
+			authorLink.rel = 'noopener noreferrer';
+			if (author.verified) {
+				const verified = text('span', 'author-verified', '✓');
+				verified.setAttribute('aria-label', 'Verified professional');
+				verified.title = 'Verified professional';
+				authorLink.append(verified);
+			}
+			wrap.append(authorLink);
+		}
 		return wrap;
+	}
+
+	registryUrl(path) {
+		const base = safeLogoUrl(this.manifest?.branding?.proseid?.url) || 'https://proseid.com/';
+		return new URL(path, base).href;
 	}
 
 	proseidBrand() {

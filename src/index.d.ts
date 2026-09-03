@@ -104,7 +104,11 @@ export interface MountOptions {
 export interface EmbedManifest {
 	apiVersion: string;
 	flow: { ref: string; flowType: FlowType; title: string; description: string; schemaId: string; schemaVersion: string; effectiveAt: string; language?: 'en' | 'sv'; temporalContext?: { effective_at: string; logic_version: string | null; valid_range: [string | null, string | null] | null } | null; completionBinding?: string };
-	publisher: { slug: string; name: string; logo: string | null; verified: boolean };
+	publisher: { slug: string; name: string; logo: string | null };
+	author?: {
+		username: string;
+		verified: boolean;
+	} | null;
 	schema: {
 		title?: string;
 		description?: string;

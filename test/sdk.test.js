@@ -9,7 +9,8 @@ const manifest = {
 	ok: true,
 	apiVersion: '2026-07-16',
 	flow: { ref: 'flow_1', flowType: 'form', title: 'Client intake', description: 'Complete this record.', schemaId: 'schema_1', schemaVersion: '1.0.0', effectiveAt: '2026-07-16' },
-	publisher: { slug: 'acme', name: 'Acme Legal', logo: null, verified: true },
+	publisher: { slug: 'acme', name: 'Acme Legal', logo: null },
+	author: { username: 'ada', verified: true },
 	branding: { proseid: { name: 'ProseID', logo: 'https://proseid.com/icon-192.png', url: 'https://proseid.com' } },
 	presentation: { attribution: 'full', whiteLabel: false, completionMicrons: 200, surchargeMicrons: 0 },
 	schema: { definitions: { full_name: { type: 'string', label: 'Full name', required: true } } },
@@ -35,6 +36,15 @@ describe('ProseID SDK', () => {
 		const root = document.querySelector('#form').shadowRoot;
 		expect(root.querySelector('h1').textContent).toBe('Client intake');
 		expect(root.querySelector('.standard-form-actions > .submit')).not.toBeNull();
+		expect(root.querySelector('.brand-organization').href).toBe('https://proseid.com/registry/acme');
+		expect(root.querySelector('.brand-organization').target).toBe('_blank');
+		expect(root.querySelector('.brand-author').href).toBe('https://proseid.com/registry/publishers/ada');
+		expect(root.querySelector('.brand-author').textContent).toContain('@ada');
+		expect(root.querySelector('.brand-author').target).toBe('_blank');
+		expect(root.querySelector('.brand-author img')).toBeNull();
+		expect(root.querySelector('.author-verified').getAttribute('aria-label')).toBe('Verified professional');
+		expect(root.querySelector('.language-summary').textContent).toContain('EN');
+		expect([...root.querySelectorAll('.language-option')].map((option) => option.textContent)).toEqual(['English', 'Swedish']);
 	});
 
 	it('turns the top rail into real answer progress', async () => {
