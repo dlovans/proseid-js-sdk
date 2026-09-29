@@ -34,7 +34,7 @@ function errorMessage(code, fallback = "") {
 }
 
 // src/version.js
-var VERSION = "0.11.6";
+var VERSION = "0.12.0";
 
 // src/presentation.js
 var ATTRIBUTION_MODES = /* @__PURE__ */ new Set(["full", "compact", "hidden"]);
@@ -171,8 +171,566 @@ var SigningCoordinator = class {
   }
 };
 
-// src/styles.js
-var styles = `
+// src/i18n/en.js
+var en = {
+  languageLabel: "Language",
+  english: "English",
+  swedish: "Swedish",
+  verifiedBy: "Verified by",
+  select: "Select\u2026",
+  schemaDetails: "Schema details",
+  jurisdictions: "Applies in",
+  legalReferences: "Legal references",
+  legalReference: "Legal reference",
+  appliesOn: (date) => `Assessment date: ${date}`,
+  interpretation: (version) => `Interpretation ${version}`,
+  moreInformation: (label) => `More information about ${label}`,
+  answerProgress: "Answer progress",
+  answersNeeded: (count) => `${count} ${count === 1 ? "answer" : "answers"} needed`,
+  answersNeedAttention: (count) => `${count} ${count === 1 ? "answer needs" : "answers need"} attention`,
+  checkingAnswers: "Checking answers\u2026",
+  checkingAnswersHelp: "The current answers are being verified",
+  readyToComplete: "Ready to complete",
+  goToFirstUnfinished: "Go to the first unfinished answer",
+  goToFirstAttention: "Go to the first answer that needs attention",
+  answersChecked: "All current answers passed validation",
+  openAnswerNavigator: "Open answer status",
+  closeAnswerNavigator: "Close answer status",
+  requiredLabel: "Required",
+  idle: "Enter your details to check this Flow",
+  checking: "Checking your answers\u2026",
+  ready: "Ready to complete",
+  incomplete: "Complete the required fields",
+  checkFailed: "Could not check this Flow. Try again.",
+  creating: "Creating the verified record\u2026",
+  submit: "Submit",
+  submitting: "Submitting",
+  privacy: "Checked by ProseID. Sent only when you submit.",
+  privacyWhiteLabel: "Checked securely. Sent only when you submit.",
+  completeTitle: "Submission complete.",
+  delivered: (publisher) => `Your responses were verified and delivered to ${publisher}.`,
+  auditRecord: (id) => `Audit record ${id}`,
+  testCompleteTitle: "Test complete.",
+  testDelivered: "The integration works. No record was saved or billed.",
+  testRecord: (id) => `Test reference ${id}`,
+  receiptTitle: "Want a copy for your records?",
+  receiptHelp: "We\u2019ll email you a co-branded PDF of exactly what you submitted.",
+  receiptLabel: "Email address",
+  receiptPlaceholder: "you@example.com",
+  receiptAction: "Email me",
+  receiptSending: "Sending",
+  receiptSent: (email) => `A copy is on its way to ${email}.`,
+  receiptInvalid: "Enter a valid email address.",
+  receiptError: "The copy could not be sent. Check the email and try again.",
+  receiptRateLimited: "Too many email attempts. Wait a few minutes and try again.",
+  receiptTest: "Email copies are not sent in test mode.",
+  basicSignature: "Basic electronic signature",
+  signatureTitle: "Sign and submit",
+  signatureHelp: "Type your full legal name and confirm your intent before this record is completed.",
+  signatureName: "Full legal name",
+  signaturePlaceholder: "Your full legal name",
+  signatureAcknowledgement: "I intend to sign this completion by typing my name. I understand this is a basic electronic signature, not a qualified electronic signature; its legal effect depends on the document, intent, and applicable law.",
+  signatureNameError: "Enter at least two characters for your full legal name.",
+  signatureAcknowledgementError: "Confirm that you intend to sign before continuing.",
+  signAndSubmit: "Sign & submit",
+  cancel: "Cancel",
+  awaitingSignature: "Waiting for your signature\u2026",
+  formUnavailable: "Flow unavailable",
+  guidedProgress: (current, total) => `Question ${current} of ${total}`,
+  guidedPath: "Decision path",
+  guidedCurrent: "Current question",
+  guidedRemaining: (count) => `${count} remaining`,
+  guidedUpdated: "Updated from your answers",
+  guidedContinueCue: "Continue when this answer looks right.",
+  guidedReviewCue: "Review this final answer, then check the complete path before submitting.",
+  back: "Back",
+  continue: "Continue",
+  reviewAnswers: "Review answers",
+  finalCheck: "Final check",
+  reviewTitle: "Review your answers",
+  reviewHelp: "Nothing is sent until you confirm. The assessment appears after the record is created.",
+  changeAnswer: "Change",
+  notAnswered: "Not answered",
+  calculatedOutcome: "Calculated outcome",
+  completeAssessment: "Complete assessment",
+  determinationFacts: "Facts",
+  determinationTitle: "Enter what is known",
+  determinationHelp: "Your answers are checked as you work. The calculated result appears after you submit.",
+  calculate: "Calculate determination",
+  calculating: "Calculating\u2026",
+  calculateAgain: "Calculate again",
+  determinationResult: "Determination",
+  determinationWaiting: "The outcome updates automatically as you provide the facts.",
+  determinationLive: "Your live determination",
+  determinationPreparing: "Preparing the questions\u2026",
+  determinationUpdating: "Checking your answers\u2026",
+  determinationAuto: "Answers checked",
+  resultEyebrow: "Recorded result",
+  resultDetermination: "Determination",
+  resultAssessment: "Assessment outcome",
+  resultChecklist: "Checklist result",
+  resultForm: "Submission result",
+  resultHelp: "This is the authoritative result saved with the completed record.",
+  resultNotes: "Important notes",
+  determinationNotes: "Important notes",
+  determinationCurrentIndication: "Current indication",
+  determinationAuthority: "Legal basis",
+  needsAttention: "Needs attention",
+  reviewAnswersTitle: "Review these answers",
+  noRecordCreated: "No record has been created. Correct the highlighted facts, then confirm again.",
+  thisField: "This field",
+  confirmDetermination: "Confirm determination",
+  checklistTitle: "Review every control",
+  checklistHelp: "Work through the checks below. Nothing is recorded until the whole checklist is complete.",
+  checklistEyebrow: "Auditable compliance completion",
+  checklistProgress: (reviewed, total) => `${reviewed} of ${total} controls reviewed`,
+  checklistContext: "Context",
+  checklistContextTitle: "Identify this review",
+  checklistContextHelp: "These details travel with the completed record.",
+  checklistControls: "Required review",
+  checklistControlsLabel: "Controls",
+  checklistControlsHelp: "Each item stays tied to this exact schema release.",
+  checklistRecordedOutcome: "Recorded outcome",
+  checklistConclusion: "What the schema concludes",
+  checklistChoose: "Choose Yes or No before completing the checklist.",
+  yes: "Yes",
+  no: "No",
+  completeChecklist: "Complete checklist",
+  selectDate: "Select date",
+  year: "Year",
+  chooseDateFor: (label) => `Choose date for ${label}`,
+  previousMonth: "Previous month",
+  nextMonth: "Next month",
+  clear: "Clear",
+  today: "Today",
+  weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  required: (label) => `${label} is required.`,
+  confirm: "Please confirm to continue.",
+  format: (label) => `${label} isn\u2019t in the expected format.`,
+  validValue: "Please enter a valid value.",
+  tooShort: "This is too short.",
+  tooLong: "This is too long.",
+  checkValue: "Please check this value."
+};
+
+// src/i18n/sv.js
+var sv = {
+  languageLabel: "Spr\xE5k",
+  english: "Engelska",
+  swedish: "Svenska",
+  verifiedBy: "Verifierat av",
+  select: "V\xE4lj\u2026",
+  schemaDetails: "Schemadetaljer",
+  jurisdictions: "G\xE4ller i",
+  legalReferences: "R\xE4ttsliga h\xE4nvisningar",
+  legalReference: "R\xE4ttslig h\xE4nvisning",
+  appliesOn: (date) => `Bed\xF6mningsdatum: ${date}`,
+  interpretation: (version) => `Tolkning ${version}`,
+  moreInformation: (label) => `Mer information om ${label}`,
+  answerProgress: "Svarsstatus",
+  answersNeeded: (count) => `${count} svar beh\xF6vs`,
+  answersNeedAttention: (count) => `${count} svar beh\xF6ver ses \xF6ver`,
+  checkingAnswers: "Kontrollerar svaren\u2026",
+  checkingAnswersHelp: "De aktuella svaren verifieras",
+  readyToComplete: "Redo att slutf\xF6ra",
+  goToFirstUnfinished: "G\xE5 till det f\xF6rsta obesvarade f\xE4ltet",
+  goToFirstAttention: "G\xE5 till det f\xF6rsta svaret som beh\xF6ver ses \xF6ver",
+  answersChecked: "Alla aktuella svar har godk\xE4nts",
+  openAnswerNavigator: "\xD6ppna svarsstatus",
+  closeAnswerNavigator: "St\xE4ng svarsstatus",
+  requiredLabel: "Obligatoriskt",
+  idle: "Fyll i uppgifterna f\xF6r att kontrollera fl\xF6det",
+  checking: "Kontrollerar dina svar\u2026",
+  ready: "Redo att skicka",
+  incomplete: "Fyll i de obligatoriska f\xE4lten",
+  checkFailed: "Fl\xF6det kunde inte kontrolleras. F\xF6rs\xF6k igen.",
+  creating: "Skapar den verifierade posten\u2026",
+  submit: "Skicka",
+  submitting: "Skickar",
+  privacy: "Kontrolleras av ProseID. Skickas f\xF6rst n\xE4r du v\xE4ljer Skicka.",
+  privacyWhiteLabel: "Kontrolleras s\xE4kert. Skickas f\xF6rst n\xE4r du v\xE4ljer Skicka.",
+  completeTitle: "Inskickat.",
+  delivered: (publisher) => `Dina svar verifierades och levererades till ${publisher}.`,
+  auditRecord: (id) => `Revisionspost ${id}`,
+  testCompleteTitle: "Testet \xE4r klart.",
+  testDelivered: "Integrationen fungerar. Ingen post sparades eller debiterades.",
+  testRecord: (id) => `Testreferens ${id}`,
+  receiptTitle: "Vill du ha en kopia?",
+  receiptHelp: "Vi mejlar en samprofilerad PDF med exakt det du skickade in.",
+  receiptLabel: "E-postadress",
+  receiptPlaceholder: "du@exempel.se",
+  receiptAction: "Mejla mig",
+  receiptSending: "Skickar",
+  receiptSent: (email) => `En kopia \xE4r p\xE5 v\xE4g till ${email}.`,
+  receiptInvalid: "Ange en giltig e-postadress.",
+  receiptError: "Kopian kunde inte skickas. Kontrollera adressen och f\xF6rs\xF6k igen.",
+  receiptRateLimited: "F\xF6r m\xE5nga mejlf\xF6rs\xF6k. V\xE4nta n\xE5gra minuter och f\xF6rs\xF6k igen.",
+  receiptTest: "E-postkopior skickas inte i testl\xE4get.",
+  basicSignature: "Enkel elektronisk signatur",
+  signatureTitle: "Signera och skicka",
+  signatureHelp: "Skriv ditt fullst\xE4ndiga juridiska namn och bekr\xE4fta din avsikt innan posten slutf\xF6rs.",
+  signatureName: "Fullst\xE4ndigt juridiskt namn",
+  signaturePlaceholder: "Ditt fullst\xE4ndiga juridiska namn",
+  signatureAcknowledgement: "Jag avser att signera denna inl\xE4mning genom att skriva mitt namn. Jag f\xF6rst\xE5r att detta \xE4r en enkel elektronisk signatur, inte en kvalificerad elektronisk signatur, och att dess r\xE4ttsverkan beror p\xE5 dokumentet, avsikten och till\xE4mplig lag.",
+  signatureNameError: "Ange minst tv\xE5 tecken f\xF6r ditt fullst\xE4ndiga juridiska namn.",
+  signatureAcknowledgementError: "Bekr\xE4fta att du avser att signera innan du forts\xE4tter.",
+  signAndSubmit: "Signera och skicka",
+  cancel: "Avbryt",
+  awaitingSignature: "V\xE4ntar p\xE5 din signatur\u2026",
+  formUnavailable: "Fl\xF6det \xE4r inte tillg\xE4ngligt",
+  guidedProgress: (current, total) => `Fr\xE5ga ${current} av ${total}`,
+  guidedPath: "Beslutsv\xE4g",
+  guidedCurrent: "Aktuell fr\xE5ga",
+  guidedRemaining: (count) => `${count} \xE5terst\xE5r`,
+  guidedUpdated: "Uppdateras utifr\xE5n dina svar",
+  guidedContinueCue: "Forts\xE4tt n\xE4r svaret ser r\xE4tt ut.",
+  guidedReviewCue: "Granska det sista svaret och kontrollera sedan hela v\xE4gen innan du skickar.",
+  back: "Tillbaka",
+  continue: "Forts\xE4tt",
+  reviewAnswers: "Granska svaren",
+  finalCheck: "Slutlig kontroll",
+  reviewTitle: "Granska dina svar",
+  reviewHelp: "Inget skickas f\xF6rr\xE4n du bekr\xE4ftar. Bed\xF6mningen visas n\xE4r posten har skapats.",
+  changeAnswer: "\xC4ndra",
+  notAnswered: "Inte besvarat",
+  calculatedOutcome: "Ber\xE4knat resultat",
+  completeAssessment: "Slutf\xF6r bed\xF6mningen",
+  determinationFacts: "Fakta",
+  determinationTitle: "Ange det som \xE4r k\xE4nt",
+  determinationHelp: "Dina svar kontrolleras medan du arbetar. Det ber\xE4knade resultatet visas n\xE4r du skickar in.",
+  calculate: "Ber\xE4kna avg\xF6randet",
+  calculating: "Ber\xE4knar\u2026",
+  calculateAgain: "Ber\xE4kna igen",
+  determinationResult: "Avg\xF6rande",
+  determinationWaiting: "Resultatet uppdateras automatiskt n\xE4r du fyller i fakta.",
+  determinationLive: "Ditt aktuella avg\xF6rande",
+  determinationPreparing: "F\xF6rbereder fr\xE5gorna\u2026",
+  determinationUpdating: "Kontrollerar dina svar\u2026",
+  determinationAuto: "Svaren \xE4r kontrollerade",
+  resultEyebrow: "Registrerat resultat",
+  resultDetermination: "Avg\xF6rande",
+  resultAssessment: "Bed\xF6mningsresultat",
+  resultChecklist: "Checklistans resultat",
+  resultForm: "Resultat",
+  resultHelp: "Detta \xE4r det slutliga resultat som sparades med den slutf\xF6rda posten.",
+  resultNotes: "Viktiga anm\xE4rkningar",
+  determinationNotes: "Viktiga anm\xE4rkningar",
+  determinationCurrentIndication: "Aktuell indikation",
+  determinationAuthority: "R\xE4ttslig grund",
+  needsAttention: "Beh\xF6ver \xE5tg\xE4rdas",
+  reviewAnswersTitle: "Granska dessa svar",
+  noRecordCreated: "Ingen post har skapats. R\xE4tta de markerade uppgifterna och bekr\xE4fta igen.",
+  thisField: "Det h\xE4r f\xE4ltet",
+  confirmDetermination: "Bekr\xE4fta avg\xF6randet",
+  checklistTitle: "Granska varje kontroll",
+  checklistHelp: "G\xE5 igenom kontrollerna nedan. Inget registreras f\xF6rr\xE4n hela checklistan \xE4r klar.",
+  checklistEyebrow: "Sp\xE5rbart slutf\xF6rande av efterlevnad",
+  checklistProgress: (reviewed, total) => `${reviewed} av ${total} kontroller granskade`,
+  checklistContext: "Sammanhang",
+  checklistContextTitle: "Identifiera granskningen",
+  checklistContextHelp: "Uppgifterna f\xF6ljer med den slutf\xF6rda registreringen.",
+  checklistControls: "Obligatorisk granskning",
+  checklistControlsLabel: "Kontroller",
+  checklistControlsHelp: "Varje punkt f\xF6rblir kopplad till exakt den h\xE4r schemaversionen.",
+  checklistRecordedOutcome: "Registrerat resultat",
+  checklistConclusion: "Schemats slutsats",
+  checklistChoose: "V\xE4lj Ja eller Nej innan checklistan slutf\xF6rs.",
+  yes: "Ja",
+  no: "Nej",
+  completeChecklist: "Slutf\xF6r checklistan",
+  selectDate: "V\xE4lj datum",
+  year: "\xC5r",
+  chooseDateFor: (label) => `V\xE4lj datum f\xF6r ${label}`,
+  previousMonth: "F\xF6reg\xE5ende m\xE5nad",
+  nextMonth: "N\xE4sta m\xE5nad",
+  clear: "Rensa",
+  today: "I dag",
+  weekdays: ["M\xE5n", "Tis", "Ons", "Tor", "Fre", "L\xF6r", "S\xF6n"],
+  required: (label) => `${label} \xE4r obligatoriskt.`,
+  confirm: "Bekr\xE4fta f\xF6r att forts\xE4tta.",
+  format: (label) => `${label} har inte r\xE4tt format.`,
+  validValue: "Ange ett giltigt v\xE4rde.",
+  tooShort: "V\xE4rdet \xE4r f\xF6r kort.",
+  tooLong: "V\xE4rdet \xE4r f\xF6r l\xE5ngt.",
+  checkValue: "Kontrollera v\xE4rdet."
+};
+
+// src/i18n.js
+var dictionaries = { en, sv };
+function messagesFor(locale = "en", overrides = {}) {
+  const language = String(locale).toLowerCase().split("-")[0];
+  return { ...dictionaries[language] ?? dictionaries.en, ...overrides };
+}
+
+// src/form/lifecycle/preferences.js
+var LANGUAGES = /* @__PURE__ */ new Set(["en", "sv"]);
+var LANGUAGE_STORAGE_KEY = "proseid_flow_language";
+var normalizeLocale = (value) => {
+  const language = String(value || "").trim().toLowerCase().split("-")[0];
+  return LANGUAGES.has(language) ? language : "en";
+};
+var readLocalePreference = () => {
+  try {
+    const value = globalThis.localStorage?.getItem?.(LANGUAGE_STORAGE_KEY);
+    return LANGUAGES.has(value) ? value : "";
+  } catch {
+    return "";
+  }
+};
+var saveLocalePreference = (value) => {
+  try {
+    globalThis.localStorage?.setItem?.(LANGUAGE_STORAGE_KEY, value);
+  } catch {
+  }
+};
+
+// src/form/lifecycle/load.js
+async function load() {
+  try {
+    this.manifest = await this.api.manifest(this.recordId);
+    if (this.destroyed) return this;
+    this.flowType = this.manifest.flow?.flowType || "form";
+    if (!FLOW_TYPES.has(this.flowType)) {
+      throw new ProseIDError(
+        "flow_type_not_supported",
+        `This version of the JavaScript SDK cannot render the \u201C${this.flowType}\u201D Flow experience.`
+      );
+    }
+    this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
+    this.locale = this.explicitLocale || readLocalePreference() || normalizeLocale(this.manifest.flow?.language);
+    this.copy = messagesFor(this.locale, this.options.messages);
+    this.api.setAttribution?.(this.attribution);
+    this.applyTheme(
+      this.manifest.presentation?.theme ?? this.options.theme,
+      this.manifest.presentation?.colors
+    );
+    this.applyAppearance(this.options.appearance ?? this.manifest.presentation?.appearance);
+    if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
+      throw new ProseIDError("signing_not_available", "Signing is not available in this embedded Flow yet.");
+    }
+    this.seedValues();
+    this.renderForm();
+    this.emit("ready", { manifest: this.manifest });
+    if (this.options.initialCompletion) {
+      this.renderComplete(this.options.initialCompletion);
+      return this;
+    }
+    await this.validate();
+    return this;
+  } catch (error) {
+    this.renderFatal(error);
+    this.emit("error", { error });
+    throw error;
+  }
+}
+function seedValues() {
+  for (const [name, definition] of Object.entries(this.manifest.schema?.definitions || {})) {
+    let value = definition?.value;
+    if (definition?.readonly !== true && this.options.initialValues && Object.prototype.hasOwnProperty.call(this.options.initialValues, name)) value = this.options.initialValues[name];
+    if (definition?.type === "select" && (value === void 0 || value === null)) value = "";
+    if (definition?.type === "attestation" && value !== true) value = false;
+    this.values[name] = value;
+  }
+}
+var FLOW_TYPES = /* @__PURE__ */ new Set(["form", "guided_assessment", "determination", "checklist"]);
+
+// src/form/dom.js
+var text = (tag, className, value = "") => {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  node.textContent = value;
+  return node;
+};
+
+// src/form/lifecycle/language.js
+function setLocale(locale) {
+  const next = normalizeLocale(locale);
+  if (next === this.locale) return;
+  const restoreGuidedReview = this.flowType === "guided_assessment" && this.guidedPhase === "review";
+  this.locale = next;
+  this.copy = messagesFor(next, this.options.messages);
+  saveLocalePreference(next);
+  for (const cleanup of this.cleanupFns.splice(0)) cleanup();
+  this.fields.clear();
+  this.renderForm();
+  if (this.lastValidation) {
+    this.applyDefinitions(this.lastValidation.definitions || {});
+    this.renderIssues(this.lastValidation.issues || []);
+  }
+  if (restoreGuidedReview) this.showGuidedReview();
+  this.updateSubmitState();
+  this.setStatus(
+    this.validationInFlight || this.validationScheduled ? "checking" : this.valid ? "ready" : "idle",
+    this.validationInFlight || this.validationScheduled ? this.copy.checking : this.valid ? this.copy.ready : this.copy.incomplete
+  );
+  this.emit("language", { language: next });
+}
+function renderLanguageSelector() {
+  const wrap = text("div", "language-controls");
+  const selector = text("label", "language-selector");
+  const control = document.createElement("select");
+  control.setAttribute("aria-label", this.copy.languageLabel);
+  for (const language of ["en", "sv"]) {
+    const option = text("option", "", language === "sv" ? this.copy.swedish : this.copy.english);
+    option.value = language;
+    control.append(option);
+  }
+  control.value = this.locale;
+  control.addEventListener("change", () => this.setLocale(control.value));
+  const chevron = text("span", "language-chevron");
+  chevron.setAttribute("aria-hidden", "true");
+  selector.append(control, chevron);
+  const mobile = document.createElement("details");
+  mobile.className = "language-selector-mobile";
+  const summary = text("summary", "language-summary");
+  summary.setAttribute("aria-label", this.copy.languageLabel);
+  summary.append(
+    text("span", "language-abbreviation", this.locale.toUpperCase()),
+    text("span", "language-summary-chevron")
+  );
+  const menu = text("div", "language-menu");
+  for (const language of ["en", "sv"]) {
+    const option = text("button", "language-option", language === "sv" ? this.copy.swedish : this.copy.english);
+    option.type = "button";
+    option.dataset.language = language;
+    option.setAttribute("aria-current", language === this.locale ? "true" : "false");
+    option.addEventListener("click", () => {
+      mobile.open = false;
+      this.setLocale(language);
+    });
+    menu.append(option);
+  }
+  mobile.append(summary, menu);
+  mobile.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    mobile.open = false;
+    summary.focus();
+  });
+  mobile.addEventListener("focusout", (event) => {
+    if (!mobile.contains(event.relatedTarget)) mobile.open = false;
+  });
+  wrap.append(selector, mobile);
+  return wrap;
+}
+
+// src/themes.js
+var THEMES = Object.freeze({
+  light: Object.freeze({
+    accent: "#ff4d1f",
+    accentInk: "#b82d0d",
+    canvas: "#f5f6f5",
+    surface: "#ffffff",
+    ink: "#171918",
+    copy: "#515653",
+    muted: "#6c726e",
+    rule: "#dfe2df",
+    success: "#167653",
+    successTint: "#e8f5ef",
+    submitInk: "#171918",
+    skeletonGlow: "#ffffff",
+    colorScheme: "light"
+  }),
+  charcoal: Object.freeze({
+    accent: "#ff4d1f",
+    accentInk: "#ff9a7a",
+    canvas: "#171b1c",
+    surface: "#202526",
+    ink: "#f4f6f5",
+    copy: "#c4cbc7",
+    muted: "#a2aba6",
+    rule: "#3b4340",
+    success: "#71d6aa",
+    successTint: "#173a2e",
+    submitInk: "#24120d",
+    skeletonGlow: "#2c3331",
+    colorScheme: "dark"
+  }),
+  midnight: Object.freeze({
+    accent: "#ff4d1f",
+    accentInk: "#ff9a7e",
+    canvas: "#111827",
+    surface: "#182235",
+    ink: "#f4f6fa",
+    copy: "#cbd3e1",
+    muted: "#a6b0c1",
+    rule: "#344057",
+    success: "#78d9b5",
+    successTint: "#143b32",
+    submitInk: "#24120d",
+    skeletonGlow: "#24314a",
+    colorScheme: "dark"
+  }),
+  forest: Object.freeze({
+    accent: "#ff4d1f",
+    accentInk: "#ff9a7e",
+    canvas: "#151c1a",
+    surface: "#1e2825",
+    ink: "#f5f7f2",
+    copy: "#cbd2cb",
+    muted: "#a9b2ac",
+    rule: "#3b4943",
+    success: "#7fd7aa",
+    successTint: "#173a2c",
+    submitInk: "#24120d",
+    skeletonGlow: "#2b3834",
+    colorScheme: "dark"
+  })
+});
+var THEME_NAMES = Object.freeze(Object.keys(THEMES));
+var COLOR_TOKEN_NAMES = Object.freeze([
+  "accent",
+  "accentInk",
+  "canvas",
+  "surface",
+  "ink",
+  "copy",
+  "muted",
+  "rule",
+  "success",
+  "successTint",
+  "submitInk",
+  "skeletonGlow"
+]);
+var COLOR_TOKEN_SET = new Set(COLOR_TOKEN_NAMES);
+var HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+function normalizeTheme(value) {
+  return typeof value === "string" && Object.hasOwn(THEMES, value) ? value : "light";
+}
+function normalizeColors(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const normalized = {};
+  for (const [name, color] of Object.entries(value)) {
+    if (COLOR_TOKEN_SET.has(name) && typeof color === "string" && HEX_COLOR.test(color)) {
+      normalized[name] = color.toLowerCase();
+    }
+  }
+  return normalized;
+}
+
+// src/form/rendering/appearance.js
+function applyTheme(theme = {}, manifestColors = {}) {
+  const name = normalizeTheme(theme);
+  this.target.dataset.proseidTheme = name;
+  const colors = {
+    ...THEMES[name],
+    ...normalizeColors(manifestColors),
+    ...normalizeColors(this.options.colors)
+  };
+  for (const [key, value] of Object.entries(colors)) {
+    const token = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+    this.target.style.setProperty(`--proseid-${token}`, value);
+  }
+}
+function applyAppearance(appearance) {
+  const value = normalizeAppearance(appearance);
+  this.target.dataset.proseidShape = value.shape;
+  this.target.dataset.proseidFields = value.fields;
+  this.target.dataset.proseidShell = value.shell;
+  this.target.dataset.proseidDensity = value.density;
+}
+
+// src/styles/shell.js
+var shellStyles = `
 :host {
 	--proseid-accent: #ff4d1f;
 	--proseid-accent-ink: #b82d0d;
@@ -275,7 +833,10 @@ h1 { max-width: 22ch; margin: 0; font: 500 clamp(25px, 5vw, 35px)/1.04 Georgia, 
 .status[data-state="error"] { color: var(--proseid-accent-ink); }
 .status[data-state="error"] .status-dot { background: var(--proseid-accent); }
 .body { padding: calc(var(--proseid-body-pad) - 1px) var(--proseid-body-pad) var(--proseid-body-pad); border-radius: 0 0 var(--proseid-radius) var(--proseid-radius); background: color-mix(in srgb, var(--proseid-canvas) 42%, var(--proseid-surface)); }
-.fields { display: grid; gap: var(--proseid-field-gap); }
+`;
+
+// src/styles/fields.js
+var fieldsStyles = `.fields { display: grid; gap: var(--proseid-field-gap); }
 .field { display: grid; gap: 7px; }
 .field[hidden] { display: none; }
 .label-row, .check-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -350,7 +911,10 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .check-copy { color: var(--proseid-copy); font-size: 13px; line-height: 1.5; }
 .error { min-height: 0; color: var(--proseid-accent-ink); font-size: 11px; line-height: 1.45; }
 .form-error { margin-bottom: 16px; border: 1px solid color-mix(in srgb, var(--proseid-accent) 28%, var(--proseid-rule)); border-radius: 11px; background: color-mix(in srgb, var(--proseid-accent) 6%, var(--proseid-surface)); padding: 11px 12px; color: var(--proseid-accent-ink); font-size: 12px; line-height: 1.5; }
-.actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--proseid-rule); }
+`;
+
+// src/styles/actions.js
+var actionsStyles = `.actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--proseid-rule); }
 .action-meta { display: flex; min-width: 0; align-items: center; justify-content: flex-end; }
 .standard-form-actions { grid-template-columns: minmax(0, 1fr); }
 .standard-form-actions .submit { display: flex; width: 100%; align-items: center; justify-content: center; text-align: center; }
@@ -392,7 +956,10 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .primary-action:disabled, .secondary-action:disabled { cursor: not-allowed; opacity: .45; }
 .primary-action:focus-visible, .secondary-action:focus-visible, .review-change:focus-visible, .boolean-choice button:focus-visible { outline: 2px solid var(--proseid-accent); outline-offset: 3px; }
 
-.guided-layout { display: grid; grid-template-columns: minmax(150px, .62fr) minmax(0, 1.55fr); gap: clamp(24px, 5vw, 54px); align-items: start; min-height: 390px; }
+`;
+
+// src/styles/experiences.js
+var experiencesStyles = `.guided-layout { display: grid; grid-template-columns: minmax(150px, .62fr) minmax(0, 1.55fr); gap: clamp(24px, 5vw, 54px); align-items: start; min-height: 390px; }
 .guided-path { position: sticky; top: 20px; min-width: 0; }
 .guided-path-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: var(--proseid-muted); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .guided-path-heading strong { color: var(--proseid-ink); font: 500 17px/1 Georgia, serif; letter-spacing: 0; }
@@ -476,7 +1043,10 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .boolean-choice button { min-width: 50px; min-height: 31px; border: 0; border-radius: 7px; background: transparent; color: var(--proseid-muted); font-size: 11px; font-weight: 700; cursor: pointer; }
 .boolean-choice button.selected { background: var(--proseid-ink); color: var(--proseid-surface); }
 .empty-state { border: 1px dashed var(--proseid-rule); border-radius: var(--proseid-control-radius); padding: 25px; color: var(--proseid-copy); text-align: center; }
-.signature-overlay { position: fixed; z-index: 2147483647; inset: 0; display: grid; place-items: center; background: rgba(18, 20, 19, .62); padding: 20px; }
+`;
+
+// src/styles/completion.js
+var completionStyles = `.signature-overlay { position: fixed; z-index: 2147483647; inset: 0; display: grid; place-items: center; background: rgba(18, 20, 19, .62); padding: 20px; }
 .signature-dialog { width: min(480px, 100%); max-height: calc(100vh - 40px); overflow: auto; border: 1px solid var(--proseid-rule); border-radius: var(--proseid-radius); background: var(--proseid-surface); box-shadow: 0 28px 90px rgba(0, 0, 0, .28); padding: 26px; }
 .signature-eyebrow { margin-bottom: 9px; color: var(--proseid-accent-ink); font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
 .signature-dialog h2 { margin: 0; color: var(--proseid-ink); font: 500 28px/1.08 Georgia, "Times New Roman", serif; }
@@ -542,7 +1112,10 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 .completion-view .receipt-status[data-state="sent"] { color: var(--proseid-success); }
 .completion-view .receipt-status[data-state="error"] { color: var(--proseid-accent-ink); }
 .completion-view .receipt-test { margin: 16px 0 0 49px; color: var(--proseid-muted); font-size: 10px; }
-:host([data-proseid-shell="flat"]) .shell { border-color: transparent; box-shadow: none; }
+`;
+
+// src/styles/appearance.js
+var appearanceStyles = `:host([data-proseid-shell="flat"]) .shell { border-color: transparent; box-shadow: none; }
 :host([data-proseid-shell="flat"]) .ledger { height: 2px; }
 :host([data-proseid-fields="underline"]) .control { border-width: 0 0 1px; border-radius: 0; background: transparent; padding-right: 0; padding-left: 0; }
 :host([data-proseid-fields="underline"]) .control:focus { border-color: var(--proseid-accent); box-shadow: 0 2px 0 -1px var(--proseid-accent); }
@@ -602,7 +1175,10 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 :host([data-proseid-density="compact"]) .recorded-outcome { padding: 11px 0; }
 :host([data-proseid-density="compact"]) .recorded-notices { margin: 0 15px 13px; padding-top: 10px; }
 :host([data-proseid-density="compact"]) .receipt-copy { margin-top: 14px; padding: 13px 15px; }
-@keyframes shimmer { to { background-position: -200% 0; } }
+`;
+
+// src/styles/responsive.js
+var responsiveStyles = `@keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
 @keyframes ledger-loading { from { transform: translateX(-105%); } to { transform: translateX(295%); } }
 @keyframes button-spin { to { transform: rotate(360deg); } }
@@ -697,480 +1273,267 @@ textarea.control { min-height: 150px; resize: vertical; line-height: 1.6; }
 @media (prefers-reduced-motion: reduce) { .status-dot, .skeleton-line, .submit, .receipt-input, .receipt-button, .button-spinner, .info-popover, .ledger-fill, .guided-progress span, .guided-path li, .checklist-progress-rail i, .toggle-track, .toggle-track::after, .validation-reveal, .validation-orb::before { animation: none; transition: none; } }
 `;
 
-// src/i18n.js
-var dictionaries = {
-  en: {
-    languageLabel: "Language",
-    english: "English",
-    swedish: "Swedish",
-    verifiedBy: "Verified by",
-    select: "Select\u2026",
-    schemaDetails: "Schema details",
-    jurisdictions: "Applies in",
-    legalReferences: "Legal references",
-    legalReference: "Legal reference",
-    appliesOn: (date) => `Assessment date: ${date}`,
-    interpretation: (version) => `Interpretation ${version}`,
-    moreInformation: (label) => `More information about ${label}`,
-    answerProgress: "Answer progress",
-    answersNeeded: (count) => `${count} ${count === 1 ? "answer" : "answers"} needed`,
-    answersNeedAttention: (count) => `${count} ${count === 1 ? "answer needs" : "answers need"} attention`,
-    checkingAnswers: "Checking answers\u2026",
-    checkingAnswersHelp: "The current answers are being verified",
-    readyToComplete: "Ready to complete",
-    goToFirstUnfinished: "Go to the first unfinished answer",
-    goToFirstAttention: "Go to the first answer that needs attention",
-    answersChecked: "All current answers passed validation",
-    openAnswerNavigator: "Open answer status",
-    closeAnswerNavigator: "Close answer status",
-    requiredLabel: "Required",
-    idle: "Enter your details to check this Flow",
-    checking: "Checking your answers\u2026",
-    ready: "Ready to complete",
-    incomplete: "Complete the required fields",
-    checkFailed: "Could not check this Flow. Try again.",
-    creating: "Creating the verified record\u2026",
-    submit: "Submit",
-    submitting: "Submitting",
-    privacy: "Checked by ProseID. Sent only when you submit.",
-    privacyWhiteLabel: "Checked securely. Sent only when you submit.",
-    completeTitle: "Submission complete.",
-    delivered: (publisher) => `Your responses were verified and delivered to ${publisher}.`,
-    auditRecord: (id) => `Audit record ${id}`,
-    testCompleteTitle: "Test complete.",
-    testDelivered: "The integration works. No record was saved or billed.",
-    testRecord: (id) => `Test reference ${id}`,
-    receiptTitle: "Want a copy for your records?",
-    receiptHelp: "We\u2019ll email you a co-branded PDF of exactly what you submitted.",
-    receiptLabel: "Email address",
-    receiptPlaceholder: "you@example.com",
-    receiptAction: "Email me",
-    receiptSending: "Sending",
-    receiptSent: (email) => `A copy is on its way to ${email}.`,
-    receiptInvalid: "Enter a valid email address.",
-    receiptError: "The copy could not be sent. Check the email and try again.",
-    receiptRateLimited: "Too many email attempts. Wait a few minutes and try again.",
-    receiptTest: "Email copies are not sent in test mode.",
-    basicSignature: "Basic electronic signature",
-    signatureTitle: "Sign and submit",
-    signatureHelp: "Type your full legal name and confirm your intent before this record is completed.",
-    signatureName: "Full legal name",
-    signaturePlaceholder: "Your full legal name",
-    signatureAcknowledgement: "I intend to sign this completion by typing my name. I understand this is a basic electronic signature, not a qualified electronic signature; its legal effect depends on the document, intent, and applicable law.",
-    signatureNameError: "Enter at least two characters for your full legal name.",
-    signatureAcknowledgementError: "Confirm that you intend to sign before continuing.",
-    signAndSubmit: "Sign & submit",
-    cancel: "Cancel",
-    awaitingSignature: "Waiting for your signature\u2026",
-    formUnavailable: "Flow unavailable",
-    guidedProgress: (current, total) => `Question ${current} of ${total}`,
-    guidedPath: "Decision path",
-    guidedCurrent: "Current question",
-    guidedRemaining: (count) => `${count} remaining`,
-    guidedUpdated: "Updated from your answers",
-    guidedContinueCue: "Continue when this answer looks right.",
-    guidedReviewCue: "Review this final answer, then check the complete path before submitting.",
-    back: "Back",
-    continue: "Continue",
-    reviewAnswers: "Review answers",
-    finalCheck: "Final check",
-    reviewTitle: "Review your answers",
-    reviewHelp: "Nothing is sent until you confirm. The assessment appears after the record is created.",
-    changeAnswer: "Change",
-    notAnswered: "Not answered",
-    calculatedOutcome: "Calculated outcome",
-    completeAssessment: "Complete assessment",
-    determinationFacts: "Facts",
-    determinationTitle: "Enter what is known",
-    determinationHelp: "Your answers are checked as you work. The calculated result appears after you submit.",
-    calculate: "Calculate determination",
-    calculating: "Calculating\u2026",
-    calculateAgain: "Calculate again",
-    determinationResult: "Determination",
-    determinationWaiting: "The outcome updates automatically as you provide the facts.",
-    determinationLive: "Your live determination",
-    determinationPreparing: "Preparing the questions\u2026",
-    determinationUpdating: "Checking your answers\u2026",
-    determinationAuto: "Answers checked",
-    resultEyebrow: "Recorded result",
-    resultDetermination: "Determination",
-    resultAssessment: "Assessment outcome",
-    resultChecklist: "Checklist result",
-    resultForm: "Submission result",
-    resultHelp: "This is the authoritative result saved with the completed record.",
-    resultNotes: "Important notes",
-    determinationNotes: "Important notes",
-    determinationCurrentIndication: "Current indication",
-    determinationAuthority: "Legal basis",
-    needsAttention: "Needs attention",
-    reviewAnswersTitle: "Review these answers",
-    noRecordCreated: "No record has been created. Correct the highlighted facts, then confirm again.",
-    thisField: "This field",
-    confirmDetermination: "Confirm determination",
-    checklistTitle: "Review every control",
-    checklistHelp: "Work through the checks below. Nothing is recorded until the whole checklist is complete.",
-    checklistEyebrow: "Auditable compliance completion",
-    checklistProgress: (reviewed, total) => `${reviewed} of ${total} controls reviewed`,
-    checklistContext: "Context",
-    checklistContextTitle: "Identify this review",
-    checklistContextHelp: "These details travel with the completed record.",
-    checklistControls: "Required review",
-    checklistControlsLabel: "Controls",
-    checklistControlsHelp: "Each item stays tied to this exact schema release.",
-    checklistRecordedOutcome: "Recorded outcome",
-    checklistConclusion: "What the schema concludes",
-    checklistChoose: "Choose Yes or No before completing the checklist.",
-    yes: "Yes",
-    no: "No",
-    completeChecklist: "Complete checklist",
-    selectDate: "Select date",
-    year: "Year",
-    chooseDateFor: (label) => `Choose date for ${label}`,
-    previousMonth: "Previous month",
-    nextMonth: "Next month",
-    clear: "Clear",
-    today: "Today",
-    weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    required: (label) => `${label} is required.`,
-    confirm: "Please confirm to continue.",
-    format: (label) => `${label} isn\u2019t in the expected format.`,
-    validValue: "Please enter a valid value.",
-    tooShort: "This is too short.",
-    tooLong: "This is too long.",
-    checkValue: "Please check this value."
-  },
-  sv: {
-    languageLabel: "Spr\xE5k",
-    english: "Engelska",
-    swedish: "Svenska",
-    verifiedBy: "Verifierat av",
-    select: "V\xE4lj\u2026",
-    schemaDetails: "Schemadetaljer",
-    jurisdictions: "G\xE4ller i",
-    legalReferences: "R\xE4ttsliga h\xE4nvisningar",
-    legalReference: "R\xE4ttslig h\xE4nvisning",
-    appliesOn: (date) => `Bed\xF6mningsdatum: ${date}`,
-    interpretation: (version) => `Tolkning ${version}`,
-    moreInformation: (label) => `Mer information om ${label}`,
-    answerProgress: "Svarsstatus",
-    answersNeeded: (count) => `${count} svar beh\xF6vs`,
-    answersNeedAttention: (count) => `${count} svar beh\xF6ver ses \xF6ver`,
-    checkingAnswers: "Kontrollerar svaren\u2026",
-    checkingAnswersHelp: "De aktuella svaren verifieras",
-    readyToComplete: "Redo att slutf\xF6ra",
-    goToFirstUnfinished: "G\xE5 till det f\xF6rsta obesvarade f\xE4ltet",
-    goToFirstAttention: "G\xE5 till det f\xF6rsta svaret som beh\xF6ver ses \xF6ver",
-    answersChecked: "Alla aktuella svar har godk\xE4nts",
-    openAnswerNavigator: "\xD6ppna svarsstatus",
-    closeAnswerNavigator: "St\xE4ng svarsstatus",
-    requiredLabel: "Obligatoriskt",
-    idle: "Fyll i uppgifterna f\xF6r att kontrollera fl\xF6det",
-    checking: "Kontrollerar dina svar\u2026",
-    ready: "Redo att skicka",
-    incomplete: "Fyll i de obligatoriska f\xE4lten",
-    checkFailed: "Fl\xF6det kunde inte kontrolleras. F\xF6rs\xF6k igen.",
-    creating: "Skapar den verifierade posten\u2026",
-    submit: "Skicka",
-    submitting: "Skickar",
-    privacy: "Kontrolleras av ProseID. Skickas f\xF6rst n\xE4r du v\xE4ljer Skicka.",
-    privacyWhiteLabel: "Kontrolleras s\xE4kert. Skickas f\xF6rst n\xE4r du v\xE4ljer Skicka.",
-    completeTitle: "Inskickat.",
-    delivered: (publisher) => `Dina svar verifierades och levererades till ${publisher}.`,
-    auditRecord: (id) => `Revisionspost ${id}`,
-    testCompleteTitle: "Testet \xE4r klart.",
-    testDelivered: "Integrationen fungerar. Ingen post sparades eller debiterades.",
-    testRecord: (id) => `Testreferens ${id}`,
-    receiptTitle: "Vill du ha en kopia?",
-    receiptHelp: "Vi mejlar en samprofilerad PDF med exakt det du skickade in.",
-    receiptLabel: "E-postadress",
-    receiptPlaceholder: "du@exempel.se",
-    receiptAction: "Mejla mig",
-    receiptSending: "Skickar",
-    receiptSent: (email) => `En kopia \xE4r p\xE5 v\xE4g till ${email}.`,
-    receiptInvalid: "Ange en giltig e-postadress.",
-    receiptError: "Kopian kunde inte skickas. Kontrollera adressen och f\xF6rs\xF6k igen.",
-    receiptRateLimited: "F\xF6r m\xE5nga mejlf\xF6rs\xF6k. V\xE4nta n\xE5gra minuter och f\xF6rs\xF6k igen.",
-    receiptTest: "E-postkopior skickas inte i testl\xE4get.",
-    basicSignature: "Enkel elektronisk signatur",
-    signatureTitle: "Signera och skicka",
-    signatureHelp: "Skriv ditt fullst\xE4ndiga juridiska namn och bekr\xE4fta din avsikt innan posten slutf\xF6rs.",
-    signatureName: "Fullst\xE4ndigt juridiskt namn",
-    signaturePlaceholder: "Ditt fullst\xE4ndiga juridiska namn",
-    signatureAcknowledgement: "Jag avser att signera denna inl\xE4mning genom att skriva mitt namn. Jag f\xF6rst\xE5r att detta \xE4r en enkel elektronisk signatur, inte en kvalificerad elektronisk signatur, och att dess r\xE4ttsverkan beror p\xE5 dokumentet, avsikten och till\xE4mplig lag.",
-    signatureNameError: "Ange minst tv\xE5 tecken f\xF6r ditt fullst\xE4ndiga juridiska namn.",
-    signatureAcknowledgementError: "Bekr\xE4fta att du avser att signera innan du forts\xE4tter.",
-    signAndSubmit: "Signera och skicka",
-    cancel: "Avbryt",
-    awaitingSignature: "V\xE4ntar p\xE5 din signatur\u2026",
-    formUnavailable: "Fl\xF6det \xE4r inte tillg\xE4ngligt",
-    guidedProgress: (current, total) => `Fr\xE5ga ${current} av ${total}`,
-    guidedPath: "Beslutsv\xE4g",
-    guidedCurrent: "Aktuell fr\xE5ga",
-    guidedRemaining: (count) => `${count} \xE5terst\xE5r`,
-    guidedUpdated: "Uppdateras utifr\xE5n dina svar",
-    guidedContinueCue: "Forts\xE4tt n\xE4r svaret ser r\xE4tt ut.",
-    guidedReviewCue: "Granska det sista svaret och kontrollera sedan hela v\xE4gen innan du skickar.",
-    back: "Tillbaka",
-    continue: "Forts\xE4tt",
-    reviewAnswers: "Granska svaren",
-    finalCheck: "Slutlig kontroll",
-    reviewTitle: "Granska dina svar",
-    reviewHelp: "Inget skickas f\xF6rr\xE4n du bekr\xE4ftar. Bed\xF6mningen visas n\xE4r posten har skapats.",
-    changeAnswer: "\xC4ndra",
-    notAnswered: "Inte besvarat",
-    calculatedOutcome: "Ber\xE4knat resultat",
-    completeAssessment: "Slutf\xF6r bed\xF6mningen",
-    determinationFacts: "Fakta",
-    determinationTitle: "Ange det som \xE4r k\xE4nt",
-    determinationHelp: "Dina svar kontrolleras medan du arbetar. Det ber\xE4knade resultatet visas n\xE4r du skickar in.",
-    calculate: "Ber\xE4kna avg\xF6randet",
-    calculating: "Ber\xE4knar\u2026",
-    calculateAgain: "Ber\xE4kna igen",
-    determinationResult: "Avg\xF6rande",
-    determinationWaiting: "Resultatet uppdateras automatiskt n\xE4r du fyller i fakta.",
-    determinationLive: "Ditt aktuella avg\xF6rande",
-    determinationPreparing: "F\xF6rbereder fr\xE5gorna\u2026",
-    determinationUpdating: "Kontrollerar dina svar\u2026",
-    determinationAuto: "Svaren \xE4r kontrollerade",
-    resultEyebrow: "Registrerat resultat",
-    resultDetermination: "Avg\xF6rande",
-    resultAssessment: "Bed\xF6mningsresultat",
-    resultChecklist: "Checklistans resultat",
-    resultForm: "Resultat",
-    resultHelp: "Detta \xE4r det slutliga resultat som sparades med den slutf\xF6rda posten.",
-    resultNotes: "Viktiga anm\xE4rkningar",
-    determinationNotes: "Viktiga anm\xE4rkningar",
-    determinationCurrentIndication: "Aktuell indikation",
-    determinationAuthority: "R\xE4ttslig grund",
-    needsAttention: "Beh\xF6ver \xE5tg\xE4rdas",
-    reviewAnswersTitle: "Granska dessa svar",
-    noRecordCreated: "Ingen post har skapats. R\xE4tta de markerade uppgifterna och bekr\xE4fta igen.",
-    thisField: "Det h\xE4r f\xE4ltet",
-    confirmDetermination: "Bekr\xE4fta avg\xF6randet",
-    checklistTitle: "Granska varje kontroll",
-    checklistHelp: "G\xE5 igenom kontrollerna nedan. Inget registreras f\xF6rr\xE4n hela checklistan \xE4r klar.",
-    checklistEyebrow: "Sp\xE5rbart slutf\xF6rande av efterlevnad",
-    checklistProgress: (reviewed, total) => `${reviewed} av ${total} kontroller granskade`,
-    checklistContext: "Sammanhang",
-    checklistContextTitle: "Identifiera granskningen",
-    checklistContextHelp: "Uppgifterna f\xF6ljer med den slutf\xF6rda registreringen.",
-    checklistControls: "Obligatorisk granskning",
-    checklistControlsLabel: "Kontroller",
-    checklistControlsHelp: "Varje punkt f\xF6rblir kopplad till exakt den h\xE4r schemaversionen.",
-    checklistRecordedOutcome: "Registrerat resultat",
-    checklistConclusion: "Schemats slutsats",
-    checklistChoose: "V\xE4lj Ja eller Nej innan checklistan slutf\xF6rs.",
-    yes: "Ja",
-    no: "Nej",
-    completeChecklist: "Slutf\xF6r checklistan",
-    selectDate: "V\xE4lj datum",
-    year: "\xC5r",
-    chooseDateFor: (label) => `V\xE4lj datum f\xF6r ${label}`,
-    previousMonth: "F\xF6reg\xE5ende m\xE5nad",
-    nextMonth: "N\xE4sta m\xE5nad",
-    clear: "Rensa",
-    today: "I dag",
-    weekdays: ["M\xE5n", "Tis", "Ons", "Tor", "Fre", "L\xF6r", "S\xF6n"],
-    required: (label) => `${label} \xE4r obligatoriskt.`,
-    confirm: "Bekr\xE4fta f\xF6r att forts\xE4tta.",
-    format: (label) => `${label} har inte r\xE4tt format.`,
-    validValue: "Ange ett giltigt v\xE4rde.",
-    tooShort: "V\xE4rdet \xE4r f\xF6r kort.",
-    tooLong: "V\xE4rdet \xE4r f\xF6r l\xE5ngt.",
-    checkValue: "Kontrollera v\xE4rdet."
+// src/styles.js
+var styles = shellStyles + fieldsStyles + actionsStyles + experiencesStyles + completionStyles + appearanceStyles + responsiveStyles;
+
+// src/form/rendering/shell.js
+function installStyles() {
+  if ("adoptedStyleSheets" in this.shadow && typeof CSSStyleSheet !== "undefined" && CSSStyleSheet.prototype.replaceSync) {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(styles);
+    this.shadow.adoptedStyleSheets = [sheet];
+  } else {
+    const style = document.createElement("style");
+    if (this.options.nonce) style.setAttribute("nonce", this.options.nonce);
+    style.textContent = styles;
+    this.shadow.append(style);
   }
-};
-function messagesFor(locale = "en", overrides = {}) {
-  const language = String(locale).toLowerCase().split("-")[0];
-  return { ...dictionaries[language] ?? dictionaries.en, ...overrides };
+}
+function renderLoading() {
+  this.shadow.replaceChildren();
+  this.installStyles();
+  const shell = text("div", "shell");
+  const skeleton = text("div", "skeleton");
+  for (let i = 0; i < 6; i++) skeleton.append(text("div", "skeleton-line"));
+  const ledger = this.renderLedger("loading");
+  if (ledger) shell.append(ledger);
+  shell.append(skeleton);
+  this.shadow.append(shell);
+}
+function renderForm() {
+  this.shadow.replaceChildren();
+  this.installStyles();
+  const shell = text("section", "shell");
+  shell.setAttribute("aria-label", this.manifest.flow.title);
+  const head = text("header", "head");
+  const brands = text("div", "brands");
+  brands.append(this.brand(this.manifest.publisher));
+  const respondentTools = text("div", "respondent-tools");
+  respondentTools.append(this.renderLanguageSelector());
+  const proseidBrand2 = this.proseidBrand();
+  if (proseidBrand2) respondentTools.append(proseidBrand2);
+  brands.append(respondentTools);
+  head.append(brands, text("h1", "", this.manifest.flow.title));
+  if (this.manifest.flow.description) head.append(text("p", "description", this.manifest.flow.description));
+  const schemaDetails = this.renderSchemaDetails();
+  if (schemaDetails) head.append(schemaDetails);
+  this.statusNode = text("div", "status");
+  this.statusNode.dataset.state = "idle";
+  this.statusNode.append(text("span", "status-dot"), text("span", "status-copy", this.copy.idle));
+  head.append(this.statusNode);
+  const body = text("div", "body");
+  this.formError = text("div", "form-error");
+  this.formError.hidden = true;
+  this.formNode = document.createElement("form");
+  this.formNode.noValidate = true;
+  this.formNode.addEventListener("submit", (event) => this.submit(event));
+  this.fieldList = text("div", "fields");
+  for (const [name, definition] of Object.entries(this.manifest.schema?.definitions || {})) {
+    if (definition?.readonly === true) continue;
+    this.fieldList.append(this.renderField(name, definition));
+  }
+  this.submitButton = text("button", "submit", this.options.submitLabel || this.defaultSubmitLabel());
+  this.submitButton.type = "submit";
+  this.submitButton.disabled = true;
+  this.validationNavigator = this.renderValidationNavigator();
+  if (this.flowType === "guided_assessment") this.formNode.append(this.renderGuided());
+  else if (this.flowType === "determination") this.formNode.append(this.renderDetermination());
+  else if (this.flowType === "checklist") this.formNode.append(this.renderChecklist());
+  else this.formNode.append(this.fieldList, this.renderActions({ standardForm: true }));
+  body.append(this.formError, this.formNode);
+  this.progressNode = this.renderLedger();
+  this.progressFill = this.progressNode?.querySelector(".ledger-fill") || null;
+  if (this.progressNode) {
+    this.progressNode.setAttribute("role", "progressbar");
+    this.progressNode.setAttribute("aria-label", this.copy.answerProgress);
+    this.progressNode.setAttribute("aria-valuemin", "0");
+    this.progressNode.setAttribute("aria-valuemax", "100");
+    shell.append(this.progressNode);
+  }
+  shell.append(head, body);
+  this.shadow.append(shell);
+  this.updateAnswerProgress();
+  this.updateValidationNavigator();
 }
 
-// src/themes.js
-var THEMES = Object.freeze({
-  light: Object.freeze({
-    accent: "#ff4d1f",
-    accentInk: "#b82d0d",
-    canvas: "#f5f6f5",
-    surface: "#ffffff",
-    ink: "#171918",
-    copy: "#515653",
-    muted: "#6c726e",
-    rule: "#dfe2df",
-    success: "#167653",
-    successTint: "#e8f5ef",
-    submitInk: "#171918",
-    skeletonGlow: "#ffffff",
-    colorScheme: "light"
-  }),
-  charcoal: Object.freeze({
-    accent: "#ff4d1f",
-    accentInk: "#ff9a7a",
-    canvas: "#171b1c",
-    surface: "#202526",
-    ink: "#f4f6f5",
-    copy: "#c4cbc7",
-    muted: "#a2aba6",
-    rule: "#3b4340",
-    success: "#71d6aa",
-    successTint: "#173a2e",
-    submitInk: "#24120d",
-    skeletonGlow: "#2c3331",
-    colorScheme: "dark"
-  }),
-  midnight: Object.freeze({
-    accent: "#ff4d1f",
-    accentInk: "#ff9a7e",
-    canvas: "#111827",
-    surface: "#182235",
-    ink: "#f4f6fa",
-    copy: "#cbd3e1",
-    muted: "#a6b0c1",
-    rule: "#344057",
-    success: "#78d9b5",
-    successTint: "#143b32",
-    submitInk: "#24120d",
-    skeletonGlow: "#24314a",
-    colorScheme: "dark"
-  }),
-  forest: Object.freeze({
-    accent: "#ff4d1f",
-    accentInk: "#ff9a7e",
-    canvas: "#151c1a",
-    surface: "#1e2825",
-    ink: "#f5f7f2",
-    copy: "#cbd2cb",
-    muted: "#a9b2ac",
-    rule: "#3b4943",
-    success: "#7fd7aa",
-    successTint: "#173a2c",
-    submitInk: "#24120d",
-    skeletonGlow: "#2b3834",
-    colorScheme: "dark"
-  })
-});
-var THEME_NAMES = Object.freeze(Object.keys(THEMES));
-var COLOR_TOKEN_NAMES = Object.freeze([
-  "accent",
-  "accentInk",
-  "canvas",
-  "surface",
-  "ink",
-  "copy",
-  "muted",
-  "rule",
-  "success",
-  "successTint",
-  "submitInk",
-  "skeletonGlow"
-]);
-var COLOR_TOKEN_SET = new Set(COLOR_TOKEN_NAMES);
-var HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
-function normalizeTheme(value) {
-  return typeof value === "string" && Object.hasOwn(THEMES, value) ? value : "light";
-}
-function normalizeColors(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const normalized = {};
-  for (const [name, color] of Object.entries(value)) {
-    if (COLOR_TOKEN_SET.has(name) && typeof color === "string" && HEX_COLOR.test(color)) {
-      normalized[name] = color.toLowerCase();
+// src/form/rendering/branding.js
+function brand(publisher) {
+  const wrap = text("div", "brand");
+  const organization = text("a", "brand-organization");
+  organization.href = this.registryUrl(`/registry/${encodeURIComponent(publisher.slug)}`);
+  organization.target = "_blank";
+  organization.rel = "noopener noreferrer";
+  organization.setAttribute("aria-label", `Open ${publisher.name} in the ProseID Registry`);
+  const customLogo = safeLogoUrl(this.options.branding?.logoUrl);
+  const logo = customLogo || safeLogoUrl(publisher.logo);
+  if (logo) {
+    const img = document.createElement("img");
+    img.src = logo;
+    img.alt = this.options.branding?.logoAlt || `${publisher.name} logo`;
+    organization.append(img);
+  } else {
+    organization.append(text("span", "brand-fallback", publisher.name.slice(0, 2).toUpperCase()));
+  }
+  const copy = text("div", "brand-copy");
+  copy.append(text("div", "brand-name", publisher.name));
+  copy.append(text("div", "brand-note", `@${publisher.slug}`));
+  organization.append(copy);
+  wrap.append(organization);
+  const author = this.manifest.author;
+  if (author?.username) {
+    const authorLink = text("a", "brand-author", `@${author.username}`);
+    authorLink.href = this.registryUrl(`/registry/publishers/${encodeURIComponent(author.username)}`);
+    authorLink.target = "_blank";
+    authorLink.rel = "noopener noreferrer";
+    if (author.verified) {
+      const verified = text("span", "author-verified", "\u2713");
+      verified.setAttribute("aria-label", "Verified professional");
+      verified.title = "Verified professional";
+      authorLink.append(verified);
     }
+    wrap.append(authorLink);
   }
-  return normalized;
+  return wrap;
+}
+function registryUrl(path) {
+  const base = safeLogoUrl(this.manifest?.branding?.proseid?.url) || "https://proseid.com/";
+  return new URL(path, base).href;
+}
+function proseidBrand() {
+  if (this.attribution === "hidden") return null;
+  const brand2 = this.manifest.branding.proseid;
+  const link = text("a", `proseid-brand${this.attribution === "compact" ? " compact" : ""}`);
+  link.href = brand2.url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.setAttribute("aria-label", `${this.copy.verifiedBy} ProseID`);
+  const img = document.createElement("img");
+  img.src = brand2.logo;
+  img.alt = "ProseID";
+  if (this.attribution === "full") link.append(text("span", "", this.copy.verifiedBy));
+  link.append(img);
+  return link;
 }
 
-// src/ProseIDForm.js
-var text = (tag, className, value = "") => {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  node.textContent = value;
-  return node;
-};
-var friendlyIssue = (issue, label, copy) => {
-  switch (issue?.kind) {
-    case "missing_required":
-      return copy.required(label);
-    case "attestation_incomplete":
-      return copy.confirm;
-    case "type_mismatch":
-      return copy.format(label);
-    case "constraint_violation":
-      if (/pattern/i.test(issue.message || "")) return copy.validValue;
-      if (/too short|minimum .* character/i.test(issue.message || "")) return copy.tooShort;
-      if (/too long|maximum .* character/i.test(issue.message || "")) return copy.tooLong;
-      return issue.message || copy.checkValue;
-    default:
-      return issue?.message || copy.checkValue;
+// src/form/rendering/metadata.js
+function renderSchemaDetails() {
+  const metadata = this.manifest.schema?.metadata || {};
+  const title = String(metadata.title || this.manifest.schema?.title || "").trim();
+  const description = String(metadata.description || "").trim();
+  const jurisdictions = Array.isArray(metadata.jurisdictions) ? metadata.jurisdictions.filter(Boolean) : [];
+  const references = Array.isArray(metadata.legal_references) ? metadata.legal_references.filter(Boolean) : [];
+  const temporal = this.manifest.flow?.temporalContext;
+  if (!title && !description && jurisdictions.length === 0 && references.length === 0 && !temporal?.logic_version) return null;
+  const details = text("details", "schema-details");
+  details.append(text("summary", "", this.copy.schemaDetails));
+  const content = text("div", "schema-details-content");
+  if (title && title !== this.manifest.flow.title) content.append(text("strong", "schema-title", title));
+  if (description && description !== this.manifest.flow.description) {
+    content.append(text("p", "schema-summary", description));
+  }
+  if (temporal?.logic_version) {
+    const period = text("div", "temporal-context");
+    period.append(
+      text("span", "", this.copy.appliesOn(this.manifest.flow.effectiveAt)),
+      text("span", "", this.copy.interpretation(temporal.logic_version))
+    );
+    content.append(period);
+  }
+  if (jurisdictions.length) {
+    const group = text("div", "metadata-group");
+    group.append(text("div", "metadata-label", this.copy.jurisdictions));
+    const values = text("div", "jurisdiction-list");
+    for (const jurisdiction of jurisdictions) {
+      const code = String(jurisdiction).toUpperCase();
+      const chip = text("span", "jurisdiction", jurisdictionName(code, this.locale));
+      chip.append(text("code", "", code));
+      values.append(chip);
+    }
+    group.append(values);
+    content.append(group);
+  }
+  if (references.length) {
+    const group = text("div", "metadata-group");
+    group.append(text("div", "metadata-label", this.copy.legalReferences));
+    const list = text("ul", "reference-list");
+    for (const reference of references) {
+      const item = document.createElement("li");
+      const label = [reference.instrument, reference.provision].filter(Boolean).join(" \xB7 ") || this.copy.legalReference;
+      const source = safeLogoUrl(reference.source_url);
+      if (source) {
+        const link = text("a", "", label);
+        link.href = source;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        item.append(link);
+      } else item.textContent = label;
+      list.append(item);
+    }
+    group.append(list);
+    content.append(group);
+  }
+  details.append(content);
+  return details;
+}
+var jurisdictionName = (value, locale = "en") => {
+  const code = String(value || "").trim().toUpperCase();
+  const language = String(locale || "en").toLowerCase().split("-")[0];
+  const supranational = language === "sv" ? { GLOBAL: "Globalt", EU: "Europeiska unionen", EEA: "Europeiska ekonomiska samarbetsomr\xE5det" } : { GLOBAL: "Global", EU: "European Union", EEA: "European Economic Area" };
+  if (supranational[code]) return supranational[code];
+  try {
+    return new Intl.DisplayNames([locale], { type: "region" }).of(code) || code;
+  } catch {
+    return code;
   }
 };
-var randomRecordId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll("-", "") || Math.random().toString(36).slice(2).padEnd(16, "0")}`;
-var RECORD_ID_RE = /^[A-Za-z0-9_-]{4,128}$/;
+
+// src/form/rendering/actions.js
+function defaultSubmitLabel() {
+  if (this.flowType === "guided_assessment") return this.copy.completeAssessment;
+  if (this.flowType === "determination") return this.copy.confirmDetermination;
+  if (this.flowType === "checklist") return this.copy.completeChecklist;
+  return this.copy.submit;
+}
+function setButtonBusy(button, busy, label) {
+  if (!button) return;
+  button.classList.toggle("is-loading", busy);
+  button.setAttribute("aria-busy", String(busy));
+  button.replaceChildren();
+  if (busy) {
+    const spinner = text("span", "button-spinner");
+    spinner.setAttribute("aria-hidden", "true");
+    button.append(spinner);
+  }
+  button.append(text("span", "button-label", label));
+}
+function renderPrivacy() {
+  const privacy = text("div", "privacy");
+  privacy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+  privacy.append(text("span", "", this.attribution === "hidden" ? this.copy.privacyWhiteLabel : this.copy.privacy));
+  return privacy;
+}
+function renderActions({ standardForm = false } = {}) {
+  const actions = text("div", standardForm ? "actions standard-form-actions" : "actions");
+  const meta = text("div", "action-meta");
+  meta.append(this.validationNavigator);
+  actions.append(meta, this.submitButton);
+  return actions;
+}
+function updateSubmitState() {
+  if (!this.submitButton) return;
+  this.submitButton.disabled = this.submitting || this.guidedChecking || this.validationLocked;
+  this.updateValidationNavigator();
+}
+function setStatus(state, copy) {
+  if (!this.statusNode) return;
+  this.statusNode.dataset.state = state;
+  this.statusNode.querySelector(".status-copy").textContent = copy;
+}
+
+// src/form/input-patterns.js
 var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-var FLOW_TYPES = /* @__PURE__ */ new Set(["form", "guided_assessment", "determination", "checklist"]);
-var LANGUAGES = /* @__PURE__ */ new Set(["en", "sv"]);
-var LANGUAGE_STORAGE_KEY = "proseid_flow_language";
-var DEFAULT_VALIDATION_DELAY = 400;
-var LOCALLY_VALID_VALIDATION_DELAY = 180;
-var normalizeLocale = (value) => {
-  const language = String(value || "").trim().toLowerCase().split("-")[0];
-  return LANGUAGES.has(language) ? language : "en";
-};
-var readLocalePreference = () => {
-  try {
-    const value = globalThis.localStorage?.getItem?.(LANGUAGE_STORAGE_KEY);
-    return LANGUAGES.has(value) ? value : "";
-  } catch {
-    return "";
-  }
-};
-var saveLocalePreference = (value) => {
-  try {
-    globalThis.localStorage?.setItem?.(LANGUAGE_STORAGE_KEY, value);
-  } catch {
-  }
-};
-var CHOICE_ACRONYMS = /* @__PURE__ */ new Map([
-  ["ai", "AI"],
-  ["api", "API"],
-  ["ccpa", "CCPA"],
-  ["dns", "DNS"],
-  ["dora", "DORA"],
-  ["eea", "EEA"],
-  ["eu", "EU"],
-  ["ftc", "FTC"],
-  ["gdpr", "GDPR"],
-  ["gpai", "GPAI"],
-  ["hipaa", "HIPAA"],
-  ["ict", "ICT"],
-  ["it", "IT"],
-  ["i", "I"],
-  ["ii", "II"],
-  ["iii", "III"],
-  ["iv", "IV"],
-  ["v", "V"],
-  ["vi", "VI"],
-  ["vii", "VII"],
-  ["viii", "VIII"],
-  ["ix", "IX"],
-  ["x", "X"],
-  ["xi", "XI"],
-  ["xii", "XII"],
-  ["xiii", "XIII"],
-  ["nis2", "NIS2"],
-  ["osha", "OSHA"],
-  ["pdf", "PDF"],
-  ["sec", "SEC"],
-  ["tld", "TLD"],
-  ["uk", "UK"],
-  ["us", "US"]
-]);
-var humanizeText = (value) => {
-  const source = String(value ?? "").trim();
-  if (!source || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(source) || /^[a-z][a-z0-9+.-]*:\/\//i.test(source)) return source;
-  const spaced = source.replace(/_+/g, " ").replace(/\s+/g, " ");
-  return spaced.charAt(0).toLocaleUpperCase() + spaced.slice(1);
-};
-var humanizeChoice = (value) => humanizeText(value).split(" ").map((word) => CHOICE_ACRONYMS.get(word.toLocaleLowerCase()) ?? word).join(" ");
+
+// src/form/validation/local-constraints.js
 var isEmptyValue = (_definition, value) => value === void 0 || value === null || value === "";
 var answerProvided = (definition, value) => {
   if (definition?.type === "attestation" && definition?.required === true) return value === true;
@@ -1257,6 +1620,1040 @@ var localConstraintIssue = (name, definition, value, { includeRequired = false }
   }
   return null;
 };
+
+// src/form/labels.js
+var CHOICE_ACRONYMS = /* @__PURE__ */ new Map([
+  ["ai", "AI"],
+  ["api", "API"],
+  ["ccpa", "CCPA"],
+  ["dns", "DNS"],
+  ["dora", "DORA"],
+  ["eea", "EEA"],
+  ["eu", "EU"],
+  ["ftc", "FTC"],
+  ["gdpr", "GDPR"],
+  ["gpai", "GPAI"],
+  ["hipaa", "HIPAA"],
+  ["ict", "ICT"],
+  ["it", "IT"],
+  ["i", "I"],
+  ["ii", "II"],
+  ["iii", "III"],
+  ["iv", "IV"],
+  ["v", "V"],
+  ["vi", "VI"],
+  ["vii", "VII"],
+  ["viii", "VIII"],
+  ["ix", "IX"],
+  ["x", "X"],
+  ["xi", "XI"],
+  ["xii", "XII"],
+  ["xiii", "XIII"],
+  ["nis2", "NIS2"],
+  ["osha", "OSHA"],
+  ["pdf", "PDF"],
+  ["sec", "SEC"],
+  ["tld", "TLD"],
+  ["uk", "UK"],
+  ["us", "US"]
+]);
+var humanizeText = (value) => {
+  const source = String(value ?? "").trim();
+  if (!source || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(source) || /^[a-z][a-z0-9+.-]*:\/\//i.test(source)) return source;
+  const spaced = source.replace(/_+/g, " ").replace(/\s+/g, " ");
+  return spaced.charAt(0).toLocaleUpperCase() + spaced.slice(1);
+};
+var humanizeChoice = (value) => humanizeText(value).split(" ").map((word) => CHOICE_ACRONYMS.get(word.toLocaleLowerCase()) ?? word).join(" ");
+
+// src/form/rendering/progress.js
+function progressEnabled() {
+  return this.options.showProgress !== false;
+}
+function renderLedger(className = "") {
+  if (!this.progressEnabled()) return null;
+  const ledger = text("div", `ledger${className ? ` ${className}` : ""}`);
+  ledger.append(text("span", "ledger-fill"));
+  return ledger;
+}
+function visibleFields() {
+  return [...this.fields.entries()].filter(([, field]) => field.engineVisible !== false);
+}
+function updateAnswerProgress() {
+  if (!this.progressNode || !this.progressFill) return;
+  const fields = this.visibleFields();
+  const answered = fields.filter(([name, field]) => answerProvided(field.definition, this.values[name])).length;
+  const percent = fields.length ? Math.round(answered / fields.length * 100) : 100;
+  this.progressFill.style.width = `${percent}%`;
+  this.progressNode.setAttribute("aria-valuenow", String(percent));
+  this.progressNode.setAttribute("aria-valuetext", `${answered} of ${fields.length}`);
+}
+function displayValue(value, definition) {
+  if (isEmptyValue(definition, value)) return this.copy.notAnswered;
+  if (["boolean", "attestation"].includes(definition?.type)) return value === true ? this.copy.yes : this.copy.no;
+  if (typeof value === "object") return JSON.stringify(value);
+  return humanizeChoice(value);
+}
+
+// src/form/rendering/fatal.js
+function renderFatal(error) {
+  this.shadow.replaceChildren();
+  this.installStyles();
+  const shell = text("section", "shell");
+  const complete = text("div", "completion-view");
+  complete.append(text("div", "seal", "!"), text("h2", "", this.copy.formUnavailable));
+  complete.append(text("p", "", errorMessage(error?.code, error?.message)));
+  const ledger = this.renderLedger();
+  if (ledger) shell.append(ledger);
+  shell.append(complete);
+  this.shadow.append(shell);
+}
+
+// src/form/experiences/guided-layout.js
+function renderGuided() {
+  const guided = text("div", "guided");
+  this.guidedQuestion = text("section", "guided-question");
+  this.guidedIndexNode = text("div", "guided-index");
+  this.guidedFieldSlot = text("div", "guided-field-slot");
+  const navigation = text("div", "guided-navigation");
+  this.guidedNavigation = navigation;
+  this.guidedBack = text("button", "secondary-action", this.copy.back);
+  this.guidedBack.type = "button";
+  this.guidedBack.addEventListener("click", () => this.guidedPrevious());
+  this.guidedNext = text("button", "primary-action", this.copy.continue);
+  this.guidedNext.type = "button";
+  this.guidedNext.addEventListener("click", () => this.guidedContinue());
+  navigation.append(this.guidedBack, this.validationNavigator, this.guidedNext);
+  this.guidedQuestion.append(this.guidedIndexNode, this.guidedFieldSlot, navigation);
+  this.guidedPath = text("aside", "guided-path");
+  this.guidedPathHeading = text("div", "guided-path-heading");
+  this.guidedPathHeadingLabel = text("span", "", this.copy.guidedPath);
+  this.guidedPathHeadingCount = text("strong");
+  this.guidedPathHeading.append(this.guidedPathHeadingLabel, this.guidedPathHeadingCount);
+  this.guidedPathList = document.createElement("ol");
+  this.guidedPathList.tabIndex = 0;
+  this.guidedPathList.setAttribute("aria-label", this.copy.guidedPath);
+  this.guidedPath.append(this.guidedPathHeading);
+  if (this.progressEnabled()) {
+    this.guidedPathProgress = text("div", "guided-progress");
+    this.guidedPathProgressFill = text("span");
+    this.guidedPathProgress.append(this.guidedPathProgressFill);
+    this.guidedPath.append(this.guidedPathProgress);
+  }
+  this.guidedPath.append(this.guidedPathList);
+  this.guidedReview = text("section", "guided-review");
+  this.guidedReview.hidden = true;
+  this.guidedParking = text("div", "field-parking");
+  this.guidedParking.hidden = true;
+  for (const field of this.fields.values()) this.guidedParking.append(field.wrap);
+  const layout = text("div", "guided-layout");
+  layout.append(this.guidedPath, this.guidedQuestion, this.guidedReview, this.guidedParking);
+  guided.append(layout);
+  this.refreshGuided();
+  return guided;
+}
+function refreshGuided() {
+  if (!this.guidedQuestion) return;
+  const list = this.guidedPathList;
+  const previousPathScrollTop = list?.scrollTop || 0;
+  if (this.validationNavigator?.parentNode !== this.guidedNavigation) {
+    this.guidedNavigation.insertBefore(this.validationNavigator, this.guidedNext);
+  }
+  const entries = this.visibleFields();
+  if (!entries.length) {
+    this.guidedQuestion.replaceChildren(text("p", "empty-state", "This Flow has no visible questions."));
+    this.guidedPath.hidden = true;
+    return;
+  }
+  this.guidedPath.hidden = false;
+  this.guidedIndex = Math.min(this.guidedIndex, entries.length - 1);
+  const [currentName, field] = entries[this.guidedIndex];
+  for (const [, candidate] of entries) {
+    candidate.wrap.hidden = candidate !== field;
+    if (candidate !== field && candidate.wrap.parentNode !== this.guidedParking) this.guidedParking.append(candidate.wrap);
+  }
+  field.wrap.hidden = false;
+  if (this.guidedFieldSlot.childElementCount !== 1 || this.guidedFieldSlot.firstElementChild !== field.wrap) {
+    this.guidedFieldSlot.replaceChildren(field.wrap);
+  }
+  this.guidedIndexNode.replaceChildren(
+    text("span", "", this.copy.guidedProgress(this.guidedIndex + 1, entries.length)),
+    text("small", "", this.guidedIndex === entries.length - 1 ? this.copy.guidedReviewCue : this.copy.guidedContinueCue)
+  );
+  this.guidedBack.disabled = this.guidedIndex === 0;
+  this.guidedNext.disabled = this.guidedChecking;
+  this.guidedNext.textContent = this.guidedIndex === entries.length - 1 ? this.copy.reviewAnswers : this.copy.continue;
+  this.guidedPathHeadingLabel.textContent = this.copy.guidedPath;
+  this.guidedPathHeadingCount.textContent = `${this.guidedIndex + 1}/${entries.length}`;
+  list.setAttribute("aria-label", this.copy.guidedPath);
+  if (this.guidedPathProgressFill) {
+    const answered = entries.filter(([name, candidate]) => answerProvided(candidate.definition, this.values[name])).length;
+    this.guidedPathProgressFill.style.width = `${Math.round(answered / entries.length * 100)}%`;
+  }
+  const existingItems = new Map([...list.children].map((item) => [item.dataset.field, item]));
+  const nextItems = entries.map(([entryName, entryField], index) => {
+    let item = existingItems.get(entryName);
+    if (!item) {
+      item = text("li");
+      item.dataset.field = entryName;
+      const button2 = text("button", "guided-path-button");
+      button2.type = "button";
+      const marker2 = text("span", "guided-marker");
+      const pathCopy = text("span", "guided-path-copy");
+      pathCopy.append(text("strong"), text("small"));
+      button2.append(marker2, pathCopy);
+      let navigatedOnPointerDown = false;
+      button2.addEventListener("pointerdown", (event) => {
+        if (button2.disabled || event.button !== 0) return;
+        navigatedOnPointerDown = true;
+        event.preventDefault();
+        this.goToGuidedQuestion(entryName);
+      });
+      button2.addEventListener("click", (event) => {
+        event.preventDefault();
+        if (button2.disabled) return;
+        if (navigatedOnPointerDown) {
+          navigatedOnPointerDown = false;
+          return;
+        }
+        this.goToGuidedQuestion(entryName);
+      });
+      item.append(button2);
+    }
+    const button = item.querySelector(".guided-path-button");
+    const marker = item.querySelector(".guided-marker");
+    const label = item.querySelector(".guided-path-copy strong");
+    const detail = item.querySelector(".guided-path-copy small");
+    const hasAnswer = answerProvided(entryField.definition, this.values[entryName]);
+    const isActive = index === this.guidedIndex;
+    item.className = isActive ? hasAnswer ? "active answered" : "active" : hasAnswer ? "answered" : "remaining";
+    if (isActive) item.setAttribute("aria-current", "step");
+    else item.removeAttribute("aria-current");
+    button.disabled = isActive || !hasAnswer;
+    marker.textContent = hasAnswer ? "\u2713" : "";
+    label.textContent = entryField.label;
+    detail.textContent = isActive ? this.copy.guidedCurrent : hasAnswer ? this.displayValue(this.values[entryName], entryField.definition) : this.copy.notAnswered;
+    return item;
+  });
+  const currentItems = [...list.children];
+  const structureChanged = currentItems.length !== nextItems.length || currentItems.some((item, index) => item !== nextItems[index]);
+  if (structureChanged) list.replaceChildren(...nextItems);
+  list.scrollTop = previousPathScrollTop;
+  requestAnimationFrame(() => {
+    const active = list.querySelector(".active");
+    if (!active || list.scrollHeight <= list.clientHeight) return;
+    const listBounds = list.getBoundingClientRect();
+    const activeBounds = active.getBoundingClientRect();
+    let nextTop = list.scrollTop;
+    if (activeBounds.top < listBounds.top) nextTop -= listBounds.top - activeBounds.top;
+    else if (activeBounds.bottom > listBounds.bottom) nextTop += activeBounds.bottom - listBounds.bottom;
+    if (Math.abs(nextTop - list.scrollTop) < 1) return;
+    const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    list.scrollTo({ top: Math.max(0, nextTop), behavior: reducedMotion ? "auto" : "smooth" });
+  });
+}
+
+// src/form/experiences/guided-navigation.js
+function goToGuidedQuestion(name) {
+  clearTimeout(this.validationTimer);
+  const entries = this.visibleFields();
+  const index = entries.findIndex(([entryName]) => entryName === name);
+  if (index < 0) return;
+  this.guidedChecking = false;
+  this.guidedPhase = "questions";
+  this.guidedIndex = index;
+  this.guidedReview.hidden = true;
+  this.guidedQuestion.hidden = false;
+  this.guidedPath.hidden = false;
+  this.refreshGuided();
+  requestAnimationFrame(() => {
+    const field = this.fields.get(name);
+    const controls = field?.controls || [field?.control];
+    (controls.find((control) => control?.checked) || controls.find((control) => control && control.type !== "hidden"))?.focus?.({ preventScroll: true });
+  });
+}
+async function guidedContinue() {
+  if (this.guidedNext.disabled) return;
+  clearTimeout(this.validationTimer);
+  const entries = this.visibleFields();
+  const current = entries[this.guidedIndex];
+  if (!current) return;
+  const [currentName, currentField] = current;
+  this.blurred.add(currentName);
+  const localIssues = this.localValidationIssues([currentName], { includeRequired: true });
+  this.renderLocalIssues([currentName], localIssues);
+  if (localIssues.some((issue) => issue.severity === "error")) {
+    this.refreshGuided();
+    currentField.control?.focus?.();
+    return;
+  }
+  this.guidedChecking = true;
+  this.guidedNext.disabled = true;
+  this.guidedNext.textContent = this.copy.checking;
+  const result = await this.validate();
+  if (!result) {
+    this.guidedChecking = false;
+    this.refreshGuided();
+    return;
+  }
+  const blocking = (result?.issues || []).some((issue) => issue.field_id === currentName && issue.severity === "error");
+  if (blocking) {
+    this.guidedChecking = false;
+    this.refreshGuided();
+    return;
+  }
+  const refreshed = this.visibleFields();
+  this.guidedChecking = false;
+  if (this.guidedIndex < refreshed.length - 1) {
+    this.guidedIndex += 1;
+    this.refreshGuided();
+    this.guidedFieldSlot.querySelector('input:not([type="hidden"]), select, textarea, button')?.focus?.({ preventScroll: true });
+  } else this.showGuidedReview();
+}
+function guidedPrevious() {
+  if (this.guidedPhase === "review") {
+    this.guidedPhase = "questions";
+    this.guidedIndex = Math.max(0, this.visibleFields().length - 1);
+    this.guidedReview.hidden = true;
+    this.guidedQuestion.hidden = false;
+    this.guidedPath.hidden = false;
+    this.refreshGuided();
+    return;
+  }
+  if (this.guidedIndex > 0) {
+    this.guidedIndex -= 1;
+    this.refreshGuided();
+  }
+}
+function showGuidedReview() {
+  this.guidedPhase = "review";
+  for (const field of this.fields.values()) this.guidedParking.append(field.wrap);
+  this.guidedQuestion.hidden = true;
+  this.guidedPath.hidden = true;
+  this.guidedReview.hidden = false;
+  this.guidedReview.replaceChildren();
+  const head = text("header", "review-head");
+  head.append(text("span", "eyebrow", this.copy.finalCheck), text("h2", "", this.copy.reviewTitle), text("p", "", this.copy.reviewHelp));
+  const list = text("div", "review-list");
+  this.visibleFields().forEach(([name, field]) => {
+    const row = text("div", "review-row");
+    const answer = text("span", "review-answer");
+    answer.append(text("small", "", field.label), text("strong", "", this.displayValue(this.values[name], field.definition)));
+    const change2 = text("button", "review-change", this.copy.changeAnswer);
+    change2.type = "button";
+    change2.addEventListener("click", () => this.goToGuidedQuestion(name));
+    row.append(answer, change2);
+    list.append(row);
+  });
+  const actions = text("div", "guided-review-actions");
+  const readiness = text("div", "guided-review-readiness");
+  const back = text("button", "secondary-action", this.copy.back);
+  back.type = "button";
+  back.addEventListener("click", () => this.guidedPrevious());
+  readiness.append(this.validationNavigator);
+  actions.append(back, this.submitButton);
+  this.guidedReview.append(head);
+  this.guidedReview.append(list);
+  this.guidedReview.append(this.renderPrivacy(), readiness, actions);
+  this.updateSubmitState();
+}
+
+// src/form/experiences/determination.js
+function renderDetermination() {
+  const layout = text("div", "determination-layout");
+  const facts = text("section", "determination-facts");
+  const head = text("header", "experience-head");
+  head.append(text("span", "eyebrow", this.copy.determinationFacts), text("h2", "", this.copy.determinationTitle), text("p", "", this.copy.determinationHelp));
+  this.determinationActivity = text("div", "determination-activity");
+  this.determinationActivity.append(text("i", ""), text("span", "", this.copy.determinationPreparing));
+  facts.append(head, this.fieldList, this.determinationActivity);
+  layout.append(facts);
+  const wrap = text("div", "determination");
+  wrap.append(layout, this.renderActions());
+  return wrap;
+}
+function refreshDetermination() {
+}
+
+// src/form/experiences/checklist.js
+function renderChecklist() {
+  const checklist = text("div", "checklist");
+  const head = text("header", "checklist-head");
+  const copy = text("div", "checklist-title");
+  copy.append(text("span", "eyebrow", this.copy.checklistEyebrow), text("h2", "", this.copy.checklistTitle), text("p", "", this.copy.checklistHelp));
+  this.checklistProgress = text("div", "checklist-progress");
+  head.append(copy);
+  const context = text("section", "checklist-section");
+  const controls = text("section", "checklist-section checklist-controls");
+  const contextFields = [];
+  const controlFields = [];
+  for (const [, field] of this.fields) {
+    if (["boolean", "attestation"].includes(field.definition.type)) controlFields.push(field.wrap);
+    else contextFields.push(field.wrap);
+  }
+  if (contextFields.length) {
+    const contextHead = text("header", "checklist-section-head");
+    contextHead.append(text("span", "eyebrow", this.copy.checklistContext), text("h3", "", this.copy.checklistContextTitle), text("p", "", this.copy.checklistContextHelp));
+    context.append(contextHead);
+    const grid = text("div", "checklist-context-grid");
+    grid.append(...contextFields);
+    context.append(grid);
+  }
+  const controlsHead = text("header", "checklist-section-head");
+  controlsHead.append(text("span", "eyebrow", this.copy.checklistControlsLabel), text("h3", "", this.copy.checklistControls), text("p", "", this.copy.checklistControlsHelp));
+  controls.append(controlsHead);
+  const list = text("div", "checklist-control-list");
+  list.append(...controlFields);
+  controls.append(list);
+  checklist.append(head);
+  if (contextFields.length) checklist.append(context);
+  const completion = this.renderActions();
+  completion.classList.add("checklist-completion");
+  completion.prepend(this.checklistProgress);
+  checklist.append(controls, completion);
+  this.updateChecklistProgress();
+  return checklist;
+}
+function checklistControlNames() {
+  return [...this.fields.entries()].filter(([, field]) => field.engineVisible !== false && ["boolean", "attestation"].includes(field.definition.type)).map(([name]) => name);
+}
+function updateChecklistProgress() {
+  if (!this.checklistProgress) return;
+  const names = this.checklistControlNames();
+  const reviewed = names.filter((name) => this.reviewed.has(name)).length;
+  this.checklistProgress.replaceChildren(
+    text("strong", "", `${reviewed}/${names.length}`),
+    text("span", "", this.copy.checklistProgress(reviewed, names.length))
+  );
+  if (this.progressEnabled()) {
+    const rail = text("div", "checklist-progress-rail");
+    const fill = text("i", "");
+    fill.style.width = `${names.length ? Math.round(reviewed / names.length * 100) : 100}%`;
+    rail.append(fill);
+    this.checklistProgress.append(rail);
+  }
+}
+function setChecklistBoolean(name, value) {
+  const field = this.fields.get(name);
+  if (!field) return;
+  const firstReview = !this.reviewed.has(name);
+  this.reviewed.add(name);
+  field.control.value = String(value);
+  field.choiceButtons?.yes.classList.toggle("selected", value === true);
+  field.choiceButtons?.no.classList.toggle("selected", value === false);
+  field.choiceButtons?.yes.setAttribute("aria-pressed", String(value === true));
+  field.choiceButtons?.no.setAttribute("aria-pressed", String(value === false));
+  this.clearStaleFieldEvaluation(name);
+  this.updateChecklistProgress();
+  if (Object.is(this.values[name], value)) {
+    this.updateSubmitState();
+    if (firstReview) {
+      this.emit("change", { name, value, values: { ...this.values } });
+      this.scheduleValidation(0, [name]);
+    }
+    return;
+  }
+  this.values[name] = value;
+  this.updateAnswerProgress();
+  this.valid = false;
+  this.updateSubmitState();
+  this.setStatus("checking", this.copy.checking);
+  this.emit("change", { name, value, values: { ...this.values } });
+  this.invalidateStaleValidationRequest();
+  this.scheduleValidation(0, [name]);
+}
+
+// src/form/validation/navigation-state.js
+function validationProblems() {
+  const { fingerprint } = this.validationRequest();
+  const localIssues = this.localValidationIssues(null, { includeRequired: true }).filter((issue) => issue?.severity === "error");
+  const problems = [];
+  const seenFields = /* @__PURE__ */ new Set();
+  const add = (issue, kind = "attention") => {
+    const name = issue?.field_id || "";
+    if (name) {
+      const field = this.fields.get(name);
+      if (!field || field.engineVisible === false || seenFields.has(name)) return;
+      seenFields.add(name);
+    }
+    problems.push({ issue, name, kind });
+  };
+  for (const issue of localIssues) {
+    const missing = issue.kind === "missing_required" || issue.kind === "attestation_incomplete";
+    add(issue, missing ? "missing" : "attention");
+  }
+  if (this.flowType === "checklist") {
+    for (const name of this.checklistControlNames()) {
+      if (!this.reviewed.has(name)) add({ field_id: name, severity: "error", kind: "missing_required", local: true }, "missing");
+    }
+  }
+  if (this.lastValidationFingerprint === fingerprint) {
+    for (const issue of this.lastValidation?.issues || []) {
+      if (issue?.severity === "error") add(issue, "attention");
+    }
+    if (this.lastValidation?.valid === false && problems.length === 0) add({ severity: "error" }, "attention");
+  }
+  return problems;
+}
+function validationNavigatorState() {
+  if (!this.manifest) return { state: "checking", count: 0, label: this.copy.checkingAnswers, detail: "" };
+  const problems = this.validationProblems();
+  if (problems.length) {
+    const needsAttention = problems.some((problem) => problem.kind === "attention");
+    return {
+      state: needsAttention ? "attention" : "needed",
+      count: problems.length,
+      label: needsAttention ? this.copy.answersNeedAttention(problems.length) : this.copy.answersNeeded(problems.length),
+      detail: needsAttention ? this.copy.goToFirstAttention : this.copy.goToFirstUnfinished,
+      problems
+    };
+  }
+  const { fingerprint } = this.validationRequest();
+  const currentResult = this.lastValidationFingerprint === fingerprint ? this.lastValidation : null;
+  if (this.validationScheduled || this.validationInFlight || !currentResult) {
+    return { state: "checking", count: 0, label: this.copy.checkingAnswers, detail: this.copy.checkingAnswersHelp, problems: [] };
+  }
+  if (currentResult.valid === true) {
+    return { state: "ready", count: 0, label: this.copy.readyToComplete, detail: this.copy.answersChecked, problems: [] };
+  }
+  return {
+    state: "attention",
+    count: 1,
+    label: this.copy.answersNeedAttention(1),
+    detail: this.copy.goToFirstAttention,
+    problems: [{ issue: { severity: "error" }, name: "", kind: "attention" }]
+  };
+}
+
+// src/form/validation/navigation.js
+function renderValidationNavigator() {
+  const wrap = text("div", "validation-navigator-slot");
+  const navigator = text("div", "validation-navigator");
+  navigator.dataset.open = "false";
+  navigator.dataset.state = "checking";
+  const id = `proseid-answer-status-${this.recordId}`;
+  const toggle = text("button", "validation-orb");
+  toggle.type = "button";
+  toggle.setAttribute("aria-controls", id);
+  toggle.setAttribute("aria-expanded", "false");
+  this.validationOrbValue = text("span", "validation-orb-value");
+  this.validationOrbValue.setAttribute("aria-hidden", "true");
+  toggle.append(this.validationOrbValue);
+  const reveal = text("div", "validation-reveal");
+  reveal.id = id;
+  const jump = text("button", "validation-jump");
+  jump.type = "button";
+  this.validationCopy = text("span", "validation-copy");
+  this.validationLabel = text("strong", "validation-label");
+  this.validationLabel.setAttribute("aria-live", "polite");
+  this.validationDetail = text("small", "validation-detail");
+  this.validationCopy.append(this.validationLabel, this.validationDetail);
+  this.validationArrow = text("span", "validation-arrow", "\u2192");
+  this.validationArrow.setAttribute("aria-hidden", "true");
+  jump.append(this.validationCopy, this.validationArrow);
+  reveal.append(jump);
+  navigator.append(reveal, toggle);
+  wrap.append(navigator);
+  toggle.addEventListener("click", () => {
+    this.validationNavigatorOpen = !this.validationNavigatorOpen;
+    this.updateValidationNavigator();
+  });
+  jump.addEventListener("click", () => {
+    const state = this.validationNavigatorState();
+    if (state.problems?.length) this.navigateToFirstProblem(state.problems);
+    this.validationNavigatorOpen = false;
+    this.updateValidationNavigator();
+  });
+  return wrap;
+}
+function updateValidationNavigator() {
+  const navigator = this.validationNavigator?.querySelector?.(".validation-navigator");
+  const toggle = navigator?.querySelector?.(".validation-orb");
+  const jump = navigator?.querySelector?.(".validation-jump");
+  const reveal = navigator?.querySelector?.(".validation-reveal");
+  if (!navigator || !toggle || !jump || !reveal) return;
+  const state = this.validationNavigatorState();
+  navigator.dataset.state = state.state;
+  navigator.dataset.open = String(this.validationNavigatorOpen);
+  toggle.setAttribute("aria-expanded", String(this.validationNavigatorOpen));
+  reveal.setAttribute("aria-hidden", String(!this.validationNavigatorOpen));
+  jump.tabIndex = this.validationNavigatorOpen ? 0 : -1;
+  toggle.setAttribute("aria-label", this.validationNavigatorOpen ? this.copy.closeAnswerNavigator : `${this.copy.openAnswerNavigator}: ${state.label}`);
+  this.validationOrbValue.textContent = state.state === "ready" ? "\u2713" : state.state === "checking" ? "" : state.count > 99 ? "99+" : String(state.count);
+  this.validationLabel.textContent = state.label;
+  this.validationDetail.textContent = state.detail;
+  jump.setAttribute("aria-label", state.problems?.length ? `${state.label}. ${state.detail}` : state.label);
+  this.validationArrow.textContent = state.problems?.length ? "\u2192" : state.state === "ready" ? "\u2713" : "\xB7";
+}
+async function navigateToFirstProblem(problems = this.validationProblems()) {
+  const orderedNames = this.visibleFields().map(([name]) => name);
+  const named = problems.filter((problem) => problem.name);
+  named.sort((a, b) => orderedNames.indexOf(a.name) - orderedNames.indexOf(b.name));
+  const target = named[0];
+  if (!target) {
+    this.submittedAttempted = true;
+    this.renderIssues(this.lastValidation?.issues || []);
+    this.formError?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    return;
+  }
+  this.blurred.add(target.name);
+  const localIssues = this.localValidationIssues([target.name], { includeRequired: true });
+  this.renderLocalIssues([target.name], localIssues);
+  if (this.flowType === "guided_assessment") this.goToGuidedQuestion(target.name);
+  const field = this.fields.get(target.name);
+  field?.wrap?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  const controls = field?.controls || [field?.control];
+  (controls.find((control) => control?.checked) || controls.find((control) => control && control.type !== "hidden"))?.focus?.({ preventScroll: true });
+}
+async function focusFirstInvalid(result = this.lastValidation) {
+  const issues = (result?.issues || []).filter((issue) => issue?.severity === "error" && issue?.field_id);
+  let name = issues.find((issue) => this.fields.get(issue.field_id)?.engineVisible !== false)?.field_id;
+  if (!name) {
+    name = this.visibleFields().find(
+      ([fieldName, field2]) => field2.definition?.required === true && !answerProvided(field2.definition, this.values[fieldName])
+    )?.[0];
+  }
+  if (!name) return;
+  if (this.flowType === "guided_assessment") {
+    this.guidedPhase = "questions";
+    this.guidedReview.hidden = true;
+    this.guidedQuestion.hidden = false;
+    this.guidedPath.hidden = false;
+    this.guidedIndex = Math.max(0, this.visibleFields().findIndex(([fieldName]) => fieldName === name));
+    this.refreshGuided();
+  }
+  const field = this.fields.get(name);
+  field?.wrap?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  (field?.controls || [field?.control]).find((control) => control && control.type !== "hidden")?.focus?.({ preventScroll: true });
+}
+
+// src/form/controls/date-values.js
+var isoParts = (value) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? { year, month, day } : null;
+};
+var iso = (year, month, day) => `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+// src/form/controls/date-picker.js
+function renderDatePicker(id, definition, labelText) {
+  const wrap = text("div", "date-control");
+  const input = document.createElement("input");
+  input.id = id;
+  input.type = "text";
+  input.inputMode = "numeric";
+  input.autocomplete = "off";
+  input.spellcheck = false;
+  input.className = "control date-input";
+  input.placeholder = definition.placeholder || "YYYY-MM-DD";
+  const trigger = text("button", "date-trigger");
+  trigger.type = "button";
+  trigger.setAttribute("aria-label", this.copy.chooseDateFor(labelText));
+  trigger.setAttribute("aria-haspopup", "dialog");
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 9.5h17"/></svg>';
+  wrap.append(input, trigger);
+  const today = /* @__PURE__ */ new Date();
+  const todayIso = iso(today.getFullYear(), today.getMonth() + 1, today.getDate());
+  let anchor = isoParts(input.value) || isoParts(todayIso);
+  let viewYear = anchor.year;
+  let viewMonth = anchor.month;
+  let panel = null;
+  const allowed = (value) => {
+    if (!isoParts(value)) return false;
+    if (definition.min && value < String(definition.min)) return false;
+    if (definition.max && value > String(definition.max)) return false;
+    return true;
+  };
+  const monthTitle = () => new Intl.DateTimeFormat(this.locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
+  const monthName = () => new Intl.DateTimeFormat(this.locale, { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
+  const yearOptions = () => {
+    const minimumYear = isoParts(String(definition.min || ""))?.year ?? today.getFullYear() - 100;
+    const maximumYear = isoParts(String(definition.max || ""))?.year ?? today.getFullYear() + 25;
+    const firstYear = Math.min(minimumYear, viewYear);
+    const lastYear = Math.max(maximumYear, viewYear);
+    return Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index);
+  };
+  const displayDate = (value) => {
+    const parsed = isoParts(value);
+    if (!parsed) return value;
+    return new Intl.DateTimeFormat(this.locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day)));
+  };
+  const close = ({ focus = false } = {}) => {
+    panel?.remove();
+    panel = null;
+    trigger.setAttribute("aria-expanded", "false");
+    if (focus) trigger.focus();
+  };
+  const choose = (value) => {
+    if (!allowed(value)) return;
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    close({ focus: true });
+  };
+  const clear = () => {
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    close({ focus: true });
+  };
+  const place = () => {
+    if (!panel) return;
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.min(326, window.innerWidth - 24);
+    const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
+    const height = Math.min(panel.getBoundingClientRect().height || 420, window.innerHeight - 24);
+    const below = window.innerHeight - rect.bottom;
+    const top = below >= height + 8 ? rect.bottom + 8 : Math.max(12, rect.top - height - 8);
+    panel.style.setProperty("--date-left", `${left}px`);
+    panel.style.setProperty("--date-top", `${top}px`);
+    panel.style.setProperty("--date-width", `${width}px`);
+  };
+  const renderPanel = () => {
+    if (!panel) return;
+    panel.replaceChildren();
+    const header = text("header", "date-panel-head");
+    const title = text("div", "date-panel-title");
+    const period = text("div", "date-panel-period");
+    const yearSelect = document.createElement("select");
+    yearSelect.className = "date-year-select";
+    yearSelect.setAttribute("aria-label", this.copy.year);
+    for (const year of yearOptions()) {
+      const option = document.createElement("option");
+      option.value = String(year);
+      option.textContent = String(year);
+      yearSelect.append(option);
+    }
+    yearSelect.value = String(viewYear);
+    yearSelect.addEventListener("change", () => {
+      viewYear = Number(yearSelect.value);
+      renderPanel();
+      place();
+    });
+    period.append(text("strong", "", monthName()), yearSelect);
+    title.append(text("span", "", this.copy.selectDate), period);
+    const navigation = text("nav", "date-navigation");
+    navigation.setAttribute("aria-label", "Change month");
+    const previous = text("button", "", "\u2039");
+    previous.type = "button";
+    previous.setAttribute("aria-label", this.copy.previousMonth);
+    const next = text("button", "", "\u203A");
+    next.type = "button";
+    next.setAttribute("aria-label", this.copy.nextMonth);
+    const move = (delta) => {
+      const date = new Date(Date.UTC(viewYear, viewMonth - 1 + delta, 1));
+      viewYear = date.getUTCFullYear();
+      viewMonth = date.getUTCMonth() + 1;
+      renderPanel();
+      place();
+    };
+    previous.addEventListener("click", () => move(-1));
+    next.addEventListener("click", () => move(1));
+    navigation.append(previous, next);
+    header.append(title, navigation);
+    const weekdays = text("div", "date-weekdays");
+    for (const day of this.copy.weekdays) weekdays.append(text("span", "", day));
+    const grid = text("div", "date-grid");
+    grid.setAttribute("role", "grid");
+    grid.setAttribute("aria-label", monthTitle());
+    const first = new Date(Date.UTC(viewYear, viewMonth - 1, 1));
+    const startOffset = (first.getUTCDay() + 6) % 7;
+    for (let index = 0; index < 42; index += 1) {
+      const date = new Date(Date.UTC(viewYear, viewMonth - 1, index - startOffset + 1));
+      const value = iso(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+      const day = text("button", date.getUTCMonth() + 1 === viewMonth ? "" : "outside", String(date.getUTCDate()));
+      day.type = "button";
+      day.setAttribute("role", "gridcell");
+      day.setAttribute("aria-label", displayDate(value));
+      day.setAttribute("aria-selected", String(input.value === value));
+      if (input.value === value) day.classList.add("selected");
+      if (todayIso === value) day.classList.add("today");
+      day.disabled = !allowed(value);
+      day.addEventListener("click", () => choose(value));
+      grid.append(day);
+    }
+    const footer = text("footer", "date-panel-footer");
+    const clearButton = text("button", "", this.copy.clear);
+    clearButton.type = "button";
+    clearButton.disabled = !input.value;
+    clearButton.addEventListener("click", clear);
+    const todayButton = text("button", "today-action", this.copy.today);
+    todayButton.type = "button";
+    todayButton.disabled = !allowed(todayIso);
+    todayButton.addEventListener("click", () => choose(todayIso));
+    footer.append(clearButton, todayButton);
+    panel.append(header, weekdays, grid, footer);
+  };
+  const open = () => {
+    if (panel) return close();
+    anchor = isoParts(input.value) || isoParts(todayIso);
+    viewYear = anchor.year;
+    viewMonth = anchor.month;
+    panel = text("section", "date-panel");
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", this.copy.chooseDateFor(labelText));
+    this.shadow.append(panel);
+    trigger.setAttribute("aria-expanded", "true");
+    renderPanel();
+    place();
+    panel.querySelector('[aria-selected="true"]:not(:disabled), .today:not(:disabled), button:not(:disabled)')?.focus?.();
+  };
+  trigger.addEventListener("click", open);
+  const outside = (event) => {
+    const path = event.composedPath?.() || [];
+    if (panel && !path.includes(panel) && !path.includes(wrap)) close();
+  };
+  const escape = (event) => {
+    if (panel && event.key === "Escape") {
+      event.preventDefault();
+      close({ focus: true });
+    }
+  };
+  document.addEventListener("pointerdown", outside);
+  document.addEventListener("keydown", escape);
+  window.addEventListener("resize", place);
+  window.addEventListener("scroll", place, true);
+  this.cleanupFns.push(() => {
+    close();
+    document.removeEventListener("pointerdown", outside);
+    document.removeEventListener("keydown", escape);
+    window.removeEventListener("resize", place);
+    window.removeEventListener("scroll", place, true);
+  });
+  return { input, wrap };
+}
+
+// src/form/controls/field.js
+function renderField(name, definition) {
+  const wrap = text("div", "field");
+  wrap.dataset.fieldName = name;
+  if (["highlight", "error", "warning", "success", "muted"].includes(definition.ui_class)) wrap.classList.add(definition.ui_class);
+  wrap.hidden = definition.visible === false;
+  const labelText = humanizeText(definition.label || definition.statement || name);
+  const id = `proseid-${this.recordId.slice(-10)}-${name.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+  let control;
+  let controls = [];
+  const required = text("span", "required", this.copy.requiredLabel);
+  required.hidden = definition.required !== true;
+  const infoId = `${id}-info`;
+  const messageId = `${id}-message`;
+  const hintId = `${id}-hint`;
+  let info = null;
+  if (definition.info) {
+    info = text("span", "info-tip");
+    const trigger = text("button", "info-trigger", "i");
+    trigger.type = "button";
+    trigger.setAttribute("aria-label", this.copy.moreInformation(labelText));
+    trigger.setAttribute("aria-describedby", infoId);
+    const popover = text("span", "info-popover", definition.info);
+    popover.id = infoId;
+    popover.setAttribute("role", "tooltip");
+    info.append(trigger, popover);
+  }
+  if (this.flowType === "checklist" && definition.type === "boolean") {
+    control = document.createElement("input");
+    control.type = "hidden";
+    control.value = this.values[name] === void 0 ? "" : String(this.values[name]);
+    controls = [control];
+    const row = text("div", "checklist-boolean");
+    const copy = text("div", "checklist-boolean-copy");
+    const label = text("span", "label", definition.statement || labelText);
+    label.id = `${id}-label`;
+    copy.append(label, required);
+    if (info) copy.append(info);
+    const choices = text("div", "boolean-choice");
+    choices.setAttribute("role", "group");
+    choices.setAttribute("aria-labelledby", label.id);
+    const yes = text("button", "", this.copy.yes);
+    const no = text("button", "", this.copy.no);
+    yes.type = no.type = "button";
+    yes.setAttribute("aria-pressed", "false");
+    no.setAttribute("aria-pressed", "false");
+    yes.addEventListener("click", () => this.setChecklistBoolean(name, true));
+    no.addEventListener("click", () => this.setChecklistBoolean(name, false));
+    choices.append(yes, no);
+    row.append(copy, choices);
+    wrap.append(row);
+    wrap.choiceButtons = { yes, no };
+  } else if (definition.type === "boolean") {
+    const group = document.createElement("fieldset");
+    group.className = "boolean-field";
+    const legend = text("legend", "sr-only", labelText);
+    const row = text("div", "boolean-row");
+    const copy = text("div", "boolean-copy", labelText);
+    copy.append(required);
+    if (info) copy.append(info);
+    const choices = text("div", "boolean-choice");
+    choices.setAttribute("role", "radiogroup");
+    const yesLabel = document.createElement("label");
+    const noLabel = document.createElement("label");
+    const yes = document.createElement("input");
+    const no = document.createElement("input");
+    yes.type = no.type = "radio";
+    yes.name = no.name = name;
+    yes.value = "true";
+    no.value = "false";
+    yes.checked = this.values[name] === true;
+    no.checked = this.values[name] === false;
+    yesLabel.classList.toggle("selected", yes.checked);
+    noLabel.classList.toggle("selected", no.checked);
+    yesLabel.append(yes, text("span", "", this.copy.yes));
+    noLabel.append(no, text("span", "", this.copy.no));
+    choices.append(yesLabel, noLabel);
+    row.append(copy, choices);
+    group.append(legend, row);
+    wrap.append(group);
+    control = yes;
+    controls = [yes, no];
+    wrap.choiceLabels = { yes: yesLabel, no: noLabel };
+  } else if (definition.type === "attestation") {
+    const label = text("label", "check");
+    control = document.createElement("input");
+    control.type = "checkbox";
+    control.checked = this.values[name] === true;
+    control.setAttribute("role", "switch");
+    controls = [control];
+    const track = text("span", "toggle-track");
+    track.setAttribute("aria-hidden", "true");
+    const copy = text("span", "check-copy", definition.statement || labelText);
+    copy.append(required);
+    label.append(control, track, copy);
+    const row = text("div", "check-row");
+    row.append(label);
+    if (info) row.append(info);
+    wrap.append(row);
+  } else {
+    const label = text("label", "label", labelText);
+    label.htmlFor = id;
+    label.append(required);
+    const row = text("div", "label-row");
+    row.append(label);
+    if (info) row.append(info);
+    wrap.append(row);
+    if (definition.type === "select") {
+      control = document.createElement("select");
+      const empty = text("option", "", definition.placeholder || this.copy.select);
+      empty.value = "";
+      empty.disabled = true;
+      control.append(empty);
+      for (const option of definition.options || []) {
+        const value = typeof option === "object" ? option.value : option;
+        const item = text("option", "", humanizeChoice(typeof option === "object" ? option.label || value : value));
+        item.value = value;
+        control.append(item);
+      }
+    } else if (definition.type === "date") {
+      const datePicker = this.renderDatePicker(id, definition, labelText);
+      control = datePicker.input;
+      wrap.append(datePicker.wrap);
+    } else if (definition.multiline) {
+      control = document.createElement("textarea");
+      control.rows = 5;
+    } else {
+      control = document.createElement("input");
+      control.type = ["number", "currency"].includes(definition.type) ? "number" : definition.format === "email" ? "email" : "text";
+      if (definition.step != null) control.step = definition.step;
+      else if (definition.type === "currency") control.step = "0.01";
+    }
+    controls = [control];
+    control.id = id;
+    control.className = definition.type === "date" ? "control date-input" : "control";
+    control.value = this.values[name] ?? "";
+    if (definition.placeholder && definition.type !== "select") control.placeholder = definition.placeholder;
+    if (definition.min != null) control.min = definition.min;
+    if (definition.max != null) control.max = definition.max;
+    if (definition.min_length != null) control.minLength = definition.min_length;
+    if (definition.max_length != null) control.maxLength = definition.max_length;
+    if (definition.pattern) control.pattern = definition.pattern;
+    if (definition.type !== "date") wrap.append(control);
+    if (definition.description || definition.help) {
+      const hint = text("span", "hint", definition.description || definition.help);
+      hint.id = hintId;
+      wrap.append(hint);
+    }
+  }
+  for (const item of controls) {
+    item.name = name;
+    item.required = definition.required === true;
+  }
+  const message = text("span", "field-message", definition.ui_message || "");
+  message.id = messageId;
+  message.hidden = !definition.ui_message;
+  wrap.append(message);
+  const describedBy = [definition.info ? infoId : "", definition.description || definition.help ? hintId : "", messageId, `${id}-error`].filter(Boolean);
+  for (const item of controls) {
+    item.setAttribute("aria-describedby", describedBy.join(" "));
+    item.addEventListener("input", () => this.change(name, definition, item));
+    item.addEventListener("change", () => this.change(name, definition, item, true));
+    item.addEventListener("blur", () => {
+      this.blurred.add(name);
+      this.scheduleValidation(120, [name], { includeRequired: true });
+    });
+  }
+  const error = text("span", "error");
+  error.id = `${id}-error`;
+  error.setAttribute("aria-live", "polite");
+  wrap.append(error);
+  this.fields.set(name, {
+    wrap,
+    control,
+    controls,
+    error,
+    message,
+    required,
+    definition,
+    label: labelText,
+    engineVisible: definition.visible !== false,
+    choiceButtons: wrap.choiceButtons || null,
+    choiceLabels: wrap.choiceLabels || null
+  });
+  return wrap;
+}
+
+// src/form/validation/answers.js
+function change(name, definition, control, immediate = false) {
+  const wasProvided = answerProvided(definition, this.values[name]);
+  const value = definition.type === "boolean" ? control.type === "radio" ? control.value === "true" : control.checked : definition.type === "attestation" ? control.checked : ["number", "currency"].includes(definition.type) && control.value !== "" ? Number(control.value) : control.value;
+  if (this.flowType === "checklist" && ["boolean", "attestation"].includes(definition.type)) {
+    this.reviewed.add(name);
+    this.updateChecklistProgress();
+  }
+  if (Object.is(this.values[name], value)) {
+    this.updateSubmitState();
+    return;
+  }
+  this.values[name] = value;
+  const isProvided = answerProvided(definition, value);
+  this.updateAnswerProgress();
+  if (definition.type === "boolean") {
+    const field = this.fields.get(name);
+    field?.choiceLabels?.yes.classList.toggle("selected", value === true);
+    field?.choiceLabels?.no.classList.toggle("selected", value === false);
+  }
+  this.valid = false;
+  if (this.flowType === "checklist" && ["boolean", "attestation"].includes(definition.type)) this.clearStaleFieldEvaluation(name);
+  if (this.flowType === "determination" && this.determinationActivity) {
+    this.determinationActivity.classList.add("evaluating");
+    this.determinationActivity.querySelector("span").textContent = this.copy.determinationUpdating;
+  }
+  if (this.flowType === "guided_assessment" && this.guidedPhase === "questions" && wasProvided !== isProvided) this.refreshGuided();
+  this.updateSubmitState();
+  this.setStatus("checking", this.copy.checking);
+  this.emit("change", { name, value: this.values[name], values: { ...this.values } });
+  this.invalidateStaleValidationRequest();
+  const activeDefinition = this.fields.get(name)?.definition || definition;
+  const locallyValid = answerProvided(activeDefinition, value) && !localConstraintIssue(name, activeDefinition, value, { includeRequired: true });
+  const validationDelay = immediate ? 0 : this.options.validateDelay ?? (locallyValid ? LOCALLY_VALID_VALIDATION_DELAY : DEFAULT_VALIDATION_DELAY);
+  this.scheduleValidation(validationDelay, [name]);
+}
+var DEFAULT_VALIDATION_DELAY = 400;
+var LOCALLY_VALID_VALIDATION_DELAY = 180;
+
+// src/form/validation/request.js
 var normalizedResponses = (definitions, values) => Object.fromEntries(
   Object.entries(values).map(([name, value]) => {
     const definition = definitions?.[name];
@@ -1264,17 +2661,532 @@ var normalizedResponses = (definitions, values) => Object.fromEntries(
     return [name, value];
   })
 );
-var jurisdictionName = (value, locale = "en") => {
-  const code = String(value || "").trim().toUpperCase();
-  const language = String(locale || "en").toLowerCase().split("-")[0];
-  const supranational = language === "sv" ? { GLOBAL: "Globalt", EU: "Europeiska unionen", EEA: "Europeiska ekonomiska samarbetsomr\xE5det" } : { GLOBAL: "Global", EU: "European Union", EEA: "European Economic Area" };
-  if (supranational[code]) return supranational[code];
+function validationRequest() {
+  const responses = normalizedResponses(this.manifest.schema?.definitions || {}, this.values);
+  const fingerprint = JSON.stringify([
+    this.manifest.flow.ref,
+    this.manifest.flow.effectiveAt,
+    responses
+  ]);
+  return { responses, fingerprint };
+}
+function invalidateStaleValidationRequest() {
+  if (!this.validationPromise) return;
+  const { fingerprint } = this.validationRequest();
+  if (fingerprint === this.validationPromiseFingerprint) return;
+  this.validationSequence += 1;
+  this.validationAbort?.abort();
+  this.validationAbort = null;
+  this.validationPromise = null;
+  this.validationPromiseFingerprint = "";
+  this.validationInFlight = false;
+  this.updateValidationNavigator();
+}
+function scheduleValidation(delay, names = null, { includeRequired = false } = {}) {
+  clearTimeout(this.validationTimer);
+  this.validationScheduled = true;
+  this.updateValidationNavigator();
+  this.validationTimer = setTimeout(() => {
+    this.validationScheduled = false;
+    const localIssues = names?.length ? this.localValidationIssues(names, { includeRequired }) : [];
+    if (names?.length) this.renderLocalIssues(names, localIssues);
+    if (localIssues.some((issue) => issue.severity === "error")) {
+      this.valid = false;
+      this.updateSubmitState();
+      this.setStatus("idle", this.copy.incomplete);
+      return;
+    }
+    this.validate();
+  }, Math.max(0, delay));
+}
+
+// src/form/validation/local-issues.js
+function localValidationIssues(names, { includeRequired = false } = {}) {
+  const selected = names ? new Set(names) : null;
+  const issues = [];
+  for (const [name, field] of this.fields) {
+    if (selected && !selected.has(name)) continue;
+    if (field.engineVisible === false) continue;
+    const issue = localConstraintIssue(name, field.definition, this.values[name], { includeRequired });
+    if (issue) issues.push(issue);
+  }
+  return issues;
+}
+function renderLocalIssues(names, issues = this.localValidationIssues(names)) {
+  const selected = new Set(names || []);
+  const retained = (this.lastValidation?.issues || []).filter((issue) => !selected.has(issue?.field_id));
+  this.renderIssues([...retained, ...issues]);
+}
+
+// src/form/validation/remote.js
+async function validate() {
+  if (this.destroyed || !this.manifest) return null;
+  const { responses, fingerprint } = this.validationRequest();
+  if (this.lastValidation && this.lastValidationFingerprint === fingerprint) {
+    this.validationScheduled = false;
+    this.renderIssues(this.lastValidation.issues || []);
+    this.updateSubmitState();
+    return this.lastValidation;
+  }
+  if (this.validationPromise && this.validationPromiseFingerprint === fingerprint) {
+    return this.validationPromise;
+  }
+  const sequence = ++this.validationSequence;
+  this.validationScheduled = false;
+  this.validationInFlight = true;
+  this.validationAbort?.abort();
+  this.validationAbort = new AbortController();
+  this.setStatus("checking", this.copy.checking);
+  const signal = this.validationAbort.signal;
+  const request = (async () => {
+    try {
+      const result = await this.api.validate(
+        this.manifest.flow.ref,
+        responses,
+        this.manifest.flow.effectiveAt,
+        this.locale,
+        signal
+      );
+      if (sequence !== this.validationSequence) return null;
+      this.lastValidation = result;
+      this.lastValidationFingerprint = fingerprint;
+      this.valid = result.valid === true;
+      this.validationLocked = false;
+      this.applyDefinitions(result.definitions || {});
+      this.renderIssues(result.issues || []);
+      if (this.flowType === "determination") {
+        this.determinationActivity?.classList.remove("evaluating");
+        if (this.determinationActivity) this.determinationActivity.querySelector("span").textContent = this.copy.determinationAuto;
+        this.refreshDetermination();
+      }
+      this.updateSubmitState();
+      this.setStatus(this.valid ? "ready" : "idle", this.valid ? this.copy.ready : this.copy.incomplete);
+      this.emit("validation", { valid: this.valid, status: result.status, issues: result.issues || [] });
+      return result;
+    } catch (error) {
+      if (error?.name === "AbortError") return null;
+      if (sequence !== this.validationSequence) return null;
+      this.valid = false;
+      this.updateSubmitState();
+      const message = errorMessage(error.code, this.copy.checkFailed);
+      this.setStatus("error", message);
+      if (error?.code === "flow_changed" && this.formError) {
+        this.validationLocked = true;
+        this.formError.hidden = false;
+        this.formError.textContent = message;
+        this.updateSubmitState();
+      }
+      this.emit("error", { error });
+      return null;
+    }
+  })();
+  this.validationPromise = request;
+  this.validationPromiseFingerprint = fingerprint;
+  this.updateValidationNavigator();
   try {
-    return new Intl.DisplayNames([locale], { type: "region" }).of(code) || code;
-  } catch {
-    return code;
+    return await request;
+  } finally {
+    if (this.validationPromise === request) {
+      this.validationPromise = null;
+      this.validationPromiseFingerprint = "";
+      this.validationAbort = null;
+      this.validationInFlight = false;
+      this.updateValidationNavigator();
+    }
+  }
+}
+
+// src/form/validation/issue-copy.js
+var friendlyIssue = (issue, label, copy) => {
+  switch (issue?.kind) {
+    case "missing_required":
+      return copy.required(label);
+    case "attestation_incomplete":
+      return copy.confirm;
+    case "type_mismatch":
+      return copy.format(label);
+    case "constraint_violation":
+      if (/pattern/i.test(issue.message || "")) return copy.validValue;
+      if (/too short|minimum .* character/i.test(issue.message || "")) return copy.tooShort;
+      if (/too long|maximum .* character/i.test(issue.message || "")) return copy.tooLong;
+      return issue.message || copy.checkValue;
+    default:
+      return issue?.message || copy.checkValue;
   }
 };
+
+// src/form/validation/display.js
+function applyDefinitions(definitions) {
+  for (const [name, resolved] of Object.entries(definitions)) {
+    const field = this.fields.get(name);
+    if (!field) continue;
+    field.engineVisible = resolved?.visible !== false;
+    field.definition = { ...field.definition, ...resolved };
+    field.wrap.hidden = !field.engineVisible;
+    const required = resolved?.required === true;
+    for (const control of field.controls || [field.control]) control.required = required;
+    field.required.hidden = !required;
+    field.message.textContent = resolved?.ui_message || "";
+    field.message.hidden = !resolved?.ui_message;
+  }
+  if (this.flowType === "guided_assessment" && this.guidedPhase === "questions") this.refreshGuided();
+  if (this.flowType === "checklist") this.updateChecklistProgress();
+  this.updateAnswerProgress();
+  this.updateValidationNavigator();
+}
+function clearStaleFieldEvaluation(name) {
+  const field = this.fields.get(name);
+  if (!field) return;
+  field.error.textContent = "";
+  field.message.textContent = this.manifest.schema?.definitions?.[name]?.ui_message || "";
+  field.message.hidden = !field.message.textContent;
+}
+function shouldShow(issue) {
+  if (this.submittedAttempted) return true;
+  if (issue?.local === true && !isEmptyValue(this.fields.get(issue.field_id)?.definition, this.values[issue.field_id])) return true;
+  if (issue?.trigger === "completion") return false;
+  if (issue?.trigger === "correction") return this.blurred.has(issue.field_id);
+  return issue?.severity === "warning" || issue?.severity === "notice";
+}
+function renderIssues(issues) {
+  for (const field of this.fields.values()) {
+    field.error.textContent = "";
+    for (const control of field.controls || [field.control]) control.setAttribute("aria-invalid", "false");
+  }
+  const formIssues = [];
+  for (const issue of issues) {
+    if (!this.shouldShow(issue)) continue;
+    const field = this.fields.get(issue.field_id);
+    if (field) {
+      field.error.textContent = friendlyIssue(issue, field.label, this.copy);
+      for (const control of field.controls || [field.control]) control.setAttribute("aria-invalid", "true");
+    } else formIssues.push(friendlyIssue(issue, "This field", this.copy));
+  }
+  if (this.submittedAttempted && this.flowType === "checklist") {
+    for (const name of this.checklistControlNames()) {
+      if (this.reviewed.has(name)) continue;
+      const field = this.fields.get(name);
+      if (!field || field.error.textContent) continue;
+      field.error.textContent = this.copy.checklistChoose;
+      for (const control of field.controls || [field.control]) control.setAttribute("aria-invalid", "true");
+    }
+  }
+  this.formError.textContent = formIssues.join(" ");
+  this.formError.hidden = formIssues.length === 0;
+}
+
+// src/form/completion/signature.js
+function collectBasicSignature() {
+  return new Promise((resolve) => {
+    const overlay = text("div", "signature-overlay");
+    const dialog = text("section", "signature-dialog");
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-labelledby", "proseid-signature-title");
+    const eyebrow = text("div", "signature-eyebrow", this.copy.basicSignature);
+    const title = text("h2", "", this.copy.signatureTitle);
+    title.id = "proseid-signature-title";
+    const help = text("p", "signature-help", this.copy.signatureHelp);
+    const form = document.createElement("form");
+    form.className = "signature-form";
+    form.noValidate = true;
+    const nameLabel = text("label", "signature-label", this.copy.signatureName);
+    nameLabel.htmlFor = "proseid-signature-name";
+    const name = document.createElement("input");
+    name.id = "proseid-signature-name";
+    name.className = "signature-input";
+    name.type = "text";
+    name.autocomplete = "name";
+    name.maxLength = 160;
+    name.required = true;
+    name.placeholder = this.copy.signaturePlaceholder;
+    const acknowledgement = text("label", "signature-acknowledgement");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.required = true;
+    const acknowledgementTrack = text("span", "signature-toggle");
+    acknowledgementTrack.setAttribute("aria-hidden", "true");
+    acknowledgement.append(checkbox, acknowledgementTrack, text("span", "", this.copy.signatureAcknowledgement));
+    const error = text("p", "signature-error");
+    error.setAttribute("role", "alert");
+    const actions = text("div", "signature-actions");
+    const cancel = text("button", "signature-cancel", this.copy.cancel);
+    cancel.type = "button";
+    const confirm = text("button", "signature-confirm", this.copy.signAndSubmit);
+    confirm.type = "submit";
+    actions.append(cancel, confirm);
+    form.append(nameLabel, name, acknowledgement, error, actions);
+    dialog.append(eyebrow, title, help, form);
+    overlay.append(dialog);
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      this.signatureCancel = null;
+      overlay.remove();
+      resolve(value);
+    };
+    this.signatureCancel = () => finish(null);
+    cancel.addEventListener("click", () => finish(null));
+    overlay.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") finish(null);
+    });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const typedName = name.value.trim();
+      if (typedName.length < 2 || !checkbox.checked) {
+        error.textContent = typedName.length < 2 ? this.copy.signatureNameError : this.copy.signatureAcknowledgementError;
+        if (typedName.length < 2) name.focus();
+        else checkbox.focus();
+        return;
+      }
+      finish({ kind: "basic", typed_name: typedName, acknowledged: true });
+    });
+    this.shadow.append(overlay);
+    name.focus();
+  });
+}
+
+// src/form/completion/submit.js
+async function submit(event) {
+  event.preventDefault();
+  if (this.destroyed || this.submitting) return;
+  clearTimeout(this.validationTimer);
+  this.validationScheduled = false;
+  this.submittedAttempted = true;
+  const localIssues = this.localValidationIssues(null, { includeRequired: true });
+  if (localIssues.some((issue) => issue.severity === "error")) {
+    const { fingerprint } = this.validationRequest();
+    const currentServerIssues = this.lastValidationFingerprint === fingerprint ? this.lastValidation?.issues || [] : [];
+    this.renderIssues([...currentServerIssues, ...localIssues]);
+    this.validationNavigatorOpen = true;
+    this.updateValidationNavigator();
+    await this.navigateToFirstProblem(this.validationProblems());
+    return;
+  }
+  if (this.flowType === "checklist") {
+    const firstUnreviewed = this.checklistControlNames().find((name) => !this.reviewed.has(name));
+    if (firstUnreviewed) {
+      this.renderIssues(this.lastValidation?.issues || []);
+      const field = this.fields.get(firstUnreviewed);
+      field?.wrap?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      field?.choiceButtons?.yes?.focus?.({ preventScroll: true });
+      return;
+    }
+  }
+  const validation = this.valid && this.lastValidation ? this.lastValidation : await this.validate();
+  if (!validation?.valid) {
+    this.renderIssues(validation?.issues || []);
+    this.refreshDetermination();
+    await this.focusFirstInvalid(validation);
+    return;
+  }
+  this.submitting = true;
+  this.submitButton.disabled = true;
+  this.setButtonBusy(this.submitButton, true, this.copy.submitting);
+  this.setStatus("checking", this.copy.creating);
+  this.emit("submit", { values: { ...this.values } });
+  try {
+    let signature = null;
+    if (this.manifest.capabilities?.signing?.requested) {
+      const mode = this.manifest.capabilities.signing.mode;
+      if (mode === "basic") {
+        this.setStatus("checking", this.copy.awaitingSignature);
+        signature = await this.collectBasicSignature();
+        if (!signature) {
+          this.submitting = false;
+          this.updateSubmitState();
+          this.setButtonBusy(this.submitButton, false, this.options.submitLabel || this.defaultSubmitLabel());
+          this.setStatus("ready", this.copy.ready);
+          return;
+        }
+        this.emit("signing", { mode, signature });
+      } else {
+        const nextAction = await this.api.prepareSigning(
+          this.manifest.flow.ref,
+          this.recordId,
+          this.values,
+          this.manifest.flow.effectiveAt
+        );
+        signature = await this.signing.handle(nextAction, { manifest: this.manifest, values: { ...this.values } });
+        this.emit("signing", { mode, nextAction, signature });
+      }
+    }
+    const result = await this.api.complete(
+      this.manifest.flow.ref,
+      this.recordId,
+      normalizedResponses(this.manifest.schema?.definitions || {}, this.values),
+      this.manifest.flow.effectiveAt,
+      signature,
+      this.locale
+    );
+    this.renderComplete(result);
+    this.emit("complete", result);
+  } catch (error) {
+    this.submitting = false;
+    if (error?.code === "validation_failed" && Array.isArray(error?.details?.issues)) {
+      this.valid = false;
+      this.lastValidation = {
+        ...this.lastValidation || {},
+        valid: false,
+        status: error.details.status || "INVALID",
+        issues: error.details.issues
+      };
+      this.renderIssues(error.details.issues);
+      this.refreshDetermination();
+      await this.focusFirstInvalid(this.lastValidation);
+    }
+    this.updateSubmitState();
+    this.setButtonBusy(this.submitButton, false, this.options.submitLabel || this.defaultSubmitLabel());
+    this.formError.hidden = false;
+    this.formError.textContent = errorMessage(error.code, error.message);
+    this.setStatus("error", "Submission not saved");
+    this.emit("error", { error });
+  }
+}
+
+// src/form/completion/result.js
+function renderComplete(result) {
+  for (const cleanup of this.cleanupFns.splice(0)) cleanup();
+  const shell = this.shadow.querySelector(".shell");
+  const complete = text("div", "completion-view");
+  const summary = text("header", "completion-summary");
+  const summaryCopy = text("div", "completion-summary-copy");
+  summaryCopy.append(
+    text("h2", "", result.test ? this.copy.testCompleteTitle : this.copy.completeTitle),
+    text("p", "", result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)),
+    text("div", "receipt", result.test ? this.copy.testRecord(result.recordId) : this.copy.auditRecord(result.recordId))
+  );
+  summary.append(text("div", "seal", "\u2713"), summaryCopy);
+  complete.append(summary);
+  const recordedResult = this.renderRecordedResult(result.result);
+  if (recordedResult) complete.append(recordedResult);
+  if (result.test) {
+    complete.append(text("p", "receipt-test", this.copy.receiptTest));
+  } else if (this.manifest.capabilities?.receiptEmail !== false) {
+    complete.append(this.renderReceiptEmail(result));
+  }
+  const ledger = this.renderLedger("complete");
+  shell.replaceChildren(...ledger ? [ledger, complete] : [complete]);
+  if (this.options.autoFocusCompletion !== false) {
+    requestAnimationFrame(() => {
+      if (this.destroyed) return;
+      const reduceMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      this.target.scrollIntoView?.({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    });
+  }
+}
+function renderRecordedResult(result) {
+  const outcomes = Array.isArray(result?.outcomes) ? result.outcomes : [];
+  const notices = Array.isArray(result?.notices) ? result.notices : [];
+  if (!outcomes.length && !notices.length) return null;
+  const section = text("section", "recorded-result");
+  const title = this.flowType === "determination" ? this.copy.resultDetermination : this.flowType === "guided_assessment" ? this.copy.resultAssessment : this.flowType === "checklist" ? this.copy.resultChecklist : this.copy.resultForm;
+  const head = text("header", "recorded-result-head");
+  head.append(text("span", "eyebrow", this.copy.resultEyebrow), text("h3", "", title), text("p", "", this.copy.resultHelp));
+  section.append(head);
+  if (outcomes.length) {
+    const list = text("div", "recorded-outcomes");
+    for (const outcome of outcomes) {
+      if (!outcome || !String(outcome.fieldId || "").trim()) continue;
+      const item = text("article", "recorded-outcome");
+      item.append(
+        text("small", "", humanizeText(outcome.label || outcome.fieldId)),
+        text("strong", "", this.displayValue(outcome.value, { type: outcome.type }))
+      );
+      if (outcome.message) item.append(text("p", "", String(outcome.message)));
+      list.append(item);
+    }
+    if (list.childElementCount) section.append(list);
+  }
+  if (notices.length) {
+    const notes = text("div", "recorded-notices");
+    notes.append(text("span", "eyebrow", this.copy.resultNotes));
+    const list = document.createElement("ul");
+    for (const notice of notices) if (notice?.message) list.append(text("li", "", String(notice.message)));
+    if (list.childElementCount) notes.append(list);
+    section.append(notes);
+  }
+  return section;
+}
+
+// src/form/completion/receipt.js
+function renderReceiptEmail(result) {
+  const section = text("section", "receipt-copy");
+  const title = text("h3", "", this.copy.receiptTitle);
+  const help = text("p", "receipt-help", this.copy.receiptHelp);
+  const form = document.createElement("form");
+  form.className = "receipt-form";
+  form.noValidate = true;
+  const field = text("div", "receipt-field");
+  const id = `proseid-receipt-${String(result.recordId).replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 48)}`;
+  const label = text("label", "receipt-label", this.copy.receiptLabel);
+  label.htmlFor = id;
+  const row = text("div", "receipt-row");
+  const input = document.createElement("input");
+  input.id = id;
+  input.className = "receipt-input";
+  input.type = "email";
+  input.inputMode = "email";
+  input.autocomplete = "email";
+  input.placeholder = this.copy.receiptPlaceholder;
+  input.maxLength = 320;
+  input.required = true;
+  const button = text("button", "receipt-button", this.copy.receiptAction);
+  button.type = "submit";
+  button.disabled = true;
+  const status = text("p", "receipt-status");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  input.setAttribute("aria-describedby", `${id}-status`);
+  status.id = `${id}-status`;
+  input.addEventListener("input", () => {
+    button.disabled = !EMAIL_RE.test(input.value.trim());
+    input.setAttribute("aria-invalid", "false");
+    status.textContent = "";
+    status.dataset.state = "idle";
+  });
+  form.addEventListener("submit", (event) => this.sendReceipt(event, { result, input, button, status }));
+  row.append(input, button);
+  field.append(label, row, status);
+  form.append(field);
+  section.append(title, help, form);
+  return section;
+}
+async function sendReceipt(event, { result, input, button, status }) {
+  event.preventDefault();
+  if (this.destroyed || result.test) return;
+  const email = input.value.trim();
+  if (!EMAIL_RE.test(email)) {
+    input.setAttribute("aria-invalid", "true");
+    status.dataset.state = "error";
+    status.textContent = this.copy.receiptInvalid;
+    return;
+  }
+  input.disabled = true;
+  button.disabled = true;
+  this.setButtonBusy(button, true, this.copy.receiptSending);
+  status.dataset.state = "idle";
+  status.textContent = "";
+  try {
+    await this.api.emailReceipt(this.manifest.flow.ref, result.recordId, email);
+    status.dataset.state = "sent";
+    status.textContent = this.copy.receiptSent(email);
+    this.setButtonBusy(button, false, this.copy.receiptAction);
+    this.emit("receipt", { status: "sent", recordId: result.recordId, email });
+  } catch (error) {
+    input.disabled = false;
+    button.disabled = false;
+    this.setButtonBusy(button, false, this.copy.receiptAction);
+    status.dataset.state = "error";
+    status.textContent = error?.code === "rate_limited" ? this.copy.receiptRateLimited : this.copy.receiptError;
+    this.emit("receipt", { status: "error", recordId: result.recordId, email, error });
+  }
+}
+
+// src/ProseIDForm.js
+var randomRecordId = () => `embed_${globalThis.crypto?.randomUUID?.().replaceAll("-", "") || Math.random().toString(36).slice(2).padEnd(16, "0")}`;
+var RECORD_ID_RE = /^[A-Za-z0-9_-]{4,128}$/;
 var ProseIDForm = class {
   constructor(target, options) {
     this.target = typeof target === "string" ? document.querySelector(target) : target;
@@ -1334,1827 +3246,191 @@ var ProseIDForm = class {
     this.renderLoading();
     this.ready = this.load();
   }
-  applyTheme(theme = {}, manifestColors = {}) {
-    const name = normalizeTheme(theme);
-    this.target.dataset.proseidTheme = name;
-    const colors = {
-      ...THEMES[name],
-      ...normalizeColors(manifestColors),
-      ...normalizeColors(this.options.colors)
-    };
-    for (const [key, value] of Object.entries(colors)) {
-      const token = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
-      this.target.style.setProperty(`--proseid-${token}`, value);
-    }
+  applyTheme(theme = void 0, manifestColors = void 0) {
+    return applyTheme.call(this, theme, manifestColors);
   }
   applyAppearance(appearance) {
-    const value = normalizeAppearance(appearance);
-    this.target.dataset.proseidShape = value.shape;
-    this.target.dataset.proseidFields = value.fields;
-    this.target.dataset.proseidShell = value.shell;
-    this.target.dataset.proseidDensity = value.density;
+    return applyAppearance.call(this, appearance);
   }
   progressEnabled() {
-    return this.options.showProgress !== false;
+    return progressEnabled.call(this);
   }
-  renderLedger(className = "") {
-    if (!this.progressEnabled()) return null;
-    const ledger = text("div", `ledger${className ? ` ${className}` : ""}`);
-    ledger.append(text("span", "ledger-fill"));
-    return ledger;
+  renderLedger(className = void 0) {
+    return renderLedger.call(this, className);
   }
   installStyles() {
-    if ("adoptedStyleSheets" in this.shadow && typeof CSSStyleSheet !== "undefined" && CSSStyleSheet.prototype.replaceSync) {
-      const sheet = new CSSStyleSheet();
-      sheet.replaceSync(styles);
-      this.shadow.adoptedStyleSheets = [sheet];
-    } else {
-      const style = document.createElement("style");
-      if (this.options.nonce) style.setAttribute("nonce", this.options.nonce);
-      style.textContent = styles;
-      this.shadow.append(style);
-    }
+    return installStyles.call(this);
   }
   renderLoading() {
-    this.shadow.replaceChildren();
-    this.installStyles();
-    const shell = text("div", "shell");
-    const skeleton = text("div", "skeleton");
-    for (let i = 0; i < 6; i++) skeleton.append(text("div", "skeleton-line"));
-    const ledger = this.renderLedger("loading");
-    if (ledger) shell.append(ledger);
-    shell.append(skeleton);
-    this.shadow.append(shell);
+    return renderLoading.call(this);
   }
-  async load() {
-    try {
-      this.manifest = await this.api.manifest(this.recordId);
-      if (this.destroyed) return this;
-      this.flowType = this.manifest.flow?.flowType || "form";
-      if (!FLOW_TYPES.has(this.flowType)) {
-        throw new ProseIDError(
-          "flow_type_not_supported",
-          `This version of the JavaScript SDK cannot render the \u201C${this.flowType}\u201D Flow experience.`
-        );
-      }
-      this.attribution = normalizeAttribution(this.manifest.presentation?.attribution ?? this.attribution);
-      this.locale = this.explicitLocale || readLocalePreference() || normalizeLocale(this.manifest.flow?.language);
-      this.copy = messagesFor(this.locale, this.options.messages);
-      this.api.setAttribution?.(this.attribution);
-      this.applyTheme(
-        this.manifest.presentation?.theme ?? this.options.theme,
-        this.manifest.presentation?.colors
-      );
-      this.applyAppearance(this.options.appearance ?? this.manifest.presentation?.appearance);
-      if (this.manifest.capabilities?.signing?.requested && !this.manifest.capabilities.signing.available) {
-        throw new ProseIDError("signing_not_available", "Signing is not available in this embedded Flow yet.");
-      }
-      this.seedValues();
-      this.renderForm();
-      this.emit("ready", { manifest: this.manifest });
-      if (this.options.initialCompletion) {
-        this.renderComplete(this.options.initialCompletion);
-        return this;
-      }
-      await this.validate();
-      return this;
-    } catch (error) {
-      this.renderFatal(error);
-      this.emit("error", { error });
-      throw error;
-    }
+  load() {
+    return load.call(this);
   }
   seedValues() {
-    for (const [name, definition] of Object.entries(this.manifest.schema?.definitions || {})) {
-      let value = definition?.value;
-      if (definition?.readonly !== true && this.options.initialValues && Object.prototype.hasOwnProperty.call(this.options.initialValues, name)) value = this.options.initialValues[name];
-      if (definition?.type === "select" && (value === void 0 || value === null)) value = "";
-      if (definition?.type === "attestation" && value !== true) value = false;
-      this.values[name] = value;
-    }
+    return seedValues.call(this);
   }
   setLocale(locale) {
-    const next = normalizeLocale(locale);
-    if (next === this.locale) return;
-    const restoreGuidedReview = this.flowType === "guided_assessment" && this.guidedPhase === "review";
-    this.locale = next;
-    this.copy = messagesFor(next, this.options.messages);
-    saveLocalePreference(next);
-    for (const cleanup of this.cleanupFns.splice(0)) cleanup();
-    this.fields.clear();
-    this.renderForm();
-    if (this.lastValidation) {
-      this.applyDefinitions(this.lastValidation.definitions || {});
-      this.renderIssues(this.lastValidation.issues || []);
-    }
-    if (restoreGuidedReview) this.showGuidedReview();
-    this.updateSubmitState();
-    this.setStatus(
-      this.validationInFlight || this.validationScheduled ? "checking" : this.valid ? "ready" : "idle",
-      this.validationInFlight || this.validationScheduled ? this.copy.checking : this.valid ? this.copy.ready : this.copy.incomplete
-    );
-    this.emit("language", { language: next });
+    return setLocale.call(this, locale);
   }
   renderLanguageSelector() {
-    const wrap = text("div", "language-controls");
-    const selector = text("label", "language-selector");
-    const control = document.createElement("select");
-    control.setAttribute("aria-label", this.copy.languageLabel);
-    for (const language of ["en", "sv"]) {
-      const option = text("option", "", language === "sv" ? this.copy.swedish : this.copy.english);
-      option.value = language;
-      control.append(option);
-    }
-    control.value = this.locale;
-    control.addEventListener("change", () => this.setLocale(control.value));
-    const chevron = text("span", "language-chevron");
-    chevron.setAttribute("aria-hidden", "true");
-    selector.append(control, chevron);
-    const mobile = document.createElement("details");
-    mobile.className = "language-selector-mobile";
-    const summary = text("summary", "language-summary");
-    summary.setAttribute("aria-label", this.copy.languageLabel);
-    summary.append(
-      text("span", "language-abbreviation", this.locale.toUpperCase()),
-      text("span", "language-summary-chevron")
-    );
-    const menu = text("div", "language-menu");
-    for (const language of ["en", "sv"]) {
-      const option = text("button", "language-option", language === "sv" ? this.copy.swedish : this.copy.english);
-      option.type = "button";
-      option.dataset.language = language;
-      option.setAttribute("aria-current", language === this.locale ? "true" : "false");
-      option.addEventListener("click", () => {
-        mobile.open = false;
-        this.setLocale(language);
-      });
-      menu.append(option);
-    }
-    mobile.append(summary, menu);
-    mobile.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
-      mobile.open = false;
-      summary.focus();
-    });
-    mobile.addEventListener("focusout", (event) => {
-      if (!mobile.contains(event.relatedTarget)) mobile.open = false;
-    });
-    wrap.append(selector, mobile);
-    return wrap;
+    return renderLanguageSelector.call(this);
   }
   brand(publisher) {
-    const wrap = text("div", "brand");
-    const organization = text("a", "brand-organization");
-    organization.href = this.registryUrl(`/registry/${encodeURIComponent(publisher.slug)}`);
-    organization.target = "_blank";
-    organization.rel = "noopener noreferrer";
-    organization.setAttribute("aria-label", `Open ${publisher.name} in the ProseID Registry`);
-    const customLogo = safeLogoUrl(this.options.branding?.logoUrl);
-    const logo = customLogo || safeLogoUrl(publisher.logo);
-    if (logo) {
-      const img = document.createElement("img");
-      img.src = logo;
-      img.alt = this.options.branding?.logoAlt || `${publisher.name} logo`;
-      organization.append(img);
-    } else {
-      organization.append(text("span", "brand-fallback", publisher.name.slice(0, 2).toUpperCase()));
-    }
-    const copy = text("div", "brand-copy");
-    copy.append(text("div", "brand-name", publisher.name));
-    copy.append(text("div", "brand-note", `@${publisher.slug}`));
-    organization.append(copy);
-    wrap.append(organization);
-    const author = this.manifest.author;
-    if (author?.username) {
-      const authorLink = text("a", "brand-author", `@${author.username}`);
-      authorLink.href = this.registryUrl(`/registry/publishers/${encodeURIComponent(author.username)}`);
-      authorLink.target = "_blank";
-      authorLink.rel = "noopener noreferrer";
-      if (author.verified) {
-        const verified = text("span", "author-verified", "\u2713");
-        verified.setAttribute("aria-label", "Verified professional");
-        verified.title = "Verified professional";
-        authorLink.append(verified);
-      }
-      wrap.append(authorLink);
-    }
-    return wrap;
+    return brand.call(this, publisher);
   }
   registryUrl(path) {
-    const base = safeLogoUrl(this.manifest?.branding?.proseid?.url) || "https://proseid.com/";
-    return new URL(path, base).href;
+    return registryUrl.call(this, path);
   }
   proseidBrand() {
-    if (this.attribution === "hidden") return null;
-    const brand = this.manifest.branding.proseid;
-    const link = text("a", `proseid-brand${this.attribution === "compact" ? " compact" : ""}`);
-    link.href = brand.url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.setAttribute("aria-label", `${this.copy.verifiedBy} ProseID`);
-    const img = document.createElement("img");
-    img.src = brand.logo;
-    img.alt = "ProseID";
-    if (this.attribution === "full") link.append(text("span", "", this.copy.verifiedBy));
-    link.append(img);
-    return link;
+    return proseidBrand.call(this);
   }
   renderSchemaDetails() {
-    const metadata = this.manifest.schema?.metadata || {};
-    const title = String(metadata.title || this.manifest.schema?.title || "").trim();
-    const description = String(metadata.description || "").trim();
-    const jurisdictions = Array.isArray(metadata.jurisdictions) ? metadata.jurisdictions.filter(Boolean) : [];
-    const references = Array.isArray(metadata.legal_references) ? metadata.legal_references.filter(Boolean) : [];
-    const temporal = this.manifest.flow?.temporalContext;
-    if (!title && !description && jurisdictions.length === 0 && references.length === 0 && !temporal?.logic_version) return null;
-    const details = text("details", "schema-details");
-    details.append(text("summary", "", this.copy.schemaDetails));
-    const content = text("div", "schema-details-content");
-    if (title && title !== this.manifest.flow.title) content.append(text("strong", "schema-title", title));
-    if (description && description !== this.manifest.flow.description) {
-      content.append(text("p", "schema-summary", description));
-    }
-    if (temporal?.logic_version) {
-      const period = text("div", "temporal-context");
-      period.append(
-        text("span", "", this.copy.appliesOn(this.manifest.flow.effectiveAt)),
-        text("span", "", this.copy.interpretation(temporal.logic_version))
-      );
-      content.append(period);
-    }
-    if (jurisdictions.length) {
-      const group = text("div", "metadata-group");
-      group.append(text("div", "metadata-label", this.copy.jurisdictions));
-      const values = text("div", "jurisdiction-list");
-      for (const jurisdiction of jurisdictions) {
-        const code = String(jurisdiction).toUpperCase();
-        const chip = text("span", "jurisdiction", jurisdictionName(code, this.locale));
-        chip.append(text("code", "", code));
-        values.append(chip);
-      }
-      group.append(values);
-      content.append(group);
-    }
-    if (references.length) {
-      const group = text("div", "metadata-group");
-      group.append(text("div", "metadata-label", this.copy.legalReferences));
-      const list = text("ul", "reference-list");
-      for (const reference of references) {
-        const item = document.createElement("li");
-        const label = [reference.instrument, reference.provision].filter(Boolean).join(" \xB7 ") || this.copy.legalReference;
-        const source = safeLogoUrl(reference.source_url);
-        if (source) {
-          const link = text("a", "", label);
-          link.href = source;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          item.append(link);
-        } else item.textContent = label;
-        list.append(item);
-      }
-      group.append(list);
-      content.append(group);
-    }
-    details.append(content);
-    return details;
+    return renderSchemaDetails.call(this);
   }
   renderForm() {
-    this.shadow.replaceChildren();
-    this.installStyles();
-    const shell = text("section", "shell");
-    shell.setAttribute("aria-label", this.manifest.flow.title);
-    const head = text("header", "head");
-    const brands = text("div", "brands");
-    brands.append(this.brand(this.manifest.publisher));
-    const respondentTools = text("div", "respondent-tools");
-    respondentTools.append(this.renderLanguageSelector());
-    const proseidBrand = this.proseidBrand();
-    if (proseidBrand) respondentTools.append(proseidBrand);
-    brands.append(respondentTools);
-    head.append(brands, text("h1", "", this.manifest.flow.title));
-    if (this.manifest.flow.description) head.append(text("p", "description", this.manifest.flow.description));
-    const schemaDetails = this.renderSchemaDetails();
-    if (schemaDetails) head.append(schemaDetails);
-    this.statusNode = text("div", "status");
-    this.statusNode.dataset.state = "idle";
-    this.statusNode.append(text("span", "status-dot"), text("span", "status-copy", this.copy.idle));
-    head.append(this.statusNode);
-    const body = text("div", "body");
-    this.formError = text("div", "form-error");
-    this.formError.hidden = true;
-    this.formNode = document.createElement("form");
-    this.formNode.noValidate = true;
-    this.formNode.addEventListener("submit", (event) => this.submit(event));
-    this.fieldList = text("div", "fields");
-    for (const [name, definition] of Object.entries(this.manifest.schema?.definitions || {})) {
-      if (definition?.readonly === true) continue;
-      this.fieldList.append(this.renderField(name, definition));
-    }
-    this.submitButton = text("button", "submit", this.options.submitLabel || this.defaultSubmitLabel());
-    this.submitButton.type = "submit";
-    this.submitButton.disabled = true;
-    this.validationNavigator = this.renderValidationNavigator();
-    if (this.flowType === "guided_assessment") this.formNode.append(this.renderGuided());
-    else if (this.flowType === "determination") this.formNode.append(this.renderDetermination());
-    else if (this.flowType === "checklist") this.formNode.append(this.renderChecklist());
-    else this.formNode.append(this.fieldList, this.renderActions({ standardForm: true }));
-    body.append(this.formError, this.formNode);
-    this.progressNode = this.renderLedger();
-    this.progressFill = this.progressNode?.querySelector(".ledger-fill") || null;
-    if (this.progressNode) {
-      this.progressNode.setAttribute("role", "progressbar");
-      this.progressNode.setAttribute("aria-label", this.copy.answerProgress);
-      this.progressNode.setAttribute("aria-valuemin", "0");
-      this.progressNode.setAttribute("aria-valuemax", "100");
-      shell.append(this.progressNode);
-    }
-    shell.append(head, body);
-    this.shadow.append(shell);
-    this.updateAnswerProgress();
-    this.updateValidationNavigator();
+    return renderForm.call(this);
   }
   defaultSubmitLabel() {
-    if (this.flowType === "guided_assessment") return this.copy.completeAssessment;
-    if (this.flowType === "determination") return this.copy.confirmDetermination;
-    if (this.flowType === "checklist") return this.copy.completeChecklist;
-    return this.copy.submit;
+    return defaultSubmitLabel.call(this);
   }
   setButtonBusy(button, busy, label) {
-    if (!button) return;
-    button.classList.toggle("is-loading", busy);
-    button.setAttribute("aria-busy", String(busy));
-    button.replaceChildren();
-    if (busy) {
-      const spinner = text("span", "button-spinner");
-      spinner.setAttribute("aria-hidden", "true");
-      button.append(spinner);
-    }
-    button.append(text("span", "button-label", label));
+    return setButtonBusy.call(this, button, busy, label);
   }
   renderPrivacy() {
-    const privacy = text("div", "privacy");
-    privacy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-    privacy.append(text("span", "", this.attribution === "hidden" ? this.copy.privacyWhiteLabel : this.copy.privacy));
-    return privacy;
+    return renderPrivacy.call(this);
   }
-  renderActions({ standardForm = false } = {}) {
-    const actions = text("div", standardForm ? "actions standard-form-actions" : "actions");
-    const meta = text("div", "action-meta");
-    meta.append(this.validationNavigator);
-    actions.append(meta, this.submitButton);
-    return actions;
+  renderActions(options = void 0) {
+    return renderActions.call(this, options);
   }
   visibleFields() {
-    return [...this.fields.entries()].filter(([, field]) => field.engineVisible !== false);
+    return visibleFields.call(this);
   }
   updateAnswerProgress() {
-    if (!this.progressNode || !this.progressFill) return;
-    const fields = this.visibleFields();
-    const answered = fields.filter(([name, field]) => answerProvided(field.definition, this.values[name])).length;
-    const percent = fields.length ? Math.round(answered / fields.length * 100) : 100;
-    this.progressFill.style.width = `${percent}%`;
-    this.progressNode.setAttribute("aria-valuenow", String(percent));
-    this.progressNode.setAttribute("aria-valuetext", `${answered} of ${fields.length}`);
+    return updateAnswerProgress.call(this);
   }
   displayValue(value, definition) {
-    if (isEmptyValue(definition, value)) return this.copy.notAnswered;
-    if (["boolean", "attestation"].includes(definition?.type)) return value === true ? this.copy.yes : this.copy.no;
-    if (typeof value === "object") return JSON.stringify(value);
-    return humanizeChoice(value);
+    return displayValue.call(this, value, definition);
   }
   renderGuided() {
-    const guided = text("div", "guided");
-    this.guidedQuestion = text("section", "guided-question");
-    this.guidedIndexNode = text("div", "guided-index");
-    this.guidedFieldSlot = text("div", "guided-field-slot");
-    const navigation = text("div", "guided-navigation");
-    this.guidedNavigation = navigation;
-    this.guidedBack = text("button", "secondary-action", this.copy.back);
-    this.guidedBack.type = "button";
-    this.guidedBack.addEventListener("click", () => this.guidedPrevious());
-    this.guidedNext = text("button", "primary-action", this.copy.continue);
-    this.guidedNext.type = "button";
-    this.guidedNext.addEventListener("click", () => this.guidedContinue());
-    navigation.append(this.guidedBack, this.validationNavigator, this.guidedNext);
-    this.guidedQuestion.append(this.guidedIndexNode, this.guidedFieldSlot, navigation);
-    this.guidedPath = text("aside", "guided-path");
-    this.guidedPathHeading = text("div", "guided-path-heading");
-    this.guidedPathHeadingLabel = text("span", "", this.copy.guidedPath);
-    this.guidedPathHeadingCount = text("strong");
-    this.guidedPathHeading.append(this.guidedPathHeadingLabel, this.guidedPathHeadingCount);
-    this.guidedPathList = document.createElement("ol");
-    this.guidedPathList.tabIndex = 0;
-    this.guidedPathList.setAttribute("aria-label", this.copy.guidedPath);
-    this.guidedPath.append(this.guidedPathHeading);
-    if (this.progressEnabled()) {
-      this.guidedPathProgress = text("div", "guided-progress");
-      this.guidedPathProgressFill = text("span");
-      this.guidedPathProgress.append(this.guidedPathProgressFill);
-      this.guidedPath.append(this.guidedPathProgress);
-    }
-    this.guidedPath.append(this.guidedPathList);
-    this.guidedReview = text("section", "guided-review");
-    this.guidedReview.hidden = true;
-    this.guidedParking = text("div", "field-parking");
-    this.guidedParking.hidden = true;
-    for (const field of this.fields.values()) this.guidedParking.append(field.wrap);
-    const layout = text("div", "guided-layout");
-    layout.append(this.guidedPath, this.guidedQuestion, this.guidedReview, this.guidedParking);
-    guided.append(layout);
-    this.refreshGuided();
-    return guided;
+    return renderGuided.call(this);
   }
   refreshGuided() {
-    if (!this.guidedQuestion) return;
-    const list = this.guidedPathList;
-    const previousPathScrollTop = list?.scrollTop || 0;
-    if (this.validationNavigator?.parentNode !== this.guidedNavigation) {
-      this.guidedNavigation.insertBefore(this.validationNavigator, this.guidedNext);
-    }
-    const entries = this.visibleFields();
-    if (!entries.length) {
-      this.guidedQuestion.replaceChildren(text("p", "empty-state", "This Flow has no visible questions."));
-      this.guidedPath.hidden = true;
-      return;
-    }
-    this.guidedPath.hidden = false;
-    this.guidedIndex = Math.min(this.guidedIndex, entries.length - 1);
-    const [currentName, field] = entries[this.guidedIndex];
-    for (const [, candidate] of entries) {
-      candidate.wrap.hidden = candidate !== field;
-      if (candidate !== field && candidate.wrap.parentNode !== this.guidedParking) this.guidedParking.append(candidate.wrap);
-    }
-    field.wrap.hidden = false;
-    if (this.guidedFieldSlot.childElementCount !== 1 || this.guidedFieldSlot.firstElementChild !== field.wrap) {
-      this.guidedFieldSlot.replaceChildren(field.wrap);
-    }
-    this.guidedIndexNode.replaceChildren(
-      text("span", "", this.copy.guidedProgress(this.guidedIndex + 1, entries.length)),
-      text("small", "", this.guidedIndex === entries.length - 1 ? this.copy.guidedReviewCue : this.copy.guidedContinueCue)
-    );
-    this.guidedBack.disabled = this.guidedIndex === 0;
-    this.guidedNext.disabled = this.guidedChecking;
-    this.guidedNext.textContent = this.guidedIndex === entries.length - 1 ? this.copy.reviewAnswers : this.copy.continue;
-    this.guidedPathHeadingLabel.textContent = this.copy.guidedPath;
-    this.guidedPathHeadingCount.textContent = `${this.guidedIndex + 1}/${entries.length}`;
-    list.setAttribute("aria-label", this.copy.guidedPath);
-    if (this.guidedPathProgressFill) {
-      const answered = entries.filter(([name, candidate]) => answerProvided(candidate.definition, this.values[name])).length;
-      this.guidedPathProgressFill.style.width = `${Math.round(answered / entries.length * 100)}%`;
-    }
-    const existingItems = new Map([...list.children].map((item) => [item.dataset.field, item]));
-    const nextItems = entries.map(([entryName, entryField], index) => {
-      let item = existingItems.get(entryName);
-      if (!item) {
-        item = text("li");
-        item.dataset.field = entryName;
-        const button2 = text("button", "guided-path-button");
-        button2.type = "button";
-        const marker2 = text("span", "guided-marker");
-        const pathCopy = text("span", "guided-path-copy");
-        pathCopy.append(text("strong"), text("small"));
-        button2.append(marker2, pathCopy);
-        let navigatedOnPointerDown = false;
-        button2.addEventListener("pointerdown", (event) => {
-          if (button2.disabled || event.button !== 0) return;
-          navigatedOnPointerDown = true;
-          event.preventDefault();
-          this.goToGuidedQuestion(entryName);
-        });
-        button2.addEventListener("click", (event) => {
-          event.preventDefault();
-          if (button2.disabled) return;
-          if (navigatedOnPointerDown) {
-            navigatedOnPointerDown = false;
-            return;
-          }
-          this.goToGuidedQuestion(entryName);
-        });
-        item.append(button2);
-      }
-      const button = item.querySelector(".guided-path-button");
-      const marker = item.querySelector(".guided-marker");
-      const label = item.querySelector(".guided-path-copy strong");
-      const detail = item.querySelector(".guided-path-copy small");
-      const hasAnswer = answerProvided(entryField.definition, this.values[entryName]);
-      const isActive = index === this.guidedIndex;
-      item.className = isActive ? hasAnswer ? "active answered" : "active" : hasAnswer ? "answered" : "remaining";
-      if (isActive) item.setAttribute("aria-current", "step");
-      else item.removeAttribute("aria-current");
-      button.disabled = isActive || !hasAnswer;
-      marker.textContent = hasAnswer ? "\u2713" : "";
-      label.textContent = entryField.label;
-      detail.textContent = isActive ? this.copy.guidedCurrent : hasAnswer ? this.displayValue(this.values[entryName], entryField.definition) : this.copy.notAnswered;
-      return item;
-    });
-    const currentItems = [...list.children];
-    const structureChanged = currentItems.length !== nextItems.length || currentItems.some((item, index) => item !== nextItems[index]);
-    if (structureChanged) list.replaceChildren(...nextItems);
-    list.scrollTop = previousPathScrollTop;
-    requestAnimationFrame(() => {
-      const active = list.querySelector(".active");
-      if (!active || list.scrollHeight <= list.clientHeight) return;
-      const listBounds = list.getBoundingClientRect();
-      const activeBounds = active.getBoundingClientRect();
-      let nextTop = list.scrollTop;
-      if (activeBounds.top < listBounds.top) nextTop -= listBounds.top - activeBounds.top;
-      else if (activeBounds.bottom > listBounds.bottom) nextTop += activeBounds.bottom - listBounds.bottom;
-      if (Math.abs(nextTop - list.scrollTop) < 1) return;
-      const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      list.scrollTo({ top: Math.max(0, nextTop), behavior: reducedMotion ? "auto" : "smooth" });
-    });
+    return refreshGuided.call(this);
   }
   goToGuidedQuestion(name) {
-    clearTimeout(this.validationTimer);
-    const entries = this.visibleFields();
-    const index = entries.findIndex(([entryName]) => entryName === name);
-    if (index < 0) return;
-    this.guidedChecking = false;
-    this.guidedPhase = "questions";
-    this.guidedIndex = index;
-    this.guidedReview.hidden = true;
-    this.guidedQuestion.hidden = false;
-    this.guidedPath.hidden = false;
-    this.refreshGuided();
-    requestAnimationFrame(() => {
-      const field = this.fields.get(name);
-      const controls = field?.controls || [field?.control];
-      (controls.find((control) => control?.checked) || controls.find((control) => control && control.type !== "hidden"))?.focus?.({ preventScroll: true });
-    });
+    return goToGuidedQuestion.call(this, name);
   }
-  async guidedContinue() {
-    if (this.guidedNext.disabled) return;
-    clearTimeout(this.validationTimer);
-    const entries = this.visibleFields();
-    const current = entries[this.guidedIndex];
-    if (!current) return;
-    const [currentName, currentField] = current;
-    this.blurred.add(currentName);
-    const localIssues = this.localValidationIssues([currentName], { includeRequired: true });
-    this.renderLocalIssues([currentName], localIssues);
-    if (localIssues.some((issue) => issue.severity === "error")) {
-      this.refreshGuided();
-      currentField.control?.focus?.();
-      return;
-    }
-    this.guidedChecking = true;
-    this.guidedNext.disabled = true;
-    this.guidedNext.textContent = this.copy.checking;
-    const result = await this.validate();
-    if (!result) {
-      this.guidedChecking = false;
-      this.refreshGuided();
-      return;
-    }
-    const blocking = (result?.issues || []).some((issue) => issue.field_id === currentName && issue.severity === "error");
-    if (blocking) {
-      this.guidedChecking = false;
-      this.refreshGuided();
-      return;
-    }
-    const refreshed = this.visibleFields();
-    this.guidedChecking = false;
-    if (this.guidedIndex < refreshed.length - 1) {
-      this.guidedIndex += 1;
-      this.refreshGuided();
-      this.guidedFieldSlot.querySelector('input:not([type="hidden"]), select, textarea, button')?.focus?.({ preventScroll: true });
-    } else this.showGuidedReview();
+  guidedContinue() {
+    return guidedContinue.call(this);
   }
   guidedPrevious() {
-    if (this.guidedPhase === "review") {
-      this.guidedPhase = "questions";
-      this.guidedIndex = Math.max(0, this.visibleFields().length - 1);
-      this.guidedReview.hidden = true;
-      this.guidedQuestion.hidden = false;
-      this.guidedPath.hidden = false;
-      this.refreshGuided();
-      return;
-    }
-    if (this.guidedIndex > 0) {
-      this.guidedIndex -= 1;
-      this.refreshGuided();
-    }
+    return guidedPrevious.call(this);
   }
   showGuidedReview() {
-    this.guidedPhase = "review";
-    for (const field of this.fields.values()) this.guidedParking.append(field.wrap);
-    this.guidedQuestion.hidden = true;
-    this.guidedPath.hidden = true;
-    this.guidedReview.hidden = false;
-    this.guidedReview.replaceChildren();
-    const head = text("header", "review-head");
-    head.append(text("span", "eyebrow", this.copy.finalCheck), text("h2", "", this.copy.reviewTitle), text("p", "", this.copy.reviewHelp));
-    const list = text("div", "review-list");
-    this.visibleFields().forEach(([name, field]) => {
-      const row = text("div", "review-row");
-      const answer = text("span", "review-answer");
-      answer.append(text("small", "", field.label), text("strong", "", this.displayValue(this.values[name], field.definition)));
-      const change = text("button", "review-change", this.copy.changeAnswer);
-      change.type = "button";
-      change.addEventListener("click", () => this.goToGuidedQuestion(name));
-      row.append(answer, change);
-      list.append(row);
-    });
-    const actions = text("div", "guided-review-actions");
-    const readiness = text("div", "guided-review-readiness");
-    const back = text("button", "secondary-action", this.copy.back);
-    back.type = "button";
-    back.addEventListener("click", () => this.guidedPrevious());
-    readiness.append(this.validationNavigator);
-    actions.append(back, this.submitButton);
-    this.guidedReview.append(head);
-    this.guidedReview.append(list);
-    this.guidedReview.append(this.renderPrivacy(), readiness, actions);
-    this.updateSubmitState();
+    return showGuidedReview.call(this);
   }
   renderDetermination() {
-    const layout = text("div", "determination-layout");
-    const facts = text("section", "determination-facts");
-    const head = text("header", "experience-head");
-    head.append(text("span", "eyebrow", this.copy.determinationFacts), text("h2", "", this.copy.determinationTitle), text("p", "", this.copy.determinationHelp));
-    this.determinationActivity = text("div", "determination-activity");
-    this.determinationActivity.append(text("i", ""), text("span", "", this.copy.determinationPreparing));
-    facts.append(head, this.fieldList, this.determinationActivity);
-    layout.append(facts);
-    const wrap = text("div", "determination");
-    wrap.append(layout, this.renderActions());
-    return wrap;
+    return renderDetermination.call(this);
   }
   refreshDetermination() {
+    return refreshDetermination.call(this);
   }
   renderChecklist() {
-    const checklist = text("div", "checklist");
-    const head = text("header", "checklist-head");
-    const copy = text("div", "checklist-title");
-    copy.append(text("span", "eyebrow", this.copy.checklistEyebrow), text("h2", "", this.copy.checklistTitle), text("p", "", this.copy.checklistHelp));
-    this.checklistProgress = text("div", "checklist-progress");
-    head.append(copy);
-    const context = text("section", "checklist-section");
-    const controls = text("section", "checklist-section checklist-controls");
-    const contextFields = [];
-    const controlFields = [];
-    for (const [, field] of this.fields) {
-      if (["boolean", "attestation"].includes(field.definition.type)) controlFields.push(field.wrap);
-      else contextFields.push(field.wrap);
-    }
-    if (contextFields.length) {
-      const contextHead = text("header", "checklist-section-head");
-      contextHead.append(text("span", "eyebrow", this.copy.checklistContext), text("h3", "", this.copy.checklistContextTitle), text("p", "", this.copy.checklistContextHelp));
-      context.append(contextHead);
-      const grid = text("div", "checklist-context-grid");
-      grid.append(...contextFields);
-      context.append(grid);
-    }
-    const controlsHead = text("header", "checklist-section-head");
-    controlsHead.append(text("span", "eyebrow", this.copy.checklistControlsLabel), text("h3", "", this.copy.checklistControls), text("p", "", this.copy.checklistControlsHelp));
-    controls.append(controlsHead);
-    const list = text("div", "checklist-control-list");
-    list.append(...controlFields);
-    controls.append(list);
-    checklist.append(head);
-    if (contextFields.length) checklist.append(context);
-    const completion = this.renderActions();
-    completion.classList.add("checklist-completion");
-    completion.prepend(this.checklistProgress);
-    checklist.append(controls, completion);
-    this.updateChecklistProgress();
-    return checklist;
+    return renderChecklist.call(this);
   }
   checklistControlNames() {
-    return [...this.fields.entries()].filter(([, field]) => field.engineVisible !== false && ["boolean", "attestation"].includes(field.definition.type)).map(([name]) => name);
+    return checklistControlNames.call(this);
   }
   updateChecklistProgress() {
-    if (!this.checklistProgress) return;
-    const names = this.checklistControlNames();
-    const reviewed = names.filter((name) => this.reviewed.has(name)).length;
-    this.checklistProgress.replaceChildren(
-      text("strong", "", `${reviewed}/${names.length}`),
-      text("span", "", this.copy.checklistProgress(reviewed, names.length))
-    );
-    if (this.progressEnabled()) {
-      const rail = text("div", "checklist-progress-rail");
-      const fill = text("i", "");
-      fill.style.width = `${names.length ? Math.round(reviewed / names.length * 100) : 100}%`;
-      rail.append(fill);
-      this.checklistProgress.append(rail);
-    }
+    return updateChecklistProgress.call(this);
   }
   updateSubmitState() {
-    if (!this.submitButton) return;
-    this.submitButton.disabled = this.submitting || this.guidedChecking || this.validationLocked;
-    this.updateValidationNavigator();
+    return updateSubmitState.call(this);
   }
   validationProblems() {
-    const { fingerprint } = this.validationRequest();
-    const localIssues = this.localValidationIssues(null, { includeRequired: true }).filter((issue) => issue?.severity === "error");
-    const problems = [];
-    const seenFields = /* @__PURE__ */ new Set();
-    const add = (issue, kind = "attention") => {
-      const name = issue?.field_id || "";
-      if (name) {
-        const field = this.fields.get(name);
-        if (!field || field.engineVisible === false || seenFields.has(name)) return;
-        seenFields.add(name);
-      }
-      problems.push({ issue, name, kind });
-    };
-    for (const issue of localIssues) {
-      const missing = issue.kind === "missing_required" || issue.kind === "attestation_incomplete";
-      add(issue, missing ? "missing" : "attention");
-    }
-    if (this.flowType === "checklist") {
-      for (const name of this.checklistControlNames()) {
-        if (!this.reviewed.has(name)) add({ field_id: name, severity: "error", kind: "missing_required", local: true }, "missing");
-      }
-    }
-    if (this.lastValidationFingerprint === fingerprint) {
-      for (const issue of this.lastValidation?.issues || []) {
-        if (issue?.severity === "error") add(issue, "attention");
-      }
-      if (this.lastValidation?.valid === false && problems.length === 0) add({ severity: "error" }, "attention");
-    }
-    return problems;
+    return validationProblems.call(this);
   }
   validationNavigatorState() {
-    if (!this.manifest) return { state: "checking", count: 0, label: this.copy.checkingAnswers, detail: "" };
-    const problems = this.validationProblems();
-    if (problems.length) {
-      const needsAttention = problems.some((problem) => problem.kind === "attention");
-      return {
-        state: needsAttention ? "attention" : "needed",
-        count: problems.length,
-        label: needsAttention ? this.copy.answersNeedAttention(problems.length) : this.copy.answersNeeded(problems.length),
-        detail: needsAttention ? this.copy.goToFirstAttention : this.copy.goToFirstUnfinished,
-        problems
-      };
-    }
-    const { fingerprint } = this.validationRequest();
-    const currentResult = this.lastValidationFingerprint === fingerprint ? this.lastValidation : null;
-    if (this.validationScheduled || this.validationInFlight || !currentResult) {
-      return { state: "checking", count: 0, label: this.copy.checkingAnswers, detail: this.copy.checkingAnswersHelp, problems: [] };
-    }
-    if (currentResult.valid === true) {
-      return { state: "ready", count: 0, label: this.copy.readyToComplete, detail: this.copy.answersChecked, problems: [] };
-    }
-    return {
-      state: "attention",
-      count: 1,
-      label: this.copy.answersNeedAttention(1),
-      detail: this.copy.goToFirstAttention,
-      problems: [{ issue: { severity: "error" }, name: "", kind: "attention" }]
-    };
+    return validationNavigatorState.call(this);
   }
   renderValidationNavigator() {
-    const wrap = text("div", "validation-navigator-slot");
-    const navigator = text("div", "validation-navigator");
-    navigator.dataset.open = "false";
-    navigator.dataset.state = "checking";
-    const id = `proseid-answer-status-${this.recordId}`;
-    const toggle = text("button", "validation-orb");
-    toggle.type = "button";
-    toggle.setAttribute("aria-controls", id);
-    toggle.setAttribute("aria-expanded", "false");
-    this.validationOrbValue = text("span", "validation-orb-value");
-    this.validationOrbValue.setAttribute("aria-hidden", "true");
-    toggle.append(this.validationOrbValue);
-    const reveal = text("div", "validation-reveal");
-    reveal.id = id;
-    const jump = text("button", "validation-jump");
-    jump.type = "button";
-    this.validationCopy = text("span", "validation-copy");
-    this.validationLabel = text("strong", "validation-label");
-    this.validationLabel.setAttribute("aria-live", "polite");
-    this.validationDetail = text("small", "validation-detail");
-    this.validationCopy.append(this.validationLabel, this.validationDetail);
-    this.validationArrow = text("span", "validation-arrow", "\u2192");
-    this.validationArrow.setAttribute("aria-hidden", "true");
-    jump.append(this.validationCopy, this.validationArrow);
-    reveal.append(jump);
-    navigator.append(reveal, toggle);
-    wrap.append(navigator);
-    toggle.addEventListener("click", () => {
-      this.validationNavigatorOpen = !this.validationNavigatorOpen;
-      this.updateValidationNavigator();
-    });
-    jump.addEventListener("click", () => {
-      const state = this.validationNavigatorState();
-      if (state.problems?.length) this.navigateToFirstProblem(state.problems);
-      this.validationNavigatorOpen = false;
-      this.updateValidationNavigator();
-    });
-    return wrap;
+    return renderValidationNavigator.call(this);
   }
   updateValidationNavigator() {
-    const navigator = this.validationNavigator?.querySelector?.(".validation-navigator");
-    const toggle = navigator?.querySelector?.(".validation-orb");
-    const jump = navigator?.querySelector?.(".validation-jump");
-    const reveal = navigator?.querySelector?.(".validation-reveal");
-    if (!navigator || !toggle || !jump || !reveal) return;
-    const state = this.validationNavigatorState();
-    navigator.dataset.state = state.state;
-    navigator.dataset.open = String(this.validationNavigatorOpen);
-    toggle.setAttribute("aria-expanded", String(this.validationNavigatorOpen));
-    reveal.setAttribute("aria-hidden", String(!this.validationNavigatorOpen));
-    jump.tabIndex = this.validationNavigatorOpen ? 0 : -1;
-    toggle.setAttribute("aria-label", this.validationNavigatorOpen ? this.copy.closeAnswerNavigator : `${this.copy.openAnswerNavigator}: ${state.label}`);
-    this.validationOrbValue.textContent = state.state === "ready" ? "\u2713" : state.state === "checking" ? "" : state.count > 99 ? "99+" : String(state.count);
-    this.validationLabel.textContent = state.label;
-    this.validationDetail.textContent = state.detail;
-    jump.setAttribute("aria-label", state.problems?.length ? `${state.label}. ${state.detail}` : state.label);
-    this.validationArrow.textContent = state.problems?.length ? "\u2192" : state.state === "ready" ? "\u2713" : "\xB7";
+    return updateValidationNavigator.call(this);
   }
-  async navigateToFirstProblem(problems = this.validationProblems()) {
-    const orderedNames = this.visibleFields().map(([name]) => name);
-    const named = problems.filter((problem) => problem.name);
-    named.sort((a, b) => orderedNames.indexOf(a.name) - orderedNames.indexOf(b.name));
-    const target = named[0];
-    if (!target) {
-      this.submittedAttempted = true;
-      this.renderIssues(this.lastValidation?.issues || []);
-      this.formError?.scrollIntoView?.({ behavior: "smooth", block: "center" });
-      return;
-    }
-    this.blurred.add(target.name);
-    const localIssues = this.localValidationIssues([target.name], { includeRequired: true });
-    this.renderLocalIssues([target.name], localIssues);
-    if (this.flowType === "guided_assessment") this.goToGuidedQuestion(target.name);
-    const field = this.fields.get(target.name);
-    field?.wrap?.scrollIntoView?.({ behavior: "smooth", block: "center" });
-    const controls = field?.controls || [field?.control];
-    (controls.find((control) => control?.checked) || controls.find((control) => control && control.type !== "hidden"))?.focus?.({ preventScroll: true });
+  navigateToFirstProblem(problems = void 0) {
+    return navigateToFirstProblem.call(this, problems);
   }
   renderDatePicker(id, definition, labelText) {
-    const wrap = text("div", "date-control");
-    const input = document.createElement("input");
-    input.id = id;
-    input.type = "text";
-    input.inputMode = "numeric";
-    input.autocomplete = "off";
-    input.spellcheck = false;
-    input.className = "control date-input";
-    input.placeholder = definition.placeholder || "YYYY-MM-DD";
-    const trigger = text("button", "date-trigger");
-    trigger.type = "button";
-    trigger.setAttribute("aria-label", this.copy.chooseDateFor(labelText));
-    trigger.setAttribute("aria-haspopup", "dialog");
-    trigger.setAttribute("aria-expanded", "false");
-    trigger.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 9.5h17"/></svg>';
-    wrap.append(input, trigger);
-    const isoParts = (value) => {
-      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
-      if (!match) return null;
-      const year = Number(match[1]);
-      const month = Number(match[2]);
-      const day = Number(match[3]);
-      const date = new Date(Date.UTC(year, month - 1, day));
-      return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? { year, month, day } : null;
-    };
-    const iso = (year, month, day) => `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const today = /* @__PURE__ */ new Date();
-    const todayIso = iso(today.getFullYear(), today.getMonth() + 1, today.getDate());
-    let anchor = isoParts(input.value) || isoParts(todayIso);
-    let viewYear = anchor.year;
-    let viewMonth = anchor.month;
-    let panel = null;
-    const allowed = (value) => {
-      if (!isoParts(value)) return false;
-      if (definition.min && value < String(definition.min)) return false;
-      if (definition.max && value > String(definition.max)) return false;
-      return true;
-    };
-    const monthTitle = () => new Intl.DateTimeFormat(this.locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
-    const monthName = () => new Intl.DateTimeFormat(this.locale, { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
-    const yearOptions = () => {
-      const minimumYear = isoParts(String(definition.min || ""))?.year ?? today.getFullYear() - 100;
-      const maximumYear = isoParts(String(definition.max || ""))?.year ?? today.getFullYear() + 25;
-      const firstYear = Math.min(minimumYear, viewYear);
-      const lastYear = Math.max(maximumYear, viewYear);
-      return Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index);
-    };
-    const displayDate = (value) => {
-      const parsed = isoParts(value);
-      if (!parsed) return value;
-      return new Intl.DateTimeFormat(this.locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day)));
-    };
-    const close = ({ focus = false } = {}) => {
-      panel?.remove();
-      panel = null;
-      trigger.setAttribute("aria-expanded", "false");
-      if (focus) trigger.focus();
-    };
-    const choose = (value) => {
-      if (!allowed(value)) return;
-      input.value = value;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-      close({ focus: true });
-    };
-    const clear = () => {
-      input.value = "";
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-      close({ focus: true });
-    };
-    const place = () => {
-      if (!panel) return;
-      const rect = trigger.getBoundingClientRect();
-      const width = Math.min(326, window.innerWidth - 24);
-      const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
-      const height = Math.min(panel.getBoundingClientRect().height || 420, window.innerHeight - 24);
-      const below = window.innerHeight - rect.bottom;
-      const top = below >= height + 8 ? rect.bottom + 8 : Math.max(12, rect.top - height - 8);
-      panel.style.setProperty("--date-left", `${left}px`);
-      panel.style.setProperty("--date-top", `${top}px`);
-      panel.style.setProperty("--date-width", `${width}px`);
-    };
-    const renderPanel = () => {
-      if (!panel) return;
-      panel.replaceChildren();
-      const header = text("header", "date-panel-head");
-      const title = text("div", "date-panel-title");
-      const period = text("div", "date-panel-period");
-      const yearSelect = document.createElement("select");
-      yearSelect.className = "date-year-select";
-      yearSelect.setAttribute("aria-label", this.copy.year);
-      for (const year of yearOptions()) {
-        const option = document.createElement("option");
-        option.value = String(year);
-        option.textContent = String(year);
-        yearSelect.append(option);
-      }
-      yearSelect.value = String(viewYear);
-      yearSelect.addEventListener("change", () => {
-        viewYear = Number(yearSelect.value);
-        renderPanel();
-        place();
-      });
-      period.append(text("strong", "", monthName()), yearSelect);
-      title.append(text("span", "", this.copy.selectDate), period);
-      const navigation = text("nav", "date-navigation");
-      navigation.setAttribute("aria-label", "Change month");
-      const previous = text("button", "", "\u2039");
-      previous.type = "button";
-      previous.setAttribute("aria-label", this.copy.previousMonth);
-      const next = text("button", "", "\u203A");
-      next.type = "button";
-      next.setAttribute("aria-label", this.copy.nextMonth);
-      const move = (delta) => {
-        const date = new Date(Date.UTC(viewYear, viewMonth - 1 + delta, 1));
-        viewYear = date.getUTCFullYear();
-        viewMonth = date.getUTCMonth() + 1;
-        renderPanel();
-        place();
-      };
-      previous.addEventListener("click", () => move(-1));
-      next.addEventListener("click", () => move(1));
-      navigation.append(previous, next);
-      header.append(title, navigation);
-      const weekdays = text("div", "date-weekdays");
-      for (const day of this.copy.weekdays) weekdays.append(text("span", "", day));
-      const grid = text("div", "date-grid");
-      grid.setAttribute("role", "grid");
-      grid.setAttribute("aria-label", monthTitle());
-      const first = new Date(Date.UTC(viewYear, viewMonth - 1, 1));
-      const startOffset = (first.getUTCDay() + 6) % 7;
-      for (let index = 0; index < 42; index += 1) {
-        const date = new Date(Date.UTC(viewYear, viewMonth - 1, index - startOffset + 1));
-        const value = iso(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
-        const day = text("button", date.getUTCMonth() + 1 === viewMonth ? "" : "outside", String(date.getUTCDate()));
-        day.type = "button";
-        day.setAttribute("role", "gridcell");
-        day.setAttribute("aria-label", displayDate(value));
-        day.setAttribute("aria-selected", String(input.value === value));
-        if (input.value === value) day.classList.add("selected");
-        if (todayIso === value) day.classList.add("today");
-        day.disabled = !allowed(value);
-        day.addEventListener("click", () => choose(value));
-        grid.append(day);
-      }
-      const footer = text("footer", "date-panel-footer");
-      const clearButton = text("button", "", this.copy.clear);
-      clearButton.type = "button";
-      clearButton.disabled = !input.value;
-      clearButton.addEventListener("click", clear);
-      const todayButton = text("button", "today-action", this.copy.today);
-      todayButton.type = "button";
-      todayButton.disabled = !allowed(todayIso);
-      todayButton.addEventListener("click", () => choose(todayIso));
-      footer.append(clearButton, todayButton);
-      panel.append(header, weekdays, grid, footer);
-    };
-    const open = () => {
-      if (panel) return close();
-      anchor = isoParts(input.value) || isoParts(todayIso);
-      viewYear = anchor.year;
-      viewMonth = anchor.month;
-      panel = text("section", "date-panel");
-      panel.setAttribute("role", "dialog");
-      panel.setAttribute("aria-label", this.copy.chooseDateFor(labelText));
-      this.shadow.append(panel);
-      trigger.setAttribute("aria-expanded", "true");
-      renderPanel();
-      place();
-      panel.querySelector('[aria-selected="true"]:not(:disabled), .today:not(:disabled), button:not(:disabled)')?.focus?.();
-    };
-    trigger.addEventListener("click", open);
-    const outside = (event) => {
-      const path = event.composedPath?.() || [];
-      if (panel && !path.includes(panel) && !path.includes(wrap)) close();
-    };
-    const escape = (event) => {
-      if (panel && event.key === "Escape") {
-        event.preventDefault();
-        close({ focus: true });
-      }
-    };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", escape);
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    this.cleanupFns.push(() => {
-      close();
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", escape);
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-    });
-    return { input, wrap };
+    return renderDatePicker.call(this, id, definition, labelText);
   }
   renderField(name, definition) {
-    const wrap = text("div", "field");
-    wrap.dataset.fieldName = name;
-    if (["highlight", "error", "warning", "success", "muted"].includes(definition.ui_class)) wrap.classList.add(definition.ui_class);
-    wrap.hidden = definition.visible === false;
-    const labelText = humanizeText(definition.label || definition.statement || name);
-    const id = `proseid-${this.recordId.slice(-10)}-${name.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-    let control;
-    let controls = [];
-    const required = text("span", "required", this.copy.requiredLabel);
-    required.hidden = definition.required !== true;
-    const infoId = `${id}-info`;
-    const messageId = `${id}-message`;
-    const hintId = `${id}-hint`;
-    let info = null;
-    if (definition.info) {
-      info = text("span", "info-tip");
-      const trigger = text("button", "info-trigger", "i");
-      trigger.type = "button";
-      trigger.setAttribute("aria-label", this.copy.moreInformation(labelText));
-      trigger.setAttribute("aria-describedby", infoId);
-      const popover = text("span", "info-popover", definition.info);
-      popover.id = infoId;
-      popover.setAttribute("role", "tooltip");
-      info.append(trigger, popover);
-    }
-    if (this.flowType === "checklist" && definition.type === "boolean") {
-      control = document.createElement("input");
-      control.type = "hidden";
-      control.value = this.values[name] === void 0 ? "" : String(this.values[name]);
-      controls = [control];
-      const row = text("div", "checklist-boolean");
-      const copy = text("div", "checklist-boolean-copy");
-      const label = text("span", "label", definition.statement || labelText);
-      label.id = `${id}-label`;
-      copy.append(label, required);
-      if (info) copy.append(info);
-      const choices = text("div", "boolean-choice");
-      choices.setAttribute("role", "group");
-      choices.setAttribute("aria-labelledby", label.id);
-      const yes = text("button", "", this.copy.yes);
-      const no = text("button", "", this.copy.no);
-      yes.type = no.type = "button";
-      yes.setAttribute("aria-pressed", "false");
-      no.setAttribute("aria-pressed", "false");
-      yes.addEventListener("click", () => this.setChecklistBoolean(name, true));
-      no.addEventListener("click", () => this.setChecklistBoolean(name, false));
-      choices.append(yes, no);
-      row.append(copy, choices);
-      wrap.append(row);
-      wrap.choiceButtons = { yes, no };
-    } else if (definition.type === "boolean") {
-      const group = document.createElement("fieldset");
-      group.className = "boolean-field";
-      const legend = text("legend", "sr-only", labelText);
-      const row = text("div", "boolean-row");
-      const copy = text("div", "boolean-copy", labelText);
-      copy.append(required);
-      if (info) copy.append(info);
-      const choices = text("div", "boolean-choice");
-      choices.setAttribute("role", "radiogroup");
-      const yesLabel = document.createElement("label");
-      const noLabel = document.createElement("label");
-      const yes = document.createElement("input");
-      const no = document.createElement("input");
-      yes.type = no.type = "radio";
-      yes.name = no.name = name;
-      yes.value = "true";
-      no.value = "false";
-      yes.checked = this.values[name] === true;
-      no.checked = this.values[name] === false;
-      yesLabel.classList.toggle("selected", yes.checked);
-      noLabel.classList.toggle("selected", no.checked);
-      yesLabel.append(yes, text("span", "", this.copy.yes));
-      noLabel.append(no, text("span", "", this.copy.no));
-      choices.append(yesLabel, noLabel);
-      row.append(copy, choices);
-      group.append(legend, row);
-      wrap.append(group);
-      control = yes;
-      controls = [yes, no];
-      wrap.choiceLabels = { yes: yesLabel, no: noLabel };
-    } else if (definition.type === "attestation") {
-      const label = text("label", "check");
-      control = document.createElement("input");
-      control.type = "checkbox";
-      control.checked = this.values[name] === true;
-      control.setAttribute("role", "switch");
-      controls = [control];
-      const track = text("span", "toggle-track");
-      track.setAttribute("aria-hidden", "true");
-      const copy = text("span", "check-copy", definition.statement || labelText);
-      copy.append(required);
-      label.append(control, track, copy);
-      const row = text("div", "check-row");
-      row.append(label);
-      if (info) row.append(info);
-      wrap.append(row);
-    } else {
-      const label = text("label", "label", labelText);
-      label.htmlFor = id;
-      label.append(required);
-      const row = text("div", "label-row");
-      row.append(label);
-      if (info) row.append(info);
-      wrap.append(row);
-      if (definition.type === "select") {
-        control = document.createElement("select");
-        const empty = text("option", "", definition.placeholder || this.copy.select);
-        empty.value = "";
-        empty.disabled = true;
-        control.append(empty);
-        for (const option of definition.options || []) {
-          const value = typeof option === "object" ? option.value : option;
-          const item = text("option", "", humanizeChoice(typeof option === "object" ? option.label || value : value));
-          item.value = value;
-          control.append(item);
-        }
-      } else if (definition.type === "date") {
-        const datePicker = this.renderDatePicker(id, definition, labelText);
-        control = datePicker.input;
-        wrap.append(datePicker.wrap);
-      } else if (definition.multiline) {
-        control = document.createElement("textarea");
-        control.rows = 5;
-      } else {
-        control = document.createElement("input");
-        control.type = ["number", "currency"].includes(definition.type) ? "number" : definition.format === "email" ? "email" : "text";
-        if (definition.step != null) control.step = definition.step;
-        else if (definition.type === "currency") control.step = "0.01";
-      }
-      controls = [control];
-      control.id = id;
-      control.className = definition.type === "date" ? "control date-input" : "control";
-      control.value = this.values[name] ?? "";
-      if (definition.placeholder && definition.type !== "select") control.placeholder = definition.placeholder;
-      if (definition.min != null) control.min = definition.min;
-      if (definition.max != null) control.max = definition.max;
-      if (definition.min_length != null) control.minLength = definition.min_length;
-      if (definition.max_length != null) control.maxLength = definition.max_length;
-      if (definition.pattern) control.pattern = definition.pattern;
-      if (definition.type !== "date") wrap.append(control);
-      if (definition.description || definition.help) {
-        const hint = text("span", "hint", definition.description || definition.help);
-        hint.id = hintId;
-        wrap.append(hint);
-      }
-    }
-    for (const item of controls) {
-      item.name = name;
-      item.required = definition.required === true;
-    }
-    const message = text("span", "field-message", definition.ui_message || "");
-    message.id = messageId;
-    message.hidden = !definition.ui_message;
-    wrap.append(message);
-    const describedBy = [definition.info ? infoId : "", definition.description || definition.help ? hintId : "", messageId, `${id}-error`].filter(Boolean);
-    for (const item of controls) {
-      item.setAttribute("aria-describedby", describedBy.join(" "));
-      item.addEventListener("input", () => this.change(name, definition, item));
-      item.addEventListener("change", () => this.change(name, definition, item, true));
-      item.addEventListener("blur", () => {
-        this.blurred.add(name);
-        this.scheduleValidation(120, [name], { includeRequired: true });
-      });
-    }
-    const error = text("span", "error");
-    error.id = `${id}-error`;
-    error.setAttribute("aria-live", "polite");
-    wrap.append(error);
-    this.fields.set(name, {
-      wrap,
-      control,
-      controls,
-      error,
-      message,
-      required,
-      definition,
-      label: labelText,
-      engineVisible: definition.visible !== false,
-      choiceButtons: wrap.choiceButtons || null,
-      choiceLabels: wrap.choiceLabels || null
-    });
-    return wrap;
+    return renderField.call(this, name, definition);
   }
   setChecklistBoolean(name, value) {
-    const field = this.fields.get(name);
-    if (!field) return;
-    const firstReview = !this.reviewed.has(name);
-    this.reviewed.add(name);
-    field.control.value = String(value);
-    field.choiceButtons?.yes.classList.toggle("selected", value === true);
-    field.choiceButtons?.no.classList.toggle("selected", value === false);
-    field.choiceButtons?.yes.setAttribute("aria-pressed", String(value === true));
-    field.choiceButtons?.no.setAttribute("aria-pressed", String(value === false));
-    this.clearStaleFieldEvaluation(name);
-    this.updateChecklistProgress();
-    if (Object.is(this.values[name], value)) {
-      this.updateSubmitState();
-      if (firstReview) {
-        this.emit("change", { name, value, values: { ...this.values } });
-        this.scheduleValidation(0, [name]);
-      }
-      return;
-    }
-    this.values[name] = value;
-    this.updateAnswerProgress();
-    this.valid = false;
-    this.updateSubmitState();
-    this.setStatus("checking", this.copy.checking);
-    this.emit("change", { name, value, values: { ...this.values } });
-    this.invalidateStaleValidationRequest();
-    this.scheduleValidation(0, [name]);
+    return setChecklistBoolean.call(this, name, value);
   }
-  change(name, definition, control, immediate = false) {
-    const wasProvided = answerProvided(definition, this.values[name]);
-    const value = definition.type === "boolean" ? control.type === "radio" ? control.value === "true" : control.checked : definition.type === "attestation" ? control.checked : ["number", "currency"].includes(definition.type) && control.value !== "" ? Number(control.value) : control.value;
-    if (this.flowType === "checklist" && ["boolean", "attestation"].includes(definition.type)) {
-      this.reviewed.add(name);
-      this.updateChecklistProgress();
-    }
-    if (Object.is(this.values[name], value)) {
-      this.updateSubmitState();
-      return;
-    }
-    this.values[name] = value;
-    const isProvided = answerProvided(definition, value);
-    this.updateAnswerProgress();
-    if (definition.type === "boolean") {
-      const field = this.fields.get(name);
-      field?.choiceLabels?.yes.classList.toggle("selected", value === true);
-      field?.choiceLabels?.no.classList.toggle("selected", value === false);
-    }
-    this.valid = false;
-    if (this.flowType === "checklist" && ["boolean", "attestation"].includes(definition.type)) this.clearStaleFieldEvaluation(name);
-    if (this.flowType === "determination" && this.determinationActivity) {
-      this.determinationActivity.classList.add("evaluating");
-      this.determinationActivity.querySelector("span").textContent = this.copy.determinationUpdating;
-    }
-    if (this.flowType === "guided_assessment" && this.guidedPhase === "questions" && wasProvided !== isProvided) this.refreshGuided();
-    this.updateSubmitState();
-    this.setStatus("checking", this.copy.checking);
-    this.emit("change", { name, value: this.values[name], values: { ...this.values } });
-    this.invalidateStaleValidationRequest();
-    const activeDefinition = this.fields.get(name)?.definition || definition;
-    const locallyValid = answerProvided(activeDefinition, value) && !localConstraintIssue(name, activeDefinition, value, { includeRequired: true });
-    const validationDelay = immediate ? 0 : this.options.validateDelay ?? (locallyValid ? LOCALLY_VALID_VALIDATION_DELAY : DEFAULT_VALIDATION_DELAY);
-    this.scheduleValidation(validationDelay, [name]);
+  change(name, definition, control, immediate = void 0) {
+    return change.call(this, name, definition, control, immediate);
   }
   validationRequest() {
-    const responses = normalizedResponses(this.manifest.schema?.definitions || {}, this.values);
-    const fingerprint = JSON.stringify([
-      this.manifest.flow.ref,
-      this.manifest.flow.effectiveAt,
-      responses
-    ]);
-    return { responses, fingerprint };
+    return validationRequest.call(this);
   }
   invalidateStaleValidationRequest() {
-    if (!this.validationPromise) return;
-    const { fingerprint } = this.validationRequest();
-    if (fingerprint === this.validationPromiseFingerprint) return;
-    this.validationSequence += 1;
-    this.validationAbort?.abort();
-    this.validationAbort = null;
-    this.validationPromise = null;
-    this.validationPromiseFingerprint = "";
-    this.validationInFlight = false;
-    this.updateValidationNavigator();
+    return invalidateStaleValidationRequest.call(this);
   }
-  localValidationIssues(names, { includeRequired = false } = {}) {
-    const selected = names ? new Set(names) : null;
-    const issues = [];
-    for (const [name, field] of this.fields) {
-      if (selected && !selected.has(name)) continue;
-      if (field.engineVisible === false) continue;
-      const issue = localConstraintIssue(name, field.definition, this.values[name], { includeRequired });
-      if (issue) issues.push(issue);
-    }
-    return issues;
+  localValidationIssues(names, options = void 0) {
+    return localValidationIssues.call(this, names, options);
   }
-  renderLocalIssues(names, issues = this.localValidationIssues(names)) {
-    const selected = new Set(names || []);
-    const retained = (this.lastValidation?.issues || []).filter((issue) => !selected.has(issue?.field_id));
-    this.renderIssues([...retained, ...issues]);
+  renderLocalIssues(names, issues = void 0) {
+    return renderLocalIssues.call(this, names, issues);
   }
-  scheduleValidation(delay, names = null, { includeRequired = false } = {}) {
-    clearTimeout(this.validationTimer);
-    this.validationScheduled = true;
-    this.updateValidationNavigator();
-    this.validationTimer = setTimeout(() => {
-      this.validationScheduled = false;
-      const localIssues = names?.length ? this.localValidationIssues(names, { includeRequired }) : [];
-      if (names?.length) this.renderLocalIssues(names, localIssues);
-      if (localIssues.some((issue) => issue.severity === "error")) {
-        this.valid = false;
-        this.updateSubmitState();
-        this.setStatus("idle", this.copy.incomplete);
-        return;
-      }
-      this.validate();
-    }, Math.max(0, delay));
+  scheduleValidation(delay, names = void 0, options = void 0) {
+    return scheduleValidation.call(this, delay, names, options);
   }
-  async validate() {
-    if (this.destroyed || !this.manifest) return null;
-    const { responses, fingerprint } = this.validationRequest();
-    if (this.lastValidation && this.lastValidationFingerprint === fingerprint) {
-      this.validationScheduled = false;
-      this.renderIssues(this.lastValidation.issues || []);
-      this.updateSubmitState();
-      return this.lastValidation;
-    }
-    if (this.validationPromise && this.validationPromiseFingerprint === fingerprint) {
-      return this.validationPromise;
-    }
-    const sequence = ++this.validationSequence;
-    this.validationScheduled = false;
-    this.validationInFlight = true;
-    this.validationAbort?.abort();
-    this.validationAbort = new AbortController();
-    this.setStatus("checking", this.copy.checking);
-    const signal = this.validationAbort.signal;
-    const request = (async () => {
-      try {
-        const result = await this.api.validate(
-          this.manifest.flow.ref,
-          responses,
-          this.manifest.flow.effectiveAt,
-          this.locale,
-          signal
-        );
-        if (sequence !== this.validationSequence) return null;
-        this.lastValidation = result;
-        this.lastValidationFingerprint = fingerprint;
-        this.valid = result.valid === true;
-        this.validationLocked = false;
-        this.applyDefinitions(result.definitions || {});
-        this.renderIssues(result.issues || []);
-        if (this.flowType === "determination") {
-          this.determinationActivity?.classList.remove("evaluating");
-          if (this.determinationActivity) this.determinationActivity.querySelector("span").textContent = this.copy.determinationAuto;
-          this.refreshDetermination();
-        }
-        this.updateSubmitState();
-        this.setStatus(this.valid ? "ready" : "idle", this.valid ? this.copy.ready : this.copy.incomplete);
-        this.emit("validation", { valid: this.valid, status: result.status, issues: result.issues || [] });
-        return result;
-      } catch (error) {
-        if (error?.name === "AbortError") return null;
-        if (sequence !== this.validationSequence) return null;
-        this.valid = false;
-        this.updateSubmitState();
-        const message = errorMessage(error.code, this.copy.checkFailed);
-        this.setStatus("error", message);
-        if (error?.code === "flow_changed" && this.formError) {
-          this.validationLocked = true;
-          this.formError.hidden = false;
-          this.formError.textContent = message;
-          this.updateSubmitState();
-        }
-        this.emit("error", { error });
-        return null;
-      }
-    })();
-    this.validationPromise = request;
-    this.validationPromiseFingerprint = fingerprint;
-    this.updateValidationNavigator();
-    try {
-      return await request;
-    } finally {
-      if (this.validationPromise === request) {
-        this.validationPromise = null;
-        this.validationPromiseFingerprint = "";
-        this.validationAbort = null;
-        this.validationInFlight = false;
-        this.updateValidationNavigator();
-      }
-    }
+  validate() {
+    return validate.call(this);
   }
   applyDefinitions(definitions) {
-    for (const [name, resolved] of Object.entries(definitions)) {
-      const field = this.fields.get(name);
-      if (!field) continue;
-      field.engineVisible = resolved?.visible !== false;
-      field.definition = { ...field.definition, ...resolved };
-      field.wrap.hidden = !field.engineVisible;
-      const required = resolved?.required === true;
-      for (const control of field.controls || [field.control]) control.required = required;
-      field.required.hidden = !required;
-      field.message.textContent = resolved?.ui_message || "";
-      field.message.hidden = !resolved?.ui_message;
-    }
-    if (this.flowType === "guided_assessment" && this.guidedPhase === "questions") this.refreshGuided();
-    if (this.flowType === "checklist") this.updateChecklistProgress();
-    this.updateAnswerProgress();
-    this.updateValidationNavigator();
+    return applyDefinitions.call(this, definitions);
   }
   clearStaleFieldEvaluation(name) {
-    const field = this.fields.get(name);
-    if (!field) return;
-    field.error.textContent = "";
-    field.message.textContent = this.manifest.schema?.definitions?.[name]?.ui_message || "";
-    field.message.hidden = !field.message.textContent;
+    return clearStaleFieldEvaluation.call(this, name);
   }
   shouldShow(issue) {
-    if (this.submittedAttempted) return true;
-    if (issue?.local === true && !isEmptyValue(this.fields.get(issue.field_id)?.definition, this.values[issue.field_id])) return true;
-    if (issue?.trigger === "completion") return false;
-    if (issue?.trigger === "correction") return this.blurred.has(issue.field_id);
-    return issue?.severity === "warning" || issue?.severity === "notice";
+    return shouldShow.call(this, issue);
   }
   renderIssues(issues) {
-    for (const field of this.fields.values()) {
-      field.error.textContent = "";
-      for (const control of field.controls || [field.control]) control.setAttribute("aria-invalid", "false");
-    }
-    const formIssues = [];
-    for (const issue of issues) {
-      if (!this.shouldShow(issue)) continue;
-      const field = this.fields.get(issue.field_id);
-      if (field) {
-        field.error.textContent = friendlyIssue(issue, field.label, this.copy);
-        for (const control of field.controls || [field.control]) control.setAttribute("aria-invalid", "true");
-      } else formIssues.push(friendlyIssue(issue, "This field", this.copy));
-    }
-    if (this.submittedAttempted && this.flowType === "checklist") {
-      for (const name of this.checklistControlNames()) {
-        if (this.reviewed.has(name)) continue;
-        const field = this.fields.get(name);
-        if (!field || field.error.textContent) continue;
-        field.error.textContent = this.copy.checklistChoose;
-        for (const control of field.controls || [field.control]) control.setAttribute("aria-invalid", "true");
-      }
-    }
-    this.formError.textContent = formIssues.join(" ");
-    this.formError.hidden = formIssues.length === 0;
+    return renderIssues.call(this, issues);
   }
   setStatus(state, copy) {
-    if (!this.statusNode) return;
-    this.statusNode.dataset.state = state;
-    this.statusNode.querySelector(".status-copy").textContent = copy;
+    return setStatus.call(this, state, copy);
   }
   collectBasicSignature() {
-    return new Promise((resolve) => {
-      const overlay = text("div", "signature-overlay");
-      const dialog = text("section", "signature-dialog");
-      dialog.setAttribute("role", "dialog");
-      dialog.setAttribute("aria-modal", "true");
-      dialog.setAttribute("aria-labelledby", "proseid-signature-title");
-      const eyebrow = text("div", "signature-eyebrow", this.copy.basicSignature);
-      const title = text("h2", "", this.copy.signatureTitle);
-      title.id = "proseid-signature-title";
-      const help = text("p", "signature-help", this.copy.signatureHelp);
-      const form = document.createElement("form");
-      form.className = "signature-form";
-      form.noValidate = true;
-      const nameLabel = text("label", "signature-label", this.copy.signatureName);
-      nameLabel.htmlFor = "proseid-signature-name";
-      const name = document.createElement("input");
-      name.id = "proseid-signature-name";
-      name.className = "signature-input";
-      name.type = "text";
-      name.autocomplete = "name";
-      name.maxLength = 160;
-      name.required = true;
-      name.placeholder = this.copy.signaturePlaceholder;
-      const acknowledgement = text("label", "signature-acknowledgement");
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.required = true;
-      const acknowledgementTrack = text("span", "signature-toggle");
-      acknowledgementTrack.setAttribute("aria-hidden", "true");
-      acknowledgement.append(checkbox, acknowledgementTrack, text("span", "", this.copy.signatureAcknowledgement));
-      const error = text("p", "signature-error");
-      error.setAttribute("role", "alert");
-      const actions = text("div", "signature-actions");
-      const cancel = text("button", "signature-cancel", this.copy.cancel);
-      cancel.type = "button";
-      const confirm = text("button", "signature-confirm", this.copy.signAndSubmit);
-      confirm.type = "submit";
-      actions.append(cancel, confirm);
-      form.append(nameLabel, name, acknowledgement, error, actions);
-      dialog.append(eyebrow, title, help, form);
-      overlay.append(dialog);
-      let settled = false;
-      const finish = (value) => {
-        if (settled) return;
-        settled = true;
-        this.signatureCancel = null;
-        overlay.remove();
-        resolve(value);
-      };
-      this.signatureCancel = () => finish(null);
-      cancel.addEventListener("click", () => finish(null));
-      overlay.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") finish(null);
-      });
-      form.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const typedName = name.value.trim();
-        if (typedName.length < 2 || !checkbox.checked) {
-          error.textContent = typedName.length < 2 ? this.copy.signatureNameError : this.copy.signatureAcknowledgementError;
-          if (typedName.length < 2) name.focus();
-          else checkbox.focus();
-          return;
-        }
-        finish({ kind: "basic", typed_name: typedName, acknowledged: true });
-      });
-      this.shadow.append(overlay);
-      name.focus();
-    });
+    return collectBasicSignature.call(this);
   }
-  async focusFirstInvalid(result = this.lastValidation) {
-    const issues = (result?.issues || []).filter((issue) => issue?.severity === "error" && issue?.field_id);
-    let name = issues.find((issue) => this.fields.get(issue.field_id)?.engineVisible !== false)?.field_id;
-    if (!name) {
-      name = this.visibleFields().find(
-        ([fieldName, field2]) => field2.definition?.required === true && !answerProvided(field2.definition, this.values[fieldName])
-      )?.[0];
-    }
-    if (!name) return;
-    if (this.flowType === "guided_assessment") {
-      this.guidedPhase = "questions";
-      this.guidedReview.hidden = true;
-      this.guidedQuestion.hidden = false;
-      this.guidedPath.hidden = false;
-      this.guidedIndex = Math.max(0, this.visibleFields().findIndex(([fieldName]) => fieldName === name));
-      this.refreshGuided();
-    }
-    const field = this.fields.get(name);
-    field?.wrap?.scrollIntoView?.({ behavior: "smooth", block: "center" });
-    (field?.controls || [field?.control]).find((control) => control && control.type !== "hidden")?.focus?.({ preventScroll: true });
+  focusFirstInvalid(result = void 0) {
+    return focusFirstInvalid.call(this, result);
   }
-  async submit(event) {
-    event.preventDefault();
-    if (this.destroyed || this.submitting) return;
-    clearTimeout(this.validationTimer);
-    this.validationScheduled = false;
-    this.submittedAttempted = true;
-    const localIssues = this.localValidationIssues(null, { includeRequired: true });
-    if (localIssues.some((issue) => issue.severity === "error")) {
-      const { fingerprint } = this.validationRequest();
-      const currentServerIssues = this.lastValidationFingerprint === fingerprint ? this.lastValidation?.issues || [] : [];
-      this.renderIssues([...currentServerIssues, ...localIssues]);
-      this.validationNavigatorOpen = true;
-      this.updateValidationNavigator();
-      await this.navigateToFirstProblem(this.validationProblems());
-      return;
-    }
-    if (this.flowType === "checklist") {
-      const firstUnreviewed = this.checklistControlNames().find((name) => !this.reviewed.has(name));
-      if (firstUnreviewed) {
-        this.renderIssues(this.lastValidation?.issues || []);
-        const field = this.fields.get(firstUnreviewed);
-        field?.wrap?.scrollIntoView?.({ behavior: "smooth", block: "center" });
-        field?.choiceButtons?.yes?.focus?.({ preventScroll: true });
-        return;
-      }
-    }
-    const validation = this.valid && this.lastValidation ? this.lastValidation : await this.validate();
-    if (!validation?.valid) {
-      this.renderIssues(validation?.issues || []);
-      this.refreshDetermination();
-      await this.focusFirstInvalid(validation);
-      return;
-    }
-    this.submitting = true;
-    this.submitButton.disabled = true;
-    this.setButtonBusy(this.submitButton, true, this.copy.submitting);
-    this.setStatus("checking", this.copy.creating);
-    this.emit("submit", { values: { ...this.values } });
-    try {
-      let signature = null;
-      if (this.manifest.capabilities?.signing?.requested) {
-        const mode = this.manifest.capabilities.signing.mode;
-        if (mode === "basic") {
-          this.setStatus("checking", this.copy.awaitingSignature);
-          signature = await this.collectBasicSignature();
-          if (!signature) {
-            this.submitting = false;
-            this.updateSubmitState();
-            this.setButtonBusy(this.submitButton, false, this.options.submitLabel || this.defaultSubmitLabel());
-            this.setStatus("ready", this.copy.ready);
-            return;
-          }
-          this.emit("signing", { mode, signature });
-        } else {
-          const nextAction = await this.api.prepareSigning(
-            this.manifest.flow.ref,
-            this.recordId,
-            this.values,
-            this.manifest.flow.effectiveAt
-          );
-          signature = await this.signing.handle(nextAction, { manifest: this.manifest, values: { ...this.values } });
-          this.emit("signing", { mode, nextAction, signature });
-        }
-      }
-      const result = await this.api.complete(
-        this.manifest.flow.ref,
-        this.recordId,
-        normalizedResponses(this.manifest.schema?.definitions || {}, this.values),
-        this.manifest.flow.effectiveAt,
-        signature,
-        this.locale
-      );
-      this.renderComplete(result);
-      this.emit("complete", result);
-    } catch (error) {
-      this.submitting = false;
-      if (error?.code === "validation_failed" && Array.isArray(error?.details?.issues)) {
-        this.valid = false;
-        this.lastValidation = {
-          ...this.lastValidation || {},
-          valid: false,
-          status: error.details.status || "INVALID",
-          issues: error.details.issues
-        };
-        this.renderIssues(error.details.issues);
-        this.refreshDetermination();
-        await this.focusFirstInvalid(this.lastValidation);
-      }
-      this.updateSubmitState();
-      this.setButtonBusy(this.submitButton, false, this.options.submitLabel || this.defaultSubmitLabel());
-      this.formError.hidden = false;
-      this.formError.textContent = errorMessage(error.code, error.message);
-      this.setStatus("error", "Submission not saved");
-      this.emit("error", { error });
-    }
+  submit(event) {
+    return submit.call(this, event);
   }
   renderComplete(result) {
-    for (const cleanup of this.cleanupFns.splice(0)) cleanup();
-    const shell = this.shadow.querySelector(".shell");
-    const complete = text("div", "completion-view");
-    const summary = text("header", "completion-summary");
-    const summaryCopy = text("div", "completion-summary-copy");
-    summaryCopy.append(
-      text("h2", "", result.test ? this.copy.testCompleteTitle : this.copy.completeTitle),
-      text("p", "", result.test ? this.copy.testDelivered : this.copy.delivered(this.manifest.publisher.name)),
-      text("div", "receipt", result.test ? this.copy.testRecord(result.recordId) : this.copy.auditRecord(result.recordId))
-    );
-    summary.append(text("div", "seal", "\u2713"), summaryCopy);
-    complete.append(summary);
-    const recordedResult = this.renderRecordedResult(result.result);
-    if (recordedResult) complete.append(recordedResult);
-    if (result.test) {
-      complete.append(text("p", "receipt-test", this.copy.receiptTest));
-    } else if (this.manifest.capabilities?.receiptEmail !== false) {
-      complete.append(this.renderReceiptEmail(result));
-    }
-    const ledger = this.renderLedger("complete");
-    shell.replaceChildren(...ledger ? [ledger, complete] : [complete]);
-    if (this.options.autoFocusCompletion !== false) {
-      requestAnimationFrame(() => {
-        if (this.destroyed) return;
-        const reduceMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-        this.target.scrollIntoView?.({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
-      });
-    }
+    return renderComplete.call(this, result);
   }
   renderRecordedResult(result) {
-    const outcomes = Array.isArray(result?.outcomes) ? result.outcomes : [];
-    const notices = Array.isArray(result?.notices) ? result.notices : [];
-    if (!outcomes.length && !notices.length) return null;
-    const section = text("section", "recorded-result");
-    const title = this.flowType === "determination" ? this.copy.resultDetermination : this.flowType === "guided_assessment" ? this.copy.resultAssessment : this.flowType === "checklist" ? this.copy.resultChecklist : this.copy.resultForm;
-    const head = text("header", "recorded-result-head");
-    head.append(text("span", "eyebrow", this.copy.resultEyebrow), text("h3", "", title), text("p", "", this.copy.resultHelp));
-    section.append(head);
-    if (outcomes.length) {
-      const list = text("div", "recorded-outcomes");
-      for (const outcome of outcomes) {
-        if (!outcome || !String(outcome.fieldId || "").trim()) continue;
-        const item = text("article", "recorded-outcome");
-        item.append(
-          text("small", "", humanizeText(outcome.label || outcome.fieldId)),
-          text("strong", "", this.displayValue(outcome.value, { type: outcome.type }))
-        );
-        if (outcome.message) item.append(text("p", "", String(outcome.message)));
-        list.append(item);
-      }
-      if (list.childElementCount) section.append(list);
-    }
-    if (notices.length) {
-      const notes = text("div", "recorded-notices");
-      notes.append(text("span", "eyebrow", this.copy.resultNotes));
-      const list = document.createElement("ul");
-      for (const notice of notices) if (notice?.message) list.append(text("li", "", String(notice.message)));
-      if (list.childElementCount) notes.append(list);
-      section.append(notes);
-    }
-    return section;
+    return renderRecordedResult.call(this, result);
   }
   renderReceiptEmail(result) {
-    const section = text("section", "receipt-copy");
-    const title = text("h3", "", this.copy.receiptTitle);
-    const help = text("p", "receipt-help", this.copy.receiptHelp);
-    const form = document.createElement("form");
-    form.className = "receipt-form";
-    form.noValidate = true;
-    const field = text("div", "receipt-field");
-    const id = `proseid-receipt-${String(result.recordId).replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 48)}`;
-    const label = text("label", "receipt-label", this.copy.receiptLabel);
-    label.htmlFor = id;
-    const row = text("div", "receipt-row");
-    const input = document.createElement("input");
-    input.id = id;
-    input.className = "receipt-input";
-    input.type = "email";
-    input.inputMode = "email";
-    input.autocomplete = "email";
-    input.placeholder = this.copy.receiptPlaceholder;
-    input.maxLength = 320;
-    input.required = true;
-    const button = text("button", "receipt-button", this.copy.receiptAction);
-    button.type = "submit";
-    button.disabled = true;
-    const status = text("p", "receipt-status");
-    status.setAttribute("role", "status");
-    status.setAttribute("aria-live", "polite");
-    input.setAttribute("aria-describedby", `${id}-status`);
-    status.id = `${id}-status`;
-    input.addEventListener("input", () => {
-      button.disabled = !EMAIL_RE.test(input.value.trim());
-      input.setAttribute("aria-invalid", "false");
-      status.textContent = "";
-      status.dataset.state = "idle";
-    });
-    form.addEventListener("submit", (event) => this.sendReceipt(event, { result, input, button, status }));
-    row.append(input, button);
-    field.append(label, row, status);
-    form.append(field);
-    section.append(title, help, form);
-    return section;
+    return renderReceiptEmail.call(this, result);
   }
-  async sendReceipt(event, { result, input, button, status }) {
-    event.preventDefault();
-    if (this.destroyed || result.test) return;
-    const email = input.value.trim();
-    if (!EMAIL_RE.test(email)) {
-      input.setAttribute("aria-invalid", "true");
-      status.dataset.state = "error";
-      status.textContent = this.copy.receiptInvalid;
-      return;
-    }
-    input.disabled = true;
-    button.disabled = true;
-    this.setButtonBusy(button, true, this.copy.receiptSending);
-    status.dataset.state = "idle";
-    status.textContent = "";
-    try {
-      await this.api.emailReceipt(this.manifest.flow.ref, result.recordId, email);
-      status.dataset.state = "sent";
-      status.textContent = this.copy.receiptSent(email);
-      this.setButtonBusy(button, false, this.copy.receiptAction);
-      this.emit("receipt", { status: "sent", recordId: result.recordId, email });
-    } catch (error) {
-      input.disabled = false;
-      button.disabled = false;
-      this.setButtonBusy(button, false, this.copy.receiptAction);
-      status.dataset.state = "error";
-      status.textContent = error?.code === "rate_limited" ? this.copy.receiptRateLimited : this.copy.receiptError;
-      this.emit("receipt", { status: "error", recordId: result.recordId, email, error });
-    }
+  sendReceipt(event, receipt) {
+    return sendReceipt.call(this, event, receipt);
   }
   renderFatal(error) {
-    this.shadow.replaceChildren();
-    this.installStyles();
-    const shell = text("section", "shell");
-    const complete = text("div", "completion-view");
-    complete.append(text("div", "seal", "!"), text("h2", "", this.copy.formUnavailable));
-    complete.append(text("p", "", errorMessage(error?.code, error?.message)));
-    const ledger = this.renderLedger();
-    if (ledger) shell.append(ledger);
-    shell.append(complete);
-    this.shadow.append(shell);
+    return renderFatal.call(this, error);
   }
   emit(name, detail) {
     this.target.dispatchEvent(new CustomEvent(`proseid:${name}`, { detail, bubbles: true, composed: true }));
